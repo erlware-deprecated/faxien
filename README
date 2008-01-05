@@ -1,0 +1,9 @@
+1. Installation of Faxien
+  - download faxien_launcher
+  - run ./faxien_launcher -b -r http://repo.erlware.org
+  - Optionally if you don't want to install Faxien into the default location which is /usr/local/erlware you can use:
+    ./faxien_launcher -b -r http://repo.erlware.org --prefix <some_path> which will install into <some_path>/erlware
+
+2. to see a list of commands Faxien understands run /usr/local/erlware/bin/faxien help
+3. alternatively you may add erlware/bin to your path and then just run faxien.
+
