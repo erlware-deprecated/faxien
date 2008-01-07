@@ -13,4 +13,4 @@
              ]},
   {registered, []},
   {versioned_dependencies, []},
-  {applications, [eunit, kernel, stdlib, ewlib, gas, fslib]}]}.
+  {applications, [eunit, kernel, stdlib, ewrepo, ewlib, gas, fslib]}]}.
