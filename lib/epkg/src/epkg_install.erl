@@ -38,7 +38,7 @@
 %% @end
 %%--------------------------------------------------------------------
 install_application(AppPackageDirOrArchive, InstallationPath) ->
-    AppPackageDirPath       = epkg_util:unpack_potential_archive(AppPackageDirOrArchive), 
+    AppPackageDirPath       = epkg_util:unpack_to_tmp_if_archive(AppPackageDirOrArchive), 
     {ok, {AppName, AppVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(AppPackageDirPath),
     ?INFO_MSG("Installing Application ~s-~s to ~p~n", [AppName, AppVsn, AppPackageDirPath]),
     Res = 
@@ -62,7 +62,7 @@ install_application(AppPackageDirOrArchive, InstallationPath) ->
 %%--------------------------------------------------------------------
 install_erts(ErtsPackageDirOrArchive, InstallationPath) ->
     ?INFO_MSG("with args ~p and ~p~n", [ErtsPackageDirOrArchive, InstallationPath]),
-    ErtsPackageDirPath      = ensure_correct_erts_dir(epkg_util:unpack_potential_archive(ErtsPackageDirOrArchive)),
+    ErtsPackageDirPath      = ensure_correct_erts_dir(epkg_util:unpack_to_tmp_if_archive(ErtsPackageDirOrArchive)),
     {ok, {"erts", ErtsVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ErtsPackageDirOrArchive),
     InstalledErtsPath       = epkg_installed_paths:installed_erts_path(InstallationPath, ErtsVsn),
     case {epkg_validation:is_package_erts(InstalledErtsPath),
@@ -88,7 +88,7 @@ install_erts(ErtsPackageDirOrArchive, InstallationPath) ->
 %% @end
 %%--------------------------------------------------------------------
 install_release(ReleasePackageArchiveOrDirPath, InstallationPath, IsLocalBoot) ->
-    ReleasePackageDirPath   = epkg_util:unpack_potential_archive(ReleasePackageArchiveOrDirPath),
+    ReleasePackageDirPath   = epkg_util:unpack_to_tmp_if_archive(ReleasePackageArchiveOrDirPath),
     {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ReleasePackageDirPath),
     InstalledRelPath        = epkg_installed_paths:installed_release_dir_path(InstallationPath, RelName, RelVsn),
     case {epkg_validation:is_package_a_release(InstalledRelPath), 

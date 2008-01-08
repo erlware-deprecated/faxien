@@ -56,7 +56,7 @@
 %%--------------------------------------------------------------------
 install(PackageDirOrArchive) -> 
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
-    PackageDirPath         = epkg_util:unpack_potential_archive(PackageDirOrArchive), 
+    PackageDirPath         = epkg_util:unpack_to_tmp_if_archive(PackageDirOrArchive), 
     case epkg_validation:validate_type(PackageDirPath) of
 	binary  -> epkg_install:install_application(PackageDirPath, InstallationPath);
 	generic -> epkg_install:install_application(PackageDirPath, InstallationPath);

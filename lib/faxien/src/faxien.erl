@@ -235,7 +235,7 @@ outdated_apps(Repo) when is_atom(Repo) ->
 outdated_apps(Repos) ->
     TargetErtsVsn          = ewr_util:erts_version(),
     lists:foreach(fun({Name, CurrentVsn, UpgradeVsn}) ->
-			  io:format("The ~s release has an available upgrade from ~s to ~s~n", [Name, CurrentVsn, UpgradeVsn])
+			  io:format("The ~s application has an available upgrade from ~s to ~s~n", [Name, CurrentVsn, UpgradeVsn])
 		  end, 
 		  fax_manage:outdated_applications(Repos, TargetErtsVsn, ?REQUEST_TIMEOUT)).
 

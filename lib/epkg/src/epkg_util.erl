@@ -13,7 +13,6 @@
 %%--------------------------------------------------------------------
 -export([
 	 is_string/1,
-	 unpack_potential_archive/1,
 	 overwrite_yes_no/4,
 	 overwrite_yes_no/3,
 	 create_unique_tmp_dir/1,
@@ -21,6 +20,7 @@
 	 set_executable_perms/1,
 	 set_all_executable_perms/1,
 	 unpack_to_tmp/1,
+	 unpack_to_tmp_if_archive/1,
 	 if_atom_or_integer_to_string/1,
 	 consult_rel_file/2,
 	 consult_control_file/2
@@ -55,20 +55,6 @@ not_string_p1($\f)                                  -> false;
 not_string_p1($\e)                                  -> false;
 not_string_p1(_)                                    -> true.
     
-%%--------------------------------------------------------------------
-%% @private
-%% @doc if a package is a tarball then untar it into a tmp dir and hand back the path to that temp dir
-%% @spec unpack_potential_archive(PackageDirPath::string()) -> DirPath::string()
-%% @end
-%%--------------------------------------------------------------------
-unpack_potential_archive(ArchiveFilePath) ->
-    case regexp:match(ArchiveFilePath, ".*\.tar\.gz$") of
-	{match, _, _} ->
-	    epkg_util:unpack_to_tmp(ArchiveFilePath);
-	_NoMatch ->
-	    ArchiveFilePath
-    end.
-
 %%--------------------------------------------------------------------
 %% @doc helper for overwriting previously instlaled applications. If force is set to true then the overwrite takes place, 
 %%      FunOnYes is executed, without prompting the user.  If false is set then the user is prompted. This function 
@@ -171,6 +157,19 @@ unpack_to_tmp(ArtifactFilePath) ->
     case filelib:wildcard(TmpDirPath ++ "/*") of
 	[TmpArtifactPath]                                  -> TmpArtifactPath;
 	TmpArtifactPaths when length(TmpArtifactPaths) > 1 -> TmpArtifactPaths
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc if a package is a tarball then untar it into a tmp dir and hand back the path(s) to the unpacked contents of the temp dir.
+%% @spec unpack_to_tmp_if_archive(PackageDirPath::string()) -> DirPath::string()
+%% @end
+%%--------------------------------------------------------------------
+unpack_to_tmp_if_archive(ArchiveFilePath) ->
+    case regexp:match(ArchiveFilePath, ".*\.tar\.gz$") of
+	{match, _, _} ->
+	    epkg_util:unpack_to_tmp(ArchiveFilePath);
+	_NoMatch ->
+	    ArchiveFilePath
     end.
 
 %%--------------------------------------------------------------------

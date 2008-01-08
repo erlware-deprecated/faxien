@@ -245,7 +245,7 @@ install_remote_release(Repos, TargetErtsVsn, RelName, RelVsn, IsLocalBoot, Force
 install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLocalBoot, Force, Timeout) ->
     %% @todo think about continuing to pass IsLocalBoot from faxien to epkg
     
-    ReleasePackageDirPath   = epkg_util:unpack_potential_archive(ReleasePackageArchiveOrDirPath),
+    ReleasePackageDirPath   = epkg_util:unpack_to_tmp_if_archive(ReleasePackageArchiveOrDirPath),
     {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ReleasePackageDirPath),
     RelFilePath             = epkg_package_paths:release_package_rel_file_path(ReleasePackageDirPath, RelName, RelVsn),
     TargetErtsVsn           = epkg_util:consult_rel_file(erts_vsn, RelFilePath),

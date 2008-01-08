@@ -54,7 +54,7 @@
 %% @end
 %%--------------------------------------------------------------------
 publish(Repos, ErtsVsn, RawPackageDirPath, Timeout) -> 
-    PackageDirPath = handle_potential_archive(RawPackageDirPath),
+    PackageDirPath = epkg_util:unpack_to_tmp_if_archive(RawPackageDirPath),
     case epkg_validation:validate_type(PackageDirPath) of
 	{ok, Type} ->
 	    io:format("Publishing ~p package~n", [Type]), 
@@ -80,7 +80,8 @@ publish(Repos, ErtsVsn, RawPackageDirPath, Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 publish(Type, Repos, ErtsVsn, RawPackageDirPath, Timeout) -> 
-    PackageDirPath = handle_potential_archive(RawPackageDirPath),
+    PackageDirPath = epkg_util:unpack_to_tmp_if_archive(RawPackageDirPath),
+    io:format("Moved archive to ~s~n", [PackageDirPath]),
     case catch publish2(Type, Repos, ErtsVsn, PackageDirPath, Timeout) of
 	{error, _Reason} = Res ->
 	    ?INFO_MSG("publish(~p, ~p, ~p, ~p) -> ~p~n", [Type, Repos, ErtsVsn, PackageDirPath, Res]),
@@ -105,14 +106,14 @@ publish2(generic, Repos, ErtsVsn, AppDirPath, Timeout) ->
     {ok, {AppName, AppVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(AppDirPath),
     {ok, AppFileBinary}     = file:read_file(ewl_file:join_paths(AppDirPath, "ebin/" ++ AppName ++ ".app")),
     %% @todo make this transactional - if .app file put fails run a delete.
-    {ok, _} = fax_put:put_dot_app_file(Repos, ErtsVsn, AppName, AppVsn, AppFileBinary, Timeout), 
+    fax_put:put_dot_app_file(Repos, ErtsVsn, AppName, AppVsn, AppFileBinary, Timeout), 
     fax_put:put_generic_app_package(Repos, ErtsVsn, AppName, AppVsn, pack(AppDirPath), Timeout); 
 
 publish2(binary, Repos, ErtsVsn, AppDirPath, Timeout) -> 
     {ok, {AppName, AppVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(AppDirPath),
     {ok, AppFileBinary}     = file:read_file(ewl_file:join_paths(AppDirPath, "ebin/" ++ AppName ++ ".app")),
     %% @todo make this transactional - if .app file put fails run a delete.
-    {ok, _} = fax_put:put_dot_app_file(Repos, ErtsVsn, AppName, AppVsn, AppFileBinary, Timeout), 
+    fax_put:put_dot_app_file(Repos, ErtsVsn, AppName, AppVsn, AppFileBinary, Timeout), 
     fax_put:put_binary_app_package(Repos, ErtsVsn, AppName, AppVsn, pack(AppDirPath), Timeout); 
 
 publish2(release, Repos, ErtsVsn, RelDirPath, Timeout) -> 
@@ -123,21 +124,6 @@ publish2(release, Repos, ErtsVsn, RelDirPath, Timeout) ->
     end.
 	
     
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc if a package is a tarball then untar it into a tmp dir and hand back the path to that temp dir
-%% @spec handle_potential_archive(PackageDirPath::string()) -> DirPath::string()
-%% @end
-%%--------------------------------------------------------------------
-handle_potential_archive(PackageDirPath) ->
-    case regexp:match(PackageDirPath, ".*\.tar\.gz$") of
-	{match, _, _} ->
-	    epkg_util:unpack_to_tmp(PackageDirPath);
-	_NoMatch ->
-	    PackageDirPath
-    end.
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Packs up a package and returns a binary of the archive.
