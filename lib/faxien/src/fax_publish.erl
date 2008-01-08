@@ -81,7 +81,6 @@ publish(Repos, ErtsVsn, RawPackageDirPath, Timeout) ->
 %%--------------------------------------------------------------------
 publish(Type, Repos, ErtsVsn, RawPackageDirPath, Timeout) -> 
     PackageDirPath = epkg_util:unpack_to_tmp_if_archive(RawPackageDirPath),
-    io:format("Moved archive to ~s~n", [PackageDirPath]),
     case catch publish2(Type, Repos, ErtsVsn, PackageDirPath, Timeout) of
 	{error, _Reason} = Res ->
 	    ?INFO_MSG("publish(~p, ~p, ~p, ~p) -> ~p~n", [Type, Repos, ErtsVsn, PackageDirPath, Res]),
