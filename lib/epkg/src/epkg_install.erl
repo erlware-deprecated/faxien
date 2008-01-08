@@ -358,47 +358,6 @@ build_if_build_file(InstalledPackagePath) ->
 	    ok
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Deal with existing executable scripts.
-%% @end
-%%--------------------------------------------------------------------
-check_for_existing_executable_script(ExecutableFile) ->
-    case filelib:is_file(ExecutableFile) of
-	true ->
-	    io:format("Replacing existing executable file at: ~s~n", [ExecutableFile]),
-	    file:delete(ExecutableFile),
-	    ok;
-	false  ->
-	    ok
-    end.
-
-%% 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Handle different os's when writing the executable file.
-%% @todo This needs Windows support. 
-%% @end
-%%--------------------------------------------------------------------
-write_executable_file(ExecutableFile, InstallationPath, RelName, RelVsn, ErtsVsn, TemplateName) ->
-    case erlang:system_info(system_architecture) of
-	"win32" ->
-	    ?INFO_MSG("SysArch was win32~n", []),
-	    io:format("Win 32 is not yet supported.~n");
-	SysArch ->
-	    ?INFO_MSG("SysArch was ~p~n", [SysArch]),
-	    Contents = lists:flatten(["#!/bin/sh\n",
-                                      "PROG_PATH=`dirname $0`\n",
-                                      "$PROG_PATH/faxien_launcher -t ", TemplateName, " -p ", InstallationPath, " -x ", RelName, " -v ", RelVsn, " -e ", 
-				      ErtsVsn, " -- $@"]),
-	    ?INFO_MSG("executable script contents ~p~n", [Contents]),
-	    Res = file:write_file(ExecutableFile, Contents),
-	    ?INFO_MSG("Writing executable file to ~s is ~p~n", [ExecutableFile, Res]),
-	    epkg_util:set_executable_perms(ExecutableFile),
-	    Res
-    end.
-
-
 
 
 %%--------------------------------------------------------------------
@@ -445,7 +404,11 @@ just_erts(RawErtsPackagePath) ->
 %% @end
 %%--------------------------------------------------------------------
 create_executable_script(InstallationPath, RelName, RelVsn, ErtsVsn) ->
-    CmdsDirPath           = epkg_installed_paths:installed_release_cmds_dir_path(InstallationPath, RelName, RelVsn),
+    create_executable_script_use_cmdr(InstallationPath, RelName, RelVsn, ErtsVsn),
+    create_executable_script_use_bin(InstallationPath, RelName, RelVsn).
+    
+create_executable_script_use_cmdr(InstallationPath, RelName, RelVsn, ErtsVsn) ->
+    CmdsDirPath = epkg_installed_paths:installed_release_cmds_dir_path(InstallationPath, RelName, RelVsn),
     LauncherTemplateFiles = filelib:wildcard(CmdsDirPath ++ "/*"),
     lists:foreach(fun(TemplateFile) -> 
 			  TemplateName = filename:basename(filename:absname(TemplateFile)),
@@ -454,7 +417,7 @@ create_executable_script(InstallationPath, RelName, RelVsn, ErtsVsn) ->
 				  ExecutableFile = lists:flatten([InstallationPath,
 								  "/bin/",
 								  string:substr(TemplateName, 1, length(TemplateName) - 5)]),
-				  ok = check_for_existing_executable_script(ExecutableFile), 
+				  ok = remove_existing_executable_script(ExecutableFile), 
 				  ok = write_executable_file(ExecutableFile, 
 							     InstallationPath, 
 							     RelName, 
@@ -465,4 +428,55 @@ create_executable_script(InstallationPath, RelName, RelVsn, ErtsVsn) ->
 				  ?INFO_MSG("A non template file ~p found - skipping~n", [TemplateFile])
 			  end
 		  end, LauncherTemplateFiles). 
+
+create_executable_script_use_bin(InstallationPath, RelName, RelVsn) ->
+    BinDirPath  = epkg_installed_paths:installed_release_bin_dir_path(InstallationPath, RelName, RelVsn),
+    BinFilePaths = filelib:wildcard(BinDirPath ++ "/*"),
+    lists:foreach(fun(BinFilePath) -> 
+			  InstalledBinFilePath = ewl_file:join_paths(InstallationPath, filename:basename(BinFilePath)),
+			  ok = remove_existing_executable_script(InstalledBinFilePath), 
+			  file:copy(BinFilePath, InstalledBinFilePath),
+			  epkg_util:set_executable_perms(InstalledBinFilePath)
+		  end, BinFilePaths). 
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Deal with existing executable scripts.
+%% @end
+%%--------------------------------------------------------------------
+remove_existing_executable_script(ExecutableFile) ->
+    case filelib:is_file(ExecutableFile) of
+	true ->
+	    io:format("Replacing existing executable file at: ~s~n", [ExecutableFile]),
+	    file:delete(ExecutableFile),
+	    ok;
+	false  ->
+	    ok
+    end.
+
+%% 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Handle different os's when writing the executable file.
+%% @todo This needs Windows support. 
+%% @end
+%%--------------------------------------------------------------------
+write_executable_file(ExecutableFile, InstallationPath, RelName, RelVsn, ErtsVsn, TemplateName) ->
+    case erlang:system_info(system_architecture) of
+	"win32" ->
+	    ?INFO_MSG("SysArch was win32~n", []),
+	    io:format("Win 32 is not yet supported.~n");
+	SysArch ->
+	    ?INFO_MSG("SysArch was ~p~n", [SysArch]),
+	    Contents = lists:flatten(["#!/bin/sh\n",
+                                      "PROG_PATH=`dirname $0`\n",
+                                      "$PROG_PATH/faxien_launcher -t ", TemplateName, " -p ", InstallationPath, " -x ", RelName, " -v ", RelVsn, " -e ", 
+				      ErtsVsn, " -- $@"]),
+	    ?INFO_MSG("executable script contents ~p~n", [Contents]),
+	    Res = file:write_file(ExecutableFile, Contents),
+	    ?INFO_MSG("Writing executable file to ~s is ~p~n", [ExecutableFile, Res]),
+	    epkg_util:set_executable_perms(ExecutableFile),
+	    Res
+    end.
+
 
