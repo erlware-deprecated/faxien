@@ -34,6 +34,7 @@
 	 installed_app_dir_path/2,
 	 installed_erts_path/2,
 	 installed_erts_path/1,
+	 installed_release_bin_dir_path/3,
 	 installed_release_cmds_dir_path/3
 	]).
 
@@ -160,6 +161,14 @@ installed_release_rel_file_path(InstallationPath, RelName, RelVsn) ->
 %%--------------------------------------------------------------------
 installed_release_cmds_dir_path(InstallationPath, RelName, RelVsn) -> 
     ewl_file:join_paths(installed_release_dir_path(InstallationPath, RelName, RelVsn), "cmds").
+
+%%--------------------------------------------------------------------
+%% @doc Returns the path to the bin directory in an installed release.
+%% @spec installed_release_bin_dir_path(InstallationPath, RelName, RelVsn) -> string()
+%% @end
+%%--------------------------------------------------------------------
+installed_release_bin_dir_path(InstallationPath, RelName, RelVsn) -> 
+    ewl_file:join_paths(installed_release_dir_path(InstallationPath, RelName, RelVsn), "bin").
 
 %%====================================================================
 %% Other External Functions 
