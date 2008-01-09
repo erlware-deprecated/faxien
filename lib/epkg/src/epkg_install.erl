@@ -358,8 +358,6 @@ build_if_build_file(InstalledPackagePath) ->
 	    ok
     end.
 
-
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc make sure that if someone passes a package path like /home/martinjlogan/erts instead of the full path like 
@@ -430,11 +428,13 @@ create_executable_script_use_cmdr(InstallationPath, RelName, RelVsn, ErtsVsn) ->
 		  end, LauncherTemplateFiles). 
 
 create_executable_script_use_bin(InstallationPath, RelName, RelVsn) ->
-    BinDirPath  = epkg_installed_paths:installed_release_bin_dir_path(InstallationPath, RelName, RelVsn),
+    BinDirPath   = epkg_installed_paths:installed_release_bin_dir_path(InstallationPath, RelName, RelVsn),
     BinFilePaths = filelib:wildcard(BinDirPath ++ "/*"),
+    ?INFO_MSG("bindir path ~p~nbin file paths ~p~n", [BinDirPath, BinFilePaths]),
     lists:foreach(fun(BinFilePath) -> 
-			  InstalledBinFilePath = ewl_file:join_paths(InstallationPath, filename:basename(BinFilePath)),
-			  ok = remove_existing_executable_script(InstalledBinFilePath), 
+			  ExecutableContainerPath = epkg_installed_paths:executable_container_path(InstallationPath),
+			  InstalledBinFilePath    = ewl_file:join_paths(ExecutableContainerPath, filename:basename(BinFilePath)),
+			  ok                      = remove_existing_executable_script(InstalledBinFilePath), 
 			  file:copy(BinFilePath, InstalledBinFilePath),
 			  epkg_util:set_executable_perms(InstalledBinFilePath)
 		  end, BinFilePaths). 
