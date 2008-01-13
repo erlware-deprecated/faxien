@@ -1,0 +1,15 @@
+{control,"faxien",
+         [{package_owner,"Martin Logan"},
+          {package_owner_email,"martinjlogan@erlware.org"},
+          {categories,["tool"]},
+          {description,"The package manager for Erlang OTP"},
+          {author,"Martin Logan"},
+          {authors_email,"martinjlogan@erlware.org"},
+          {keywords,["faxien",
+                     "erlware",
+                     "OTP",
+                     "package management",
+                     "package",
+                     "manager"]},
+          {project_page,"http://www.erlware.org/tools/faxien/index.html"}]}.
+

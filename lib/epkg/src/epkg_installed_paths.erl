@@ -53,10 +53,6 @@
 	 installed_release_rel_file_path/3
 	]).
 
--export([
-	 init_paths/0
-	]).
-
 %%====================================================================
 %% Fundamental Paths
 %%====================================================================
@@ -115,7 +111,7 @@ installed_erts_path(InstallationPath, ErtsVsn) when is_list(ErtsVsn) ->
 %% @spec installed_erts_path(ErtsVsn) -> string()
 %% @equiv installed_erts_path(InstallationPath, ErtsVsn)
 installed_erts_path(ErtsVsn) -> 
-    {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
+    {ok, InstallationPath} = get_installation_path(),
     installed_erts_path(InstallationPath, ErtsVsn).
 
 %%--------------------------------------------------------------------
@@ -129,7 +125,7 @@ installed_app_dir_path(InstallationPath, AppName, AppVsn) when is_list(AppVsn) -
 %% @spec installed_app_dir_path(AppName, AppVsn) -> string()
 %% @equiv installed_app_dir_path(InstallationPath, AppName, AppVsn) 
 installed_app_dir_path(AppName, AppVsn) ->
-    {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
+    {ok, InstallationPath} = get_installation_path(),
     installed_app_dir_path(InstallationPath, AppName, AppVsn).
 
 %%--------------------------------------------------------------------
@@ -143,7 +139,7 @@ installed_release_dir_path(InstallationPath, RelName, RelVsn) when is_list(RelVs
 %% @spec installed_release_dir_path(RelName, RelVsn) -> string()
 %% @equiv installed_release_dir_path(InstallationPath, RelName, RelVsn) 
 installed_release_dir_path(RelName, RelVsn) ->
-    {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
+    {ok, InstallationPath} = get_installation_path(),
     installed_release_dir_path(InstallationPath, RelName, RelVsn).
 
 %%--------------------------------------------------------------------
@@ -188,7 +184,7 @@ list_releases(InstallationPath) ->
 %% @spec list_releases() -> [string()]
 %% @equiv list_releases(InstallationPath)
 list_releases() -> 
-    {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
+    {ok, InstallationPath} = get_installation_path(),
     list_releases(InstallationPath).
 
 
@@ -208,7 +204,7 @@ list_apps(InstallationPath) ->
 %% @spec list_apps() -> [string()]
 %% @equiv list_apps(InstallationPath)
 list_apps() ->
-    {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
+    {ok, InstallationPath} = get_installation_path(),
     list_apps(InstallationPath).
 
 %%--------------------------------------------------------------------
@@ -226,7 +222,7 @@ list_app_vsns(InstallationPath, AppName) ->
 %% @spec list_app_vsns(AppName) -> [string()]
 %% @equiv list_app_vsns(InstallationPath, AppName) 
 list_app_vsns(AppName) -> 
-    {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
+    {ok, InstallationPath} = get_installation_path(),
     list_app_vsns(InstallationPath, AppName) .
 
 %%--------------------------------------------------------------------
@@ -247,7 +243,7 @@ list_release_vsns(InstallationPath, RelName) ->
 %% @spec list_release_vsns(RelName) -> [string()]
 %% @equiv list_release_vsns(InstallationPath, RelName) 
 list_release_vsns(RelName) -> 
-    {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
+    {ok, InstallationPath} = get_installation_path(),
     list_release_vsns(InstallationPath, RelName).
 
 
@@ -288,29 +284,16 @@ lop_off_end2(Vsn) ->
 %%--------------------------------------------------------------------
 %% @doc The installation_path variable is no longer needed in the config file except for the case of a non launcher installation.
 %% In the case of usage via launcher we must rely on the -prefix argument it passes in. Config is rewritten based on that arg.
-%% @spec get_installation_path() -> {ok, InstallationPath}
+%% @spec get_installation_path() -> {ok, InstallationPath} | {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
 get_installation_path() ->
-    {ok, InstallationPath} = gas:get_env(epkg, installation_path, ?INSTALLATION_PATH),
     case init:get_argument(prefix) of
-	{ok, [[Prefix]]} when Prefix /= InstallationPath->
-	    ?INFO_MSG("epkg:get_installation_path InstallationPath = ~p, Prefix = ~p~n", [InstallationPath, Prefix]),
-	    alter_paths(Prefix),
-	    {ok, Prefix};
 	{ok, [[Prefix]]} ->
-	    case gas:get_env(epkg, initialized, false) of
-		{ok, false} ->
-		    ?INFO_MSG("Initializing config~n", []),
-		    alter_paths(Prefix);
-		{ok, true} ->
-		    ok
-	    end,
-	    ?INFO_MSG("epkg:get_installation_path InstallationPath = ~p, Prefix = ~p~n", [InstallationPath, Prefix]),
-	    {ok, InstallationPath};
+	    {ok, Prefix};
 	error ->
-	    ?INFO_MSG("epkg:get_installation_path InstallationPath = ~p, Prefix = ~p~n", [InstallationPath, error]),
-	    {ok, InstallationPath}
+	    ?INFO_MSG("epkg:get_installation_path init:get_argument(prefix) returned error~n", []),
+	    {error, no_prefix_supplied_with_startup}
     end.
 
 %%--------------------------------------------------------------------
@@ -319,32 +302,12 @@ get_installation_path() ->
 %% @end
 %%--------------------------------------------------------------------
 installed_config_file_path() ->
-    {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
+    {ok, InstallationPath} = get_installation_path(),
     config_file_path(InstallationPath).
-
-%%--------------------------------------------------------------------
-%% @doc 
-%%  Set up the config file paths based on the prefix upon bootstrapping.
-%% @spec init_paths() -> ok | exit()
-%% @end
-%%--------------------------------------------------------------------
-init_paths() ->
-    {ok, [[Prefix]]} = init:get_argument(prefix),
-    alter_paths(Prefix).
 
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @doc Alter the config file paths based on a Prefix.
-%% @end
-%%--------------------------------------------------------------------
-alter_paths(Prefix) ->
-    gas:modify_config_file(config_file_path(Prefix), epkg, initialized, true),
-    gas:modify_config_file(config_file_path(Prefix), epkg, installation_path, Prefix),
-    gas:modify_config_file(config_file_path(Prefix), sasl, sasl_error_logger, {file, Prefix ++ "/log/faxien.sasl_log"}),
-    gas:modify_config_file(config_file_path(Prefix), gas, err_log, Prefix ++ "/log/faxien.err_log").
 
 %%--------------------------------------------------------------------
 %% @private

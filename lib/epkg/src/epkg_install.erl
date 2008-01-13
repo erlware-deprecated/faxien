@@ -22,10 +22,6 @@
 	 create_script_and_boot/4
 	]).
 
--export([
-	 create_epkg_executable_script_by_inspection_on_launch/0
-	]).
-
 %%====================================================================
 %% External functions
 %%====================================================================
@@ -143,40 +139,9 @@ create_script_and_boot(InstallationPath, RelName, RelVsn, IsLocalBoot) ->
 	    exit({error, script_and_boot_failed})
     end.
     
-%%--------------------------------------------------------------------
-%% @doc This is the entry point to creating an excutable script for a particular release 
-%% @todo This needs Windows support. 
-%% @spec create_epkg_executable_script_by_inspection_on_launch() -> ok | exit()
-%% @end
-%%--------------------------------------------------------------------
-create_epkg_executable_script_by_inspection_on_launch() ->
-    {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
-    {ok, ErtsVsn}          = numbered_vsn_sub_dir(epkg_installed_paths:erts_container_path(InstallationPath)),
-    {ok, EpkgVsn}          = epkg:version(),
-    ok                     = create_executable_script(InstallationPath, "epkg", EpkgVsn, ErtsVsn).
-
-
 %%====================================================================
 %% Internal functions
 %%====================================================================
-%%--------------------------------------------------------------------
-%% @private
-%% @doc pull a numbered version directory out of its subdirectory provided there is only one numbered version directory
-%% @end
-%%--------------------------------------------------------------------
-numbered_vsn_sub_dir(BaseDir) ->
-    case filelib:wildcard(BaseDir ++ "/*") of
-	[VsnPath] ->
-	    Vsn = filename:basename(filename:absname(VsnPath)),
-	    case regexp:match(Vsn, "[0-9\.]+$") of
-		{match, 1, _} -> {ok, Vsn};
-		_             -> {error, {"bad single subdir", Vsn, VsnPath}}
-	    end;
-        List when length(List) > 1 ->
-	    {error,{"more than one subdir", List}};
-	Error -> 
-	    {error,Error}
-    end.
 
 %%--------------------------------------------------------------------
 %% @private

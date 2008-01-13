@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #### Fill in values for these variables ####
-REL_VSN=0.26.2.9
+REL_VSN=0.27.0.0
 ERTS_VSN=5.5.5
 ###########################################
 

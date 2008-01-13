@@ -151,9 +151,9 @@ install_remote_erts(Repos, ErtsVsn, Timeout) ->
     case epkg_validation:is_package_erts(ErtsDir) of
 	false -> 
 	    io:format("Pulling down erts-~s -> ", [ErtsVsn]),
-	    ErtsPackageDirPath = fetch_erts(Repos, ErtsVsn, Timeout),
-	    Res                = epkg:install_erts(ErtsPackageDirPath),
-	    ok                 = ewl_file:delete_dir(ErtsPackageDirPath),
+	    {ok, ErtsPackageDirPath} = fetch_erts(Repos, ErtsVsn, Timeout),
+	    Res                      = epkg:install_erts(ErtsPackageDirPath),
+	    ok                       = ewl_file:delete_dir(ErtsPackageDirPath),
 	    io:format("~p~n", [Res]),
 	    Res;
 	true -> 
