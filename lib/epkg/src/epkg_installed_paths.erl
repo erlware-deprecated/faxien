@@ -23,7 +23,6 @@
 	 application_container_path/1,
 	 erts_container_path/1,
 	 executable_container_path/1,
-	 log_container_path/1,
 	 release_container_path/1
 	]).
 
@@ -71,14 +70,6 @@ release_container_path(InstallationPath) ->
 %%--------------------------------------------------------------------
 application_container_path(InstallationPath) ->
     lists:flatten([InstallationPath, "/lib"]).
-
-%%--------------------------------------------------------------------
-%% @doc Returns a path to the directory where log files sit. 
-%% @spec log_container_path(InstallationPath) -> string()
-%% @end
-%%--------------------------------------------------------------------
-log_container_path(InstallationPath) when is_list(InstallationPath) -> 
-    lists:flatten([InstallationPath, "/log"]).
 
 %%--------------------------------------------------------------------
 %% @doc Returns a path to the directory where executable files sit. 

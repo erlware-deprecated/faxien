@@ -198,7 +198,6 @@ install_release_package(PackagePath, InstallationPath) ->
     
     ok = ewl_file:mkdir_p(InstalledRelPath),
     ok = ewl_file:mkdir_p(epkg_installed_paths:executable_container_path(InstallationPath)),
-    ok = ewl_file:mkdir_p(epkg_installed_paths:log_container_path(InstallationPath)),
     ok = ewl_file:mkdir_p(epkg_installed_paths:release_container_path(InstallationPath)),
 
     ok = ewl_file:copy_dir(PackagePath, InstalledRelPath),
