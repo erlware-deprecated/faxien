@@ -1,6 +1,6 @@
 {application, faxien,
  [{description, "The erlang package management tool."},
-  {vsn, "0.27.0.0"},
+  {vsn, "0.27.1.0"},
   {modules, [
 	faxien,
 	fax_publish,
