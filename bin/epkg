@@ -1,10 +1,6 @@
 #!/bin/sh
 
-CWD=$PWD
-PREFIX=$(dirname $(dirname $0))
-cd $PREFIX
-PREFIX=$PWD
-cd $CWD
+PREFIX=$(cd $(dirname $(dirname $0)); pwd)
 
 #### Fill in values for these variables ####
 REL_NAME=faxien
