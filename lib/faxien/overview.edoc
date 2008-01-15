@@ -1,0 +1,14 @@
+@title Welcome to the Faxien application
+@doc 
+
+<p>
+<img src="http://www.martinjlogan.com/images/Icon-faxien3-with-text.jpg"/>
+provides elegant Erlang/OTP package management which at its heart comes down to two things; allow users to easily find and install OTP packages and allow users to easily publish their own work so others can benefit from it.
+</p>
+
+<p>
+Faxien deals with two distinct types of packages. The first is the OTP application which consists of src, ebin, etc... The second is an OTP release which is essentially a standalone erlang service comprised of a number of applications combined with configuration, .script and .boot files, and executable scripts. 
+</p>
+
+@author Martin Logan
+@copyright 2007, 2008 Erlware
