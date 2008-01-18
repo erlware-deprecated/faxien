@@ -32,7 +32,7 @@
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Returns a list of all applications currently installed.
-%% @spec list_lib(InstallationPath) -> [{Name, Vsn}]
+%% @spec list_lib(InstallationPath, ErtsVsn) -> [{Name, Vsn}]
 %% @end
 %%--------------------------------------------------------------------
 list_lib(InstallationPath, ErtsVsn) ->

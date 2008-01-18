@@ -54,6 +54,8 @@
 	 remove_publish_repo/1,
 	 show_publish_repos/0,
 	 set_request_timeout/1,
+	 show_target_erts_vsn/0,
+	 set_target_erts_vsn/1,
 	 show_request_timeout/0,
 	 environment/0,
 	 environment_help/0,
@@ -97,6 +99,8 @@
 	 commands_help/0,
 	 set_request_timeout_help/0,
 	 show_request_timeout_help/0,
+	 set_target_erts_vsn_help/0,
+	 show_target_erts_vsn_help/0,
 	 add_publish_repo_help/0,
 	 remove_publish_repo_help/0,
 	 show_publish_repos_help/0,
@@ -553,7 +557,9 @@ commands_help() ->
      "remove-publish-repo     remove one of the repos Faxien is set to publish to",
      "show-publish-repos      display the repos Faxien is set to publish to",
      "set-request-timeout     set the timeout faxien uses for requests to remote repositories",
-     "show-request-timeout    display the timeout faxien uses for requests to remote repositories"
+     "show-request-timeout    display the timeout faxien uses for requests to remote repositories",
+     "set-target-erts-vsn     set the highest erts vsn faxien will interact with without explicit instruction",
+     "show-target-erts-vsn    display the highest erts vsn faxien will interact with without explicit instruction"
     ].
 
 %%--------------------------------------------------------------------
@@ -665,7 +671,7 @@ remove_app(AppName) ->
 
 %% @private
 remove_app_help() ->
-    ["\nHelp for remove_app\n",
+    ["\nHelp for remove-app\n",
      "Usage: remove-app <app name> [app version]: remove a particular application for all versions or a particular version.\n",
      "Example: remove-app tools - removes all versions of the tools application currently installed.",
      "Example: remove-app tools 2.4.5 - removes version 2.4.5 of the tools version."].
@@ -731,7 +737,7 @@ describe_app(AppName) ->
 
 %% @private
 describe_app_help() ->
-    ["\nHelp for describe_app\n",
+    ["\nHelp for describe-app\n",
      "Usage: describe-app <application name> [app version]: Fetch the description for a particular application.\n",
      "Example: describe-app sinan - Bring back a description of the highest version available for Sinan.",
      "Example: describe-app sinan 0.8.8 - Bring back a description of version 0.8.8 of the Sinan application."].
@@ -747,6 +753,8 @@ describe_app_help() ->
 environment() ->
     {ok, Version} = version(),
     io:format("~nFaxien Environment:~n~nFaxien Version is ~n  ~s~n", [Version]),
+    {ok, TargetErtsVsn} = show_target_erts_vsn(),
+    io:format("~nThe target erts version~n  ~p~n", [TargetErtsVsn]),
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
     io:format("~nThe installation path is ~n  ~s~n", [InstallationPath]),
     {ok, Timeout} = show_request_timeout(),
@@ -777,7 +785,7 @@ remove_repo(Repo) ->
 
 %% @private
 remove_repo_help() ->
-    ["\nHelp for remove_repo\n",
+    ["\nHelp for remove-repo\n",
      "Usage: remove-repo <url> - will remove one of the repos that faxien pulls packages from.\n",
      "Example: faxien remove-repo http://www.martinjlogan.com:8080/pub"].
 
@@ -795,7 +803,7 @@ add_repo(Repo) ->
     
 %% @private
 add_repo_help() ->
-    ["\nHelp for add_repo\n",
+    ["\nHelp for add-repo\n",
      "Usage: add-repo <url> - will add a repo to the list of repos that faxien pulls packages from.\n",
      "Example: faxien add-repo http://www.martinjlogan.com:8080/pub"].
 
@@ -827,11 +835,11 @@ set_request_timeout(Timeout) when is_list(Timeout) ->
 
 %% @private
 set_request_timeout_help() ->
-    ["\nHelp for set-request_timeout\n",
-     "Usage: set_request-timeout <milliseconds> - will set a new timeout value for all remote requests.\n"].
+    ["\nHelp for set-request-timeout\n",
+     "Usage: set-request-timeout <milliseconds> - will set a new timeout value for all remote requests.\n"].
 
 %%--------------------------------------------------------------------
-%% @doc Show the repo that faxien is currently configured to publish to.
+%% @doc Show the faxien remote request timeout.
 %% @spec show_request_timeout() -> {ok, timeout()} | {error, no_request_timeout}
 %% @end
 %%--------------------------------------------------------------------
@@ -840,8 +848,36 @@ show_request_timeout() ->
 
 %% @private
 show_request_timeout_help() ->
-    ["\nHelp for show-request_timeout\n",
+    ["\nHelp for show-request-timeout\n",
      "Usage: show-request-timeout - will display the current timeout value for all remote requests.\n"].
+
+%%--------------------------------------------------------------------
+%% @doc Set the target erts vsn for Faxien.  This is the highest erts vsn faxien will interact with automatically.
+%% @spec set_target_erts_vsn(TargetErtsVsn) -> ok | {error, Reason}
+%%  where
+%%   Repo = string() | atom()
+%% @end
+%%--------------------------------------------------------------------
+set_target_erts_vsn(TargetErtsVsn) ->
+    fax_manage:set_target_erts_vsn(TargetErtsVsn, epkg_installed_paths:installed_config_file_path()).
+
+%% @private
+set_target_erts_vsn_help() ->
+    ["\nHelp for set-target-erts-vsn\n",
+     "Usage: set-target-erts-vsn <erts-vsn> - will set a new target erts vsn. This is the highest erts vsn faxien will interact with automatically.\n"].
+
+%%--------------------------------------------------------------------
+%% @doc Set the target erts vsn for Faxien.  This is the highest erts vsn faxien will interact with automatically.
+%% @spec show_target_erts_vsn() -> {ok, timeout()} | {error, no_target_erts_vsn}
+%% @end
+%%--------------------------------------------------------------------
+show_target_erts_vsn() ->
+    gas:get_env(epkg, target_erts_vsn, {error, no_target_erts_vsn}).
+
+%% @private
+show_target_erts_vsn_help() ->
+    ["\nHelp for show-target-erts-vsn\n",
+     "Usage: show-target-erts-vsn - will show the target erts vsn. This is the highest erts vsn faxien will interact with automatically.\n"].
 
 %%--------------------------------------------------------------------
 %% @doc Remove a repository from the list of repos to fetch from. 
@@ -857,7 +893,7 @@ remove_publish_repo(Repo) ->
 
 %% @private
 remove_publish_repo_help() ->
-    ["\nHelp for remove-publish_repo\n",
+    ["\nHelp for remove-publish-repo\n",
      "Usage: remove-publish-repo <url> - will remove one of the repos that faxien publishes packages to.\n",
      "Example: faxien remove-publish_repo http://www.martinjlogan.com:8080/pub"].
 
@@ -889,7 +925,7 @@ show_publish_repos() ->
 								   
 %% @private
 show_publish_repos_help() ->
-    ["\nHelp for show-publish_repos\n",
+    ["\nHelp for show-publish-repos\n",
      "Usage: show-publish-repos - display the list of repos that faxien publishes packages to.\n"].
 
 %%====================================================================

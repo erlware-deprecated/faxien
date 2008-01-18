@@ -38,6 +38,7 @@
 	 add_repo_to_fetch_from/2,
 	 remove_repo_to_fetch_from/2,
 	 set_request_timeout/2,
+	 set_target_erts_vsn/2,
 	 search/4,
 	 describe_app/5,
 	 describe_latest_app/4
@@ -153,9 +154,21 @@ remove_repo_to_publish_to(Repo, ConfigFilePath) ->
 %%   ConfigFilePath = string()
 %% @end
 %%--------------------------------------------------------------------
-%% TODO set up the gas functions so that they will insert a config entry if none exists.
+%% @todo set up the gas functions so that they will insert a config entry if none exists.
 set_request_timeout(Timeout, ConfigFilePath) ->
     gas:modify_config_file(ConfigFilePath, faxien, request_timeout, Timeout).
+
+%%--------------------------------------------------------------------
+%% @doc Set the target erts vsn for Faxien to use. Basically this is the highest erts vsn it will try to pull for.
+%% @spec set_target_erts_vsn(TargetErtsVsn, ConfigFilePath) -> ok | {error, Reason}
+%%  where
+%%   Timeout = timeout()
+%%   ConfigFilePath = string()
+%% @end
+%%--------------------------------------------------------------------
+set_target_erts_vsn(TargetErtsVsn, ConfigFilePath) ->
+    %% @todo - this should not modify the epkg config - when less tired make clean
+    gas:modify_config_file(ConfigFilePath, epkg, target_erts_vsn, TargetErtsVsn).
 
 %%--------------------------------------------------------------------
 %% @doc Display all currently installed releases that have available updates.

@@ -194,7 +194,6 @@ install_release_package(PackagePath, InstallationPath) ->
     InstalledRelPath        = epkg_installed_paths:installed_release_dir_path(InstallationPath, RelName, RelVsn),
     ok                      = ewl_file:delete_dir(InstalledRelPath), 
 
-    build_if_build_file(PackagePath),
     
     ok = ewl_file:mkdir_p(InstalledRelPath),
     ok = ewl_file:mkdir_p(epkg_installed_paths:executable_container_path(InstallationPath)),
@@ -202,6 +201,7 @@ install_release_package(PackagePath, InstallationPath) ->
 
     ok = ewl_file:copy_dir(PackagePath, InstalledRelPath),
     ok = ewl_file:copy_dir(InstalledRelPath ++ "/releases/" ++ RelVsn, InstalledRelPath ++ "/release"),
+    build_if_build_file(InstalledRelPath),
     ok = ewl_file:delete_dir(InstalledRelPath ++ "/releases").
     
 
@@ -254,7 +254,7 @@ missing_apps_for_release(InstallationPath, PackageRelFilePath) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Given a list of OTP release app specs try to install each from the lib of a release pacakge.
-%% @spec install_each_app_from_appspecs(AppSpecs, ReleasePackagePath, InstallationPath) -> FailedApps
+%% @spec install_each_app_from_appspecs(AppSpecs, ReleasePackagePath, InstallationPath, ErtsVsn) -> FailedApps
 %% where
 %%  FailedApps = [{Name, Vsn}]
 %% @end
