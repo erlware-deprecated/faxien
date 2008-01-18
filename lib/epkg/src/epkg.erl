@@ -14,8 +14,8 @@
 -export([
 	 install_release/1,
 	 install_erts/1,
-	 install_app/1,
-	 install/1,
+	 install_app/2,
+	 install/2,
 	 list/0,
 	 list_lib/0,
 	 list_releases/0,
@@ -48,18 +48,20 @@
 
 %%--------------------------------------------------------------------
 %% @doc 
-%%  Determine the type of a package and then install it appropriately. 
-%% @spec install(RelPackagePath) -> ok | {error, Reason}
+%%  Determine the type of a package and then install it appropriately. You must specify the erts vsn the package was created
+%%  with or for. 
+%% @spec install(RelPackagePath, ErtsVsn) -> ok | {error, Reason}
 %% where
+%%  ErtsVsn = string()
 %%  Reason = badly_formatted_or_missing_package | {failed_to_install, [{AppName, AppVsn}]}
 %% @end
 %%--------------------------------------------------------------------
-install(PackageDirOrArchive) -> 
+install(PackageDirOrArchive, ErtsVsn) -> 
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
     PackageDirPath         = epkg_util:unpack_to_tmp_if_archive(PackageDirOrArchive), 
     case epkg_validation:validate_type(PackageDirPath) of
-	binary  -> epkg_install:install_application(PackageDirPath, InstallationPath);
-	generic -> epkg_install:install_application(PackageDirPath, InstallationPath);
+	binary  -> epkg_install:install_application(PackageDirPath, InstallationPath, ErtsVsn);
+	generic -> epkg_install:install_application(PackageDirPath, InstallationPath, ErtsVsn);
 	release -> epkg_install:install_release(PackageDirPath, InstallationPath, false);
 	erts    -> epkg_install:install_erts(PackageDirPath, InstallationPath);
 	Error   -> Error
@@ -68,7 +70,7 @@ install(PackageDirOrArchive) ->
 %% @private
 install_help() ->
     ["\nHelp for install\n",
-     "Usage: install <package_path>: Install a release from a local package\n"]. 
+     "Usage: install <package_path> <erts-vsn>: Install a release from a local package\n"]. 
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -89,20 +91,20 @@ install_release_help() ->
 
 %%--------------------------------------------------------------------
 %% @doc 
-%%  Install an application package or package archive.
-%% @spec install_app(AppPackagePath) -> ok | {error, Reason}
+%%  Install an application package or package archive. You must include the erts vsn the app was compiled with.
+%% @spec install_app(AppPackagePath, ErtsVsn) -> ok | {error, Reason}
 %% where
 %%  Reason = badly_formatted_or_missing_app_package
 %% @end
 %%--------------------------------------------------------------------
-install_app(AppPackagePath) -> 
+install_app(AppPackagePath, ErtsVsn) -> 
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
-    epkg_install:install_application(AppPackagePath, InstallationPath).
+    epkg_install:install_application(AppPackagePath, InstallationPath, ErtsVsn).
 
 %% @private
 install_app_help() ->
     ["\nHelp for install-app\n",
-     "Usage: install-app <package_path>: Install an application from a local package\n"]. 
+     "Usage: install-app <package_path> <erts-vsn>: Install an application from a local package\n"]. 
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -144,7 +146,8 @@ list_help() ->
 %%--------------------------------------------------------------------
 list_lib() ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
-    NameVsnPairs = epkg_manage:list_lib(InstallationPath),
+    {ok, TargetErtsVsn}    = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    NameVsnPairs           = epkg_manage:list_lib(InstallationPath, TargetErtsVsn),
     io:format("~nInstalled Applications:~n"),
     lists:foreach(fun({Name, Vsn}) -> io:format("~s   ~s~n", [Name, Vsn]) end, NameVsnPairs).
 
@@ -276,9 +279,9 @@ examples_help() ->
     [
      "\nExamples:",
      "\nInstall the tools application from the local filesystem", 
-     "  epkg install /usr/local/erlang/lib/tools-2.5.4",
+     "  epkg install /usr/local/erlang/lib/tools-2.5.4 5.5.5",
      "\nInstall a new version of epkg from a release tarball", 
-     "  epkg install epkg-0.19.3.tar.gz"
+     "  epkg install epkg-0.19.3.tar.gz 5.5.5"
     ].
 
 %% @private
@@ -287,7 +290,7 @@ commands_help() ->
      "\nCommands:",
      "help                    print help information",
      "list                    list the packages installed on the local system",
-     "install                 install a release package",
+     "install                 install a package",
      "remove-app              uninstall a particular version of an application package",
      "remove-all-apps         uninstall all versions of an application package",
      "remove                  uninstall a particular version of a release package",

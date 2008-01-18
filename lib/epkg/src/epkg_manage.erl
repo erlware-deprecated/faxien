@@ -12,11 +12,11 @@
 %% API
 %%--------------------------------------------------------------------
 -export([
-	 remove_app/3,
-	 remove_all_apps/2,
+	 remove_app/4,
+	 remove_all_apps/3,
 	 remove_release/4,
 	 remove_all_releases/3,
-	 list_lib/1,
+	 list_lib/2,
 	 list_releases/1
 	]).
 
@@ -35,8 +35,8 @@
 %% @spec list_lib(InstallationPath) -> [{Name, Vsn}]
 %% @end
 %%--------------------------------------------------------------------
-list_lib(InstallationPath) ->
-    LibDir       = epkg_installed_paths:application_container_path(InstallationPath),
+list_lib(InstallationPath, ErtsVsn) ->
+    LibDir       = epkg_installed_paths:application_container_path(InstallationPath, ErtsVsn),
     Paths        = filelib:wildcard(LibDir ++ "/*"),
     name_and_vsn(Paths).
 
@@ -54,27 +54,27 @@ list_releases(InstallationPath) ->
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Remove an installed application.
-%% @spec remove_app(InstallationPath, AppName, AppVsn) -> ok
+%% @spec remove_app(InstallationPath, ErtsVsn, AppName, AppVsn) -> ok
 %%  where
 %%   AppName = string()
 %%   AppVsn = string()
 %% @end
 %%--------------------------------------------------------------------
-remove_app(InstallationPath, AppName, AppVsn) ->
-    AppPath = epkg_installed_paths:installed_app_dir_path(InstallationPath, AppName, AppVsn),
+remove_app(InstallationPath, ErtsVsn, AppName, AppVsn) ->
+    AppPath = epkg_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn),
     ewl_file:delete_dir(AppPath).
 
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Remove all versions of an installed application.
-%% @spec remove_all_apps(InstallationPath, AppName) -> ok
+%% @spec remove_all_apps(InstallationPath, ErtsVsn, AppName) -> ok
 %%  where
 %%   AppName = string()
 %% @end
 %%--------------------------------------------------------------------
-remove_all_apps(InstallationPath, AppName) ->
-    AppVsns = epkg_installed_paths:list_app_vsns(InstallationPath, AppName),
-    lists:foreach(fun(AppVsn) -> remove_app(InstallationPath, AppName, AppVsn) end, AppVsns).
+remove_all_apps(InstallationPath, ErtsVsn, AppName) ->
+    AppVsns = epkg_installed_paths:list_app_vsns(InstallationPath, ErtsVsn, AppName),
+    lists:foreach(fun(AppVsn) -> remove_app(InstallationPath, ErtsVsn, AppName, AppVsn) end, AppVsns).
 			  
 %%--------------------------------------------------------------------
 %% @doc 
@@ -196,7 +196,7 @@ fetch_app_specs(InstallationPath, RelName, RelVsn) ->
 %% @doc get rid of all the executable files for a particular release.
 %% @end
 %%--------------------------------------------------------------------
-blast_executable_files(InstallationPath, RelName, RelVsn) ->
+last_executable_files(InstallationPath, RelName, RelVsn) ->
     CmdsDirPath           = epkg_installed_paths:installed_release_cmds_dir_path(InstallationPath, RelName, RelVsn),
     LauncherTemplateFiles = filelib:wildcard(CmdsDirPath ++ "/*"),
     BinDirPath            = epkg_installed_paths:executable_container_path(InstallationPath),
@@ -214,7 +214,15 @@ blast_executable_files(InstallationPath, RelName, RelVsn) ->
 %% @end
 %%--------------------------------------------------------------------
 blast_app_and_release_packages(UniqueSpecs, InstallationPath, RelName, RelVsn) ->
-    lists:foreach(fun({AppName, AppVsn}) -> remove_app(InstallationPath, atom_to_list(AppName), AppVsn) end, UniqueSpecs),
-    AppPath = epkg_installed_paths:installed_release_dir_path(InstallationPath, RelName, RelVsn),
-    ewl_file:delete_dir(AppPath).
+    RelFilePath = epkg_installed_paths:installed_release_rel_file_path(InstallationPath, RelName, RelVsn),
+    case catch epkg_util:consult_rel_file(erts_vsn, RelFilePath) of
+	{'EXIT', Reason} -> 
+	    {error, {"could not find erts for the release specified", Reason}};
+	ErtsVsn -> 
+	    lists:foreach(fun({AppName, AppVsn}) -> 
+				  remove_app(InstallationPath, ErtsVsn, atom_to_list(AppName), AppVsn) 
+			  end, UniqueSpecs),
+	    RelPath = epkg_installed_paths:installed_release_dir_path(InstallationPath, RelName, RelVsn),
+	    ewl_file:delete_dir(RelPath)
+    end.
     

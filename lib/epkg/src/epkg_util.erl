@@ -204,12 +204,12 @@ consult_control_file(Keys, ControlFilePath) ->
     ?INFO_MSG("consulting ~s~n", [ControlFilePath]),
     case file:consult(ControlFilePath) of
 	{ok, [{control, _PackageName, ControlList}]} ->
-	    lists:reverse(lists:foldl(fun(Key, Acc) -> 
-					      case fs_lists:get_val(Key, ControlList) of
-						  undefined -> Acc;
-						  Value     -> [Value|Acc]
-					      end
-				      end, [], Keys));
+	    lists:foldr(fun(Key, Acc) -> 
+				case fs_lists:get_val(Key, ControlList) of
+				    undefined -> Acc;
+				    Value     -> [Value|Acc]
+				end
+			end, [], Keys);
 	Error = {error, _} ->
 	    Error;
 	{ok, _BadTerm} ->
@@ -230,10 +230,9 @@ consult_rel_file(Key, RelFilePath) when is_atom(Key) ->
     [Value] = consult_rel_file([Key], RelFilePath),
     Value;
 consult_rel_file(Keys, RelFilePath) ->
-    ?INFO_MSG("consulting ~s~n", [RelFilePath]),
-    {ok, [RelTerm]} = file:consult(RelFilePath),
+    ?INFO_MSG("consulting ~s for ~p~n", [RelFilePath, Keys]),
     case file:consult(RelFilePath) of
-	{ok, [RelTerm]}    -> lists:reverse(lists:map(fun(Key) -> extract_rel_value(Key, RelTerm) end, Keys));
+	{ok, [RelTerm]}    -> lists:map(fun(Key) -> extract_rel_value(Key, RelTerm) end, Keys);
 	Error = {error, _} -> Error
     end.
     
@@ -245,7 +244,7 @@ extract_rel_value(erts_vsn, {release, _, {erts, ErtsVsn}, _}) ->
     ErtsVsn;
 extract_rel_value(app_specs, {release, _, _, AppSpecs}) ->
     AppSpecs;
-extract_rel_value(app_specs, _Junk) ->
+extract_rel_value(_, _Junk) ->
     {error, badly_formatted_rel_file}.
     
 %%====================================================================

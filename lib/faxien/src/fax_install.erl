@@ -50,7 +50,7 @@
 %%--------------------------------------------------------------------
 install_application(Repos, TargetErtsVsn, AppNameOrPath, Force, Timeout) ->
     case filelib:is_file(AppNameOrPath) of
-	true  -> epkg:install_app(AppNameOrPath);
+	true  -> epkg:install_app(AppNameOrPath, TargetErtsVsn);
 	false -> install_latest_remote_application(Repos, TargetErtsVsn, AppNameOrPath, Force, Timeout)
     end.
 
@@ -98,12 +98,12 @@ install_latest_remote_application(Repos, TargetErtsVsn, AppName, Force, Timeout)
 %%--------------------------------------------------------------------
 install_remote_application(Repos, TargetErtsVsn, AppName, AppVsn, Force, Timeout) ->
     ?INFO_MSG("install_remote_application(~p, ~p, ~p, ~p)~n", [Repos, TargetErtsVsn, AppName, AppVsn]),
-    AppDir = epkg_installed_paths:installed_app_dir_path(AppName, AppVsn),
+    AppDir = epkg_installed_paths:installed_app_dir_path(TargetErtsVsn, AppName, AppVsn),
     case epkg_validation:is_package_an_app(AppDir) of
 	false -> 
 	    io:format("Pulling down ~s-~s -> ", [AppName, AppVsn]),
 	    {ok, AppPackageDirPath} = fetch_app(Repos, TargetErtsVsn, AppName, AppVsn, Timeout),
-	    Res                     = epkg:install_app(AppPackageDirPath),
+	    Res                     = epkg:install_app(AppPackageDirPath, TargetErtsVsn),
 	    ok                      = ewl_file:delete_dir(AppPackageDirPath),
 	    io:format("~p~n", [Res]),
 	    Res;
@@ -281,7 +281,7 @@ install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLoca
 %%--------------------------------------------------------------------
 fetch_app(Repos, TargetErtsVsn, AppName, AppVsn, Timeout) ->
     try
-	AppDir              = epkg_installed_paths:installed_app_dir_path(AppName, AppVsn),
+	AppDir              = epkg_installed_paths:installed_app_dir_path(TargetErtsVsn, AppName, AppVsn),
 	ok                  = ewl_file:delete_dir(AppDir),
 	{ok, TmpPackageDir} = epkg_util:create_unique_tmp_dir(),
 	ok = fax_util:foreach_erts_vsn(TargetErtsVsn, 

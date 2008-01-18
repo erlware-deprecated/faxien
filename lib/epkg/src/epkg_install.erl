@@ -17,7 +17,7 @@
 %%--------------------------------------------------------------------
 -export([
 	 install_erts/2,
-	 install_application/2,
+	 install_application/3,
 	 install_release/3,
 	 create_script_and_boot/4
 	]).
@@ -28,12 +28,12 @@
 
 %%--------------------------------------------------------------------
 %% @doc Install an application from a complte local application package. 
-%% @spec install_application(AppPackageDirOrArchive, InstallationPath) -> ok | {error, Reason}
+%% @spec install_application(AppPackageDirOrArchive, InstallationPath, ErtsVsn) -> ok | {error, Reason}
 %% where
 %%  Reason = badly_formatted_or_missing_app_package
 %% @end
 %%--------------------------------------------------------------------
-install_application(AppPackageDirOrArchive, InstallationPath) ->
+install_application(AppPackageDirOrArchive, InstallationPath, ErtsVsn) ->
     AppPackageDirPath       = epkg_util:unpack_to_tmp_if_archive(AppPackageDirOrArchive), 
     {ok, {AppName, AppVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(AppPackageDirPath),
     ?INFO_MSG("Installing Application ~s-~s to ~p~n", [AppName, AppVsn, AppPackageDirPath]),
@@ -42,8 +42,8 @@ install_application(AppPackageDirOrArchive, InstallationPath) ->
 	    false -> 
 		{error, badly_formatted_or_missing_app_package};
 	    true  -> 
-		AppInstallationPath     = epkg_installed_paths:application_container_path(InstallationPath),
-		InstalledPackageDir     = epkg_installed_paths:installed_app_dir_path(InstallationPath, AppName, AppVsn),
+		AppInstallationPath     = epkg_installed_paths:application_container_path(InstallationPath, ErtsVsn),
+		InstalledPackageDir     = epkg_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn),
 		install_non_release_package(AppPackageDirPath, InstalledPackageDir, AppInstallationPath)
 	end,
     ?INFO_MSG("returned ~p~n", [Res]), 
@@ -112,14 +112,14 @@ install_release(ReleasePackageArchiveOrDirPath, InstallationPath, IsLocalBoot) -
 %%--------------------------------------------------------------------
 create_script_and_boot(InstallationPath, RelName, RelVsn, IsLocalBoot) ->
     InstalledRelFilePath    = epkg_installed_paths:installed_release_rel_file_path(InstallationPath, RelName, RelVsn),
-    AppSpecs                = epkg_util:consult_rel_file(app_specs, InstalledRelFilePath),
+    [ErtsVsn, AppSpecs]     = epkg_util:consult_rel_file([erts_vsn, app_specs], InstalledRelFilePath),
     LoadedPaths             = code:get_path(),
 
     lists:foreach(fun(AppSpec) ->
 			  AppName       = atom_to_list(element(1, AppSpec)),
 			  AppVsn        = element(2, AppSpec),
 			  AppNameAndVsn = AppName ++ "-" ++ AppVsn, 
-			  AppPath       = epkg_installed_paths:installed_app_dir_path(InstallationPath, AppName, AppVsn),
+			  AppPath       = epkg_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn),
 			  remove_redundant_paths(LoadedPaths, AppName, AppNameAndVsn),
 			  ?INFO_MSG("Adding code path: ~p~n", [AppPath]),
 			  code:add_pathz(ewl_file:join_paths(AppPath, "ebin"))
@@ -175,10 +175,10 @@ execute_release_installation_steps(ReleasePackageDirPath, InstallationPath, IsLo
 	end
     catch
 	Class:Exception = {badmatch, ActualError} ->
-	    ?ERROR_MSG("Caught exception ~p of class ~p~n", [Exception, Class]), 
+	    ?ERROR_MSG("Caught exception ~p of class ~p ~p~n", [Exception, Class, erlang:get_stacktrace()]), 
 	    ActualError;
 	Class:Exception ->
-	    ?ERROR_MSG("Caught exception ~p of class ~p~n", [Exception, Class]), 
+	    ?ERROR_MSG("Caught exception ~p of class ~p ~p~n", [Exception, Class, erlang:get_stacktrace()]), 
 	    {error, Exception}
     end.
 
@@ -216,10 +216,11 @@ install_release_package(PackagePath, InstallationPath) ->
 install_apps_for_release(ReleasePackagePath, InstallationPath) ->
     {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ReleasePackagePath),
     PackageRelFilePath      = epkg_package_paths:release_package_rel_file_path(ReleasePackagePath, RelName, RelVsn),
+    ErtsVsn                 = epkg_util:consult_rel_file(erts_vsn, PackageRelFilePath),
 
-    ok = ewl_file:mkdir_p(epkg_installed_paths:application_container_path(InstallationPath)),
+    ok = ewl_file:mkdir_p(epkg_installed_paths:application_container_path(InstallationPath, ErtsVsn)),
     MissingAppSpecs = missing_apps_for_release(InstallationPath, PackageRelFilePath),
-    case install_each_app_from_appspecs(MissingAppSpecs, ReleasePackagePath, InstallationPath) of
+    case install_each_app_from_appspecs(MissingAppSpecs, ReleasePackagePath, InstallationPath, ErtsVsn) of
 	[] ->
 	    ok;
         FailedApps ->
@@ -236,11 +237,11 @@ install_apps_for_release(ReleasePackagePath, InstallationPath) ->
 %% @end
 %%--------------------------------------------------------------------
 missing_apps_for_release(InstallationPath, PackageRelFilePath) ->
-    AppSpecs = epkg_util:consult_rel_file(app_specs, PackageRelFilePath),
+    [ErtsVsn, AppSpecs] = epkg_util:consult_rel_file([erts_vsn, app_specs], PackageRelFilePath),
     lists:foldl(fun(AppSpec, Acc) ->
 			AppName = atom_to_list(element(1, AppSpec)),
 			AppVsn  = element(2, AppSpec),
-			InstalledAppPath = epkg_installed_paths:installed_app_dir_path(InstallationPath, AppName, AppVsn),
+			InstalledAppPath = epkg_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn),
 			case epkg_validation:is_package_an_app(InstalledAppPath) of
 			    false -> 
 				[AppSpec|Acc];
@@ -258,12 +259,12 @@ missing_apps_for_release(InstallationPath, PackageRelFilePath) ->
 %%  FailedApps = [{Name, Vsn}]
 %% @end
 %%--------------------------------------------------------------------
-install_each_app_from_appspecs(AppSpecs, ReleasePackagePath, InstallationPath) ->
+install_each_app_from_appspecs(AppSpecs, ReleasePackagePath, InstallationPath, ErtsVsn) ->
     lists:foldl(fun(AppSpec, Acc) ->
 			AppName = atom_to_list(element(1, AppSpec)),
 			AppVsn  = element(2, AppSpec),
 			AppPackagePath = epkg_package_paths:release_package_app_package_path(ReleasePackagePath, AppName, AppVsn),
-			case install_application(AppPackagePath, InstallationPath) of
+			case install_application(AppPackagePath, InstallationPath, ErtsVsn) of
 			    ok     -> Acc;
 			    _Error -> [{AppName, AppVsn}|Acc]
 			end

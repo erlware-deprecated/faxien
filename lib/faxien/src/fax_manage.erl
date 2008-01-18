@@ -228,8 +228,7 @@ upgrade_release(Repos, TargetErtsVsn, ReleaseName, IsLocalBoot, Force, Timeout) 
 %% @end
 %%--------------------------------------------------------------------
 outdated_applications(Repos, TargetErtsVsn, Timeout) ->
-    TargetErtsVsn = ewr_util:erts_version(),
-    Apps          = epkg_installed_paths:list_apps(),
+    Apps          = epkg_installed_paths:list_apps(TargetErtsVsn),
     lists:foldl(fun(AppName, Acc) -> 
 			case catch is_outdated_app(Repos, TargetErtsVsn, AppName, Timeout) of
 			    {ok, {lower, HighestLocalVsn, HighestRemoteVsn}} -> 
@@ -250,8 +249,7 @@ outdated_applications(Repos, TargetErtsVsn, Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 upgrade_applications(Repos, TargetErtsVsn, Force, Timeout) -> 
-    TargetErtsVsn = ewr_util:erts_version(),
-    AppNames      = epkg_installed_paths:list_apps(),
+    AppNames      = epkg_installed_paths:list_apps(TargetErtsVsn),
     lists:foreach(fun(AppName) -> upgrade_application(Repos, TargetErtsVsn, AppName, Force, Timeout) end, AppNames).
 
 %%--------------------------------------------------------------------
@@ -329,7 +327,7 @@ print_list2(Header, List) ->
 
 filter(FilterFun, List) -> 
     SortedList = lists:sort(List),
-    element(2, lists:foldl(fun(E, {Cur, IAcc} = Acc) -> 
+    element(2, lists:foldr(fun(E, {Cur, IAcc} = Acc) -> 
 				   case E == Cur of
 				       true  -> 
 					   Acc;
@@ -421,7 +419,7 @@ is_outdated_release(Repos, TargetErtsVsn, ReleaseName, _Timeout) ->
 %%--------------------------------------------------------------------
 is_outdated_app(Repos, TargetErtsVsn, AppName, _Timeout) ->
     {ok, {_Repo, HighestRemoteVsn}} = fax_util:find_highest_vsn(Repos, TargetErtsVsn, AppName, lib),
-    case find_highest_local_app_vsn(AppName) of
+    case find_highest_local_app_vsn(TargetErtsVsn, AppName) of
 	{ok, HighestLocalVsn} ->
 	    case ewr_util:is_version_greater(HighestLocalVsn, HighestRemoteVsn) of
 		true ->
@@ -447,11 +445,11 @@ find_highest_local_release_vsn(ReleaseName) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Find the highest version of a particular application that is installed locally.
-%% @spec find_highest_local_app_vsn(AppName) -> {ok, HighestVsn} | {error, Reason}
+%% @spec find_highest_local_app_vsn(ErtsVsn, AppName) -> {ok, HighestVsn} | {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
-find_highest_local_app_vsn(AppName) ->
-    highest_vsn(epkg_installed_paths:list_app_vsns(AppName)).
+find_highest_local_app_vsn(ErtsVsn, AppName) ->
+    highest_vsn(epkg_installed_paths:list_app_vsns(ErtsVsn, AppName)).
 
 highest_vsn(Vsns) when length(Vsns) > 0 ->
     HighestLocalVsn = hd(lists:sort(fun(A, B) -> ewr_util:is_version_greater(A, B) end, Vsns)),

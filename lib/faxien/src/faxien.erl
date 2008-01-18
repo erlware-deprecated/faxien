@@ -150,7 +150,7 @@ upgrade_app(Repo, AppName) when is_atom(Repo) ->
     upgrade_app([atom_to_list(Repo)], AppName);
 upgrade_app(Repos, AppName) -> 
     A = epkg_util:if_atom_or_integer_to_string(AppName),
-    TargetErtsVsn = ewr_util:erts_version(),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     fax_manage:upgrade_application(Repos, TargetErtsVsn, A, false, ?REQUEST_TIMEOUT).
 
 %% @spec upgrade_app(AppName) -> ok | {error, Reason}
@@ -183,7 +183,7 @@ upgrade_app_help() ->
 upgrade_all_apps(Repo) when is_atom(Repo) ->
     upgrade_all_apps([atom_to_list(Repo)]);
 upgrade_all_apps(Repos) ->
-    TargetErtsVsn = ewr_util:erts_version(),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     fax_manage:upgrade_all_appslications(Repos, TargetErtsVsn, false, ?REQUEST_TIMEOUT).
 
 upgrade_all_apps() -> 
@@ -206,7 +206,7 @@ upgrade_all_apps_help() ->
 outdated(Repo) when is_atom(Repo) ->
     outdated([atom_to_list(Repo)]);
 outdated(Repos) ->
-    TargetErtsVsn          = ewr_util:erts_version(),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     lists:foreach(fun({Name, CurrentVsn, UpgradeVsn}) ->
 			  io:format("The ~s release has an available upgrade from ~s to ~s~n", [Name, CurrentVsn, UpgradeVsn])
 		  end, 
@@ -233,7 +233,7 @@ outdated_help() ->
 outdated_apps(Repo) when is_atom(Repo) ->
     outdated_apps([atom_to_list(Repo)]);
 outdated_apps(Repos) ->
-    TargetErtsVsn          = ewr_util:erts_version(),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     lists:foreach(fun({Name, CurrentVsn, UpgradeVsn}) ->
 			  io:format("The ~s application has an available upgrade from ~s to ~s~n", [Name, CurrentVsn, UpgradeVsn])
 		  end, 
@@ -269,7 +269,7 @@ upgrade(Repo, RelName) when is_atom(Repo) ->
 upgrade(Repos, RelName) -> 
     A                 = epkg_util:if_atom_or_integer_to_string(RelName),
     {ok, IsLocalBoot} = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
-    TargetErtsVsn     = ewr_util:erts_version(),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     fax_manage:upgrade_release(Repos, TargetErtsVsn, A, IsLocalBoot, false, ?REQUEST_TIMEOUT).
 
 %% @spec upgrade(RelName) -> ok | {error, Reason}
@@ -300,7 +300,7 @@ upgrade_all(Repo) when is_atom(Repo) ->
     upgrade_all([atom_to_list(Repo)]);
 upgrade_all(Repos) ->
     {ok, IsLocalBoot} = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
-    TargetErtsVsn     = ewr_util:erts_version(),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     fax_manage:upgrade_releases(Repos, TargetErtsVsn, IsLocalBoot, false, ?REQUEST_TIMEOUT).
 
 %% @spec upgrade_all() -> ok | {error, Reason}
@@ -335,7 +335,7 @@ install(Repos, ReleaseName, ReleaseVsn)  ->
     % the invocation from the command line cleaner. 
     [A,B]                  = epkg_util:if_atom_or_integer_to_string([ReleaseName, ReleaseVsn]),
     {ok, IsLocalBoot}      = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
-    TargetErtsVsn          = ewr_util:erts_version(),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     fax_install:install_remote_release(Repos, TargetErtsVsn, A, B, IsLocalBoot, false, ?REQUEST_TIMEOUT).
 
 %% @spec install(ReleaseName, ReleaseVsn) -> ok | {error, Reason}
@@ -360,7 +360,7 @@ install(ReleaseNameOrPath) when is_atom(ReleaseNameOrPath) ->
 install(ReleaseNameOrPath) -> 
     {ok, Repos}       = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
     {ok, IsLocalBoot} = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
-    TargetErtsVsn     = ewr_util:erts_version(),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     fax_install:install_release(Repos, TargetErtsVsn, ReleaseNameOrPath, IsLocalBoot, false, ?REQUEST_TIMEOUT).
 	
     
@@ -391,7 +391,7 @@ install_app(Repos, AppName, AppVsn)  ->
     % Any atoms must be turned to strings.  Atoms are accepted because it makes
     % the invocation from the command line cleaner. 
     [A,B]         = epkg_util:if_atom_or_integer_to_string([AppName, AppVsn]),
-    TargetErtsVsn = ewr_util:erts_version(),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     fax_install:install_remote_application(Repos, TargetErtsVsn, A, B, false, ?REQUEST_TIMEOUT).
 
 %% @spec install_app(AppName, AppVsn) -> ok | {error, Reason}
@@ -415,7 +415,7 @@ install_app(AppNameOrPath) when is_atom(AppNameOrPath) ->
     install_app(atom_to_list(AppNameOrPath));
 install_app(AppNameOrPath) -> 
     {ok, Repos}   = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
-    TargetErtsVsn = ewr_util:erts_version(),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     fax_install:install_application(Repos, TargetErtsVsn, AppNameOrPath, false, ?REQUEST_TIMEOUT).
 
 %% @private
@@ -439,7 +439,7 @@ install_app_help() ->
 %%--------------------------------------------------------------------
 publish(Repo, PackageDir, Timeout) -> 
     [A,B]         = epkg_util:if_atom_or_integer_to_string([Repo, PackageDir]),
-    TargetErtsVsn = ewr_util:erts_version(),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     fax_publish:publish([A], TargetErtsVsn, B, Timeout, ?REQUEST_TIMEOUT).
 
 %% @spec publish(PackageDir, Timeout) -> ok | {error, Reason}
@@ -447,7 +447,7 @@ publish(Repo, PackageDir, Timeout) ->
 publish(PackageDir, Timeout) when is_integer(Timeout); Timeout == infinity -> 
     {ok, Repos}   = gas:get_env(faxien, repos_to_publish_to, ?ERLWARE_URL),
     [A]           = epkg_util:if_atom_or_integer_to_string([PackageDir]),
-    TargetErtsVsn = ewr_util:erts_version(),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     fax_publish:publish(Repos, TargetErtsVsn, A, Timeout);
 
 %% @spec publish(Repos PackageDir) -> ok | {error, Reason}
@@ -710,9 +710,9 @@ remove_help() ->
 %% @end
 %%--------------------------------------------------------------------
 describe_app(AppName, AppVsn) ->
-    [A, B]        = epkg_util:if_atom_or_integer_to_string([AppName, AppVsn]),
-    TargetErtsVsn = ewr_util:erts_version(),
-    {ok, Repos}   = gas:get_env(faxien, repos_to_fetch_from, []),
+    [A, B]              = epkg_util:if_atom_or_integer_to_string([AppName, AppVsn]),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    {ok, Repos}         = gas:get_env(faxien, repos_to_fetch_from, []),
     fax_manage:describe_app(Repos, TargetErtsVsn, A, B, ?REQUEST_TIMEOUT).
 
 %%--------------------------------------------------------------------
@@ -724,9 +724,9 @@ describe_app(AppName, AppVsn) ->
 %% @end
 %%--------------------------------------------------------------------
 describe_app(AppName) ->
-    [A]           = epkg_util:if_atom_or_integer_to_string([AppName]),
-    TargetErtsVsn = ewr_util:erts_version(),
-    {ok, Repos}   = gas:get_env(faxien, repos_to_fetch_from, []),
+    [A]                 = epkg_util:if_atom_or_integer_to_string([AppName]),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    {ok, Repos}         = gas:get_env(faxien, repos_to_fetch_from, []),
     fax_manage:describe_latest_app(Repos, TargetErtsVsn, A, ?REQUEST_TIMEOUT).
 
 %% @private
