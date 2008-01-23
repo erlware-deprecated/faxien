@@ -85,7 +85,7 @@ executable_container_path(InstallationPath) when is_list(InstallationPath) ->
 %% @end
 %%--------------------------------------------------------------------
 erts_container_path(InstallationPath) -> 
-    lists:flatten([InstallationPath, "/erts/"]).
+    lists:flatten([InstallationPath, "/erts_packages/"]).
 
 %%====================================================================
 %% Package Paths
@@ -97,7 +97,7 @@ erts_container_path(InstallationPath) ->
 %% @end
 %%--------------------------------------------------------------------
 installed_erts_path(InstallationPath, ErtsVsn) when is_list(ErtsVsn) -> 
-    lists:flatten([erts_container_path(InstallationPath), ErtsVsn]).
+    lists:flatten([erts_container_path(InstallationPath), "erts-",  ErtsVsn]).
 
 %% @spec installed_erts_path(ErtsVsn) -> string()
 %% @equiv installed_erts_path(InstallationPath, ErtsVsn)
@@ -125,7 +125,7 @@ installed_app_dir_path(ErtsVsn, AppName, AppVsn) ->
 %% @end
 %%--------------------------------------------------------------------
 installed_release_dir_path(InstallationPath, RelName, RelVsn) when is_list(RelVsn) -> 
-    lists:flatten([release_container_path(InstallationPath), "/", RelName, "/", RelVsn]).
+    lists:flatten([release_container_path(InstallationPath), "/", RelName, "-", RelVsn]).
 
 %% @spec installed_release_dir_path(RelName, RelVsn) -> string()
 %% @equiv installed_release_dir_path(InstallationPath, RelName, RelVsn) 
@@ -167,10 +167,12 @@ installed_release_bin_dir_path(InstallationPath, RelName, RelVsn) ->
 %% @end
 %%--------------------------------------------------------------------
 list_releases(InstallationPath) -> 
-    lists:map(
-      fun(Path) -> filename:basename(Path) end, 
-      filelib:wildcard(lists:flatten([release_container_path(InstallationPath), "/*"]))
-     ).
+    Packages = filelib:wildcard(lists:flatten([release_container_path(InstallationPath), "/*"])),
+    RelNames = lists:map(fun(PackageName) -> 
+			     {ok, {RelName, _}} = package_dir_to_name_and_vsn(PackageName),
+			     RelName
+		     end, Packages),
+    ordsets:to_list(ordsets:from_list(RelNames)).
 
 %% @spec list_releases() -> [string()]
 %% @equiv list_releases(InstallationPath)
@@ -224,8 +226,7 @@ list_app_vsns(ErtsVsn, AppName) ->
 list_release_vsns(InstallationPath, RelName) when is_atom(RelName) -> 
     list_release_vsns(InstallationPath, atom_to_list(RelName)); 
 list_release_vsns(InstallationPath, RelName) -> 
-    ReleaseBasePath = filename:dirname(installed_release_dir_path(InstallationPath, RelName, "foo")),
-    Packages        = filelib:wildcard(lists:flatten([ReleaseBasePath, "/*"])),
+    Packages = filelib:wildcard(lists:flatten([release_container_path(InstallationPath), "/", RelName, "-*"])),
     lists:map(fun(PackageName) -> 
 			     {ok, {_, Vsn}} = package_dir_to_name_and_vsn(PackageName),
 			     Vsn
@@ -255,13 +256,8 @@ package_dir_to_name_and_vsn(RawPackageDir) ->
 	    {ok, {[PackageName], PackageVsn}} = ewl_string_manip:n_tokens(PackageDir, 1, "-"),
 	    {ok, {PackageName, lop_off_end(PackageVsn)}};
 	_Error -> 
-	    case regexp:match(RawPackageDir, ".*/(release_packages/[a-zA-Z_]+|erts)\/[0-9\.-]+[\/]?") of
-		{match, _, _} ->
-		    {ok, {filename:basename(filename:dirname(RawPackageDir)), PackageDir}};
-		_Error -> 
-		    ?ERROR_MSG("~p is not of the form RelName/RelVsn or <relname>-<rel version>", [PackageDir]),
-		    {error, "The package directory provided is not of the form RelName/RelVsn or <relname>-<rel version>"}
-	    end
+	    ?ERROR_MSG("~p is not of the form <name>-<version>", [PackageDir]),
+	    {error, "The package directory provided is not of the form <name>-<version>"}
     end.
 
 lop_off_end(Vsn) ->

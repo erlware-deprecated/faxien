@@ -58,7 +58,7 @@ install_application(AppPackageDirOrArchive, InstallationPath, ErtsVsn) ->
 %%--------------------------------------------------------------------
 install_erts(ErtsPackageDirOrArchive, InstallationPath) ->
     ?INFO_MSG("with args ~p and ~p~n", [ErtsPackageDirOrArchive, InstallationPath]),
-    ErtsPackageDirPath      = ensure_correct_erts_dir(epkg_util:unpack_to_tmp_if_archive(ErtsPackageDirOrArchive)),
+    ErtsPackageDirPath      = epkg_util:unpack_to_tmp_if_archive(ErtsPackageDirOrArchive),
     {ok, {"erts", ErtsVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ErtsPackageDirOrArchive),
     InstalledErtsPath       = epkg_installed_paths:installed_erts_path(InstallationPath, ErtsVsn),
     case {epkg_validation:is_package_erts(InstalledErtsPath),
@@ -322,42 +322,6 @@ build_if_build_file(InstalledPackagePath) ->
 	    ?INFO_MSG("no build script ~p present - skipping ~n", [BuildFile]),
 	    ok
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc make sure that if someone passes a package path like /home/martinjlogan/erts instead of the full path like 
-%%      /home/martinjlogan/erts/5.5.5 that we return that latter path. At the same time if the path passed is a traditional
-%%      erts path like /home/martinjlogan/erts-5.5.5 do nothing. 
-%% @spec ensure_correct_erts_dir(RawErtsPackagePath) -> ErtsDir | exit()
-%% @end
-%%--------------------------------------------------------------------
-ensure_correct_erts_dir(RawErtsPackagePath) ->
-    PackageDir = filename:basename(filename:absname(RawErtsPackagePath)),
-    ?INFO_MSG("package dir is ~p~n", [PackageDir]),
-    case regexp:match(PackageDir, "(^erts-[0-9\.]+$|^[0-9\.]+$)") of
-	{match, 1, _} -> 
-	    RawErtsPackagePath;
-	_ ->
-	    case PackageDir of
-		[$e,$r,$t,$s] -> just_erts(RawErtsPackagePath);
-		Error         -> {error,{bad_erts_directory, Error}}
-	    end
-    end.
-
-just_erts(RawErtsPackagePath) ->
-    case filelib:wildcard(RawErtsPackagePath ++ "/*") of
-	[ErtsVsn] ->
-	    case regexp:match(ErtsVsn, ".*\/[0-9\.]+\/?$") of
-		{match, 1, _} -> ErtsVsn;
-		_             -> {error,{bad_erts_directory, ErtsVsn}}
-	    end;
-        List when length(List) > 1 ->
-	    {error,{bad_erts_directory, List}};
-	Error -> 
-	    {error,{bad_erts_directory, Error}}
-    end.
-		 
-    
 
 %%--------------------------------------------------------------------
 %% @private

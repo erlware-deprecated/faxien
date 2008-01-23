@@ -10,9 +10,11 @@ INVOCATION_SUFFIX="-s epkg_cmdln epkg_apply epkg $@ -s init stop -noshell -prefi
 ###########################################
 
 export ROOTDIR=$PREFIX/application_packages/$ERTS_VSN
-export BINDIR=$PREFIX/erts/$ERTS_VSN/bin
+export BINDIR=$PREFIX/erts_packages/erts-$ERTS_VSN/bin
 export EMU=beam
 export PROGNAME=erl
 export LD_LIBRARY_PATH=$PREFIX/erts/$ERTS_VSN/lib
 
-$BINDIR/erlexec -config $PREFIX/release_packages/$REL_NAME/$REL_VSN/release/sys.config -boot $PREFIX/release_packages/$REL_NAME/$REL_VSN/release/$REL_NAME $INVOCATION_SUFFIX
+REL_DIR=$PREFIX/release_packages/$REL_NAME-$REL_VSN/release
+
+$BINDIR/erlexec -config $REL_DIR/sys.config -boot $REL_DIR/$REL_NAME $INVOCATION_SUFFIX

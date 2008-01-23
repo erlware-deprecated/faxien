@@ -48,7 +48,7 @@ list_lib(InstallationPath, ErtsVsn) ->
 %%--------------------------------------------------------------------
 list_releases(InstallationPath) ->
     RelDir       = epkg_installed_paths:release_container_path(InstallationPath),
-    Paths        = filelib:wildcard(RelDir ++ "/*/*"),
+    Paths        = filelib:wildcard(RelDir ++ "/*"),
     name_and_vsn(Paths).
 
 %%--------------------------------------------------------------------
