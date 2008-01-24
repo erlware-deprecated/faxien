@@ -218,7 +218,7 @@ consult_control_file(Keys, ControlFilePath) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc Returns a list of the elements that coorespond to the keys that were supplied.
+%% @doc Returns a list of the elements that correspond to the keys that were supplied.
 %% @spec consult_rel_file(Keys, RelFilePath) -> [Value] | Value | {error, Reason}
 %% where
 %%  Keys = Key | [Key]
