@@ -24,3 +24,11 @@
 -define(PACKAGE_VSN_REGEXP, "[a-zA-Z0-9_]+([.-][a-zA-Z0-9_]+)*").
 -define(PACKAGE_NAME_AND_VSN_REGEXP, lists:flatten(["^", ?PACKAGE_NAME_REGEXP, "-", ?PACKAGE_VSN_REGEXP, "(\.tar\.gz)*$"])).
 
+
+%% A static list of compiler versions associate with the erts vsns they are packaged with.  This list should be in ascending
+%% order of erts version. 
+-define(COMPILER_VSN_TO_ERTS_VSN, [
+				   {"4.4.5", "5.5.5"}
+				  ]).
+
+

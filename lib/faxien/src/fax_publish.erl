@@ -19,7 +19,7 @@
 %% External exports
 %%--------------------------------------------------------------------
 -export([
-	 publish/5,
+	 publish/3,
 	 publish/4
 	 ]).
 
@@ -42,10 +42,10 @@
 %%
 %% <pre>
 %% Example:
-%%  publish(["http://www.erlware.org/stable"], "5.5.5", "/home/jdoe/my_proj/lib/my_app", 40000).
+%%  publish(["http://www.erlware.org/stable"], "/home/jdoe/my_proj/lib/my_app", 40000).
 %% </pre>
 %%
-%% @spec publish(Repos, ErtsVsn, PackageDirPath, Timeout::timeout()) -> ok | {error, Reason}
+%% @spec publish(Repos, PackageDirPath, Timeout::timeout()) -> ok | {error, Reason}
 %% where
 %%     IsGuarded = bool() 
 %%     Repos = [repo()] 
@@ -53,12 +53,12 @@
 %%     PackageDirPath = string() 
 %% @end
 %%--------------------------------------------------------------------
-publish(Repos, ErtsVsn, RawPackageDirPath, Timeout) -> 
+publish(Repos, RawPackageDirPath, Timeout) -> 
     PackageDirPath = epkg_util:unpack_to_tmp_if_archive(RawPackageDirPath),
     case epkg_validation:validate_type(PackageDirPath) of
 	{ok, Type} ->
 	    io:format("Publishing ~p package~n", [Type]), 
-	    publish(Type, Repos, ErtsVsn, PackageDirPath, Timeout);
+	    publish(Type, Repos, PackageDirPath, Timeout);
 	{error, Reason} ->
 	    {error, Reason}
     end.
@@ -71,7 +71,7 @@ publish(Repos, ErtsVsn, RawPackageDirPath, Timeout) ->
 %%  publish(binary, ["http://www.erlware.org/stable"], "5.5.5", "/home/jdoe/my_proj/lib/my_app", 40000).
 %% </pre>
 %%
-%% @spec publish(Type, Repos, ErtsVsn, PackageDirPath, Timeout::timeout()) -> ok | {error, Reason}
+%% @spec publish(Type, Repos, PackageDirPath, Timeout::timeout()) -> ok | {error, Reason}
 %% where
 %%     Type = generic | binary | release | erts
 %%     Repos = [repo()]
@@ -79,14 +79,14 @@ publish(Repos, ErtsVsn, RawPackageDirPath, Timeout) ->
 %%     PackageDirPath = string()
 %% @end
 %%--------------------------------------------------------------------
-publish(Type, Repos, ErtsVsn, RawPackageDirPath, Timeout) -> 
+publish(Type, Repos, RawPackageDirPath, Timeout) when Type == generic; Type == binary; Type == release; Type == erts -> 
     PackageDirPath = epkg_util:unpack_to_tmp_if_archive(RawPackageDirPath),
-    case catch publish2(Type, Repos, ErtsVsn, PackageDirPath, Timeout) of
+    case catch publish2(Type, Repos, PackageDirPath, Timeout) of
 	{error, _Reason} = Res ->
-	    ?INFO_MSG("publish(~p, ~p, ~p, ~p) -> ~p~n", [Type, Repos, ErtsVsn, PackageDirPath, Res]),
+	    ?INFO_MSG("publish(~p, ~p, ~p, ~p) -> ~p~n", [Type, Repos, PackageDirPath, Timeout, Res]),
 	    Res;
 	{'EXIT', Reason} = Res ->
-	    ?INFO_MSG("publish(~p, ~p, ~p, ~p) -> ~p~n", [Type, Repos, ErtsVsn, PackageDirPath, Res]),
+	    ?INFO_MSG("publish(~p, ~p, ~p, ~p) -> ~p~n", [Type, Repos, PackageDirPath, Timeout, Res]),
 	    {error, Reason};
 	{ok, URLS} ->
 	    io:format("Publishing to ~p~n", [URLS]), 
@@ -97,31 +97,95 @@ publish(Type, Repos, ErtsVsn, RawPackageDirPath, Timeout) ->
 %% Internal functions
 %%====================================================================
 
-publish2(erts, Repos, ErtsVsn, ErtsDirPath, Timeout) -> 
+publish2(erts, Repos, ErtsDirPath, Timeout) -> 
     {ok, {"erts", ErtsVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ErtsDirPath),
     fax_put:put_erts_package(Repos, ErtsVsn, pack(ErtsDirPath), Timeout); 
 
-publish2(generic, Repos, ErtsVsn, AppDirPath, Timeout) -> 
+publish2(generic, Repos, AppDirPath, Timeout) -> 
     {ok, {AppName, AppVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(AppDirPath),
     {ok, AppFileBinary}     = file:read_file(ewl_file:join_paths(AppDirPath, "ebin/" ++ AppName ++ ".app")),
+    {ok, ErtsVsn}           = get_erts_vsn(AppDirPath),
     %% @todo make this transactional - if .app file put fails run a delete.
     fax_put:put_dot_app_file(Repos, ErtsVsn, AppName, AppVsn, AppFileBinary, Timeout), 
     fax_put:put_generic_app_package(Repos, ErtsVsn, AppName, AppVsn, pack(AppDirPath), Timeout); 
 
-publish2(binary, Repos, ErtsVsn, AppDirPath, Timeout) -> 
+publish2(binary, Repos, AppDirPath, Timeout) -> 
     {ok, {AppName, AppVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(AppDirPath),
     {ok, AppFileBinary}     = file:read_file(ewl_file:join_paths(AppDirPath, "ebin/" ++ AppName ++ ".app")),
+    {ok, ErtsVsn}           = get_erts_vsn(AppDirPath),
     %% @todo make this transactional - if .app file put fails run a delete.
     fax_put:put_dot_app_file(Repos, ErtsVsn, AppName, AppVsn, AppFileBinary, Timeout), 
     fax_put:put_binary_app_package(Repos, ErtsVsn, AppName, AppVsn, pack(AppDirPath), Timeout); 
 
-publish2(release, Repos, ErtsVsn, RelDirPath, Timeout) -> 
+publish2(release, Repos, RelDirPath, Timeout) -> 
     {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(RelDirPath),
-    case epkg_util:consult_rel_file(erts_vsn, lists:flatten([RelDirPath, "/releases/", RelVsn, "/", RelName, ".rel"])) of
-	ErtsVsn       -> publish_release(Repos, ErtsVsn, RelName, RelVsn, RelDirPath, Timeout);
-	_OtherErtsVsn -> {error, {bad_erts_vsn, "supplied erts vsn does not match release vsn"}}
-    end.
+    RelFilePath             = epkg_package_paths:release_package_rel_file_path(RelDirPath, RelName, RelVsn),
+    ErtsVsn                 = epkg_util:consult_rel_file(erts_vsn, RelFilePath),
+    ok                      = handle_control(RelDirPath),
+    fax_put:put_release_package(Repos, ErtsVsn, RelName, RelVsn, pack(handle_lib_in_release(RelDirPath)), Timeout).
 	
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Fetch the erts version that matches the compiler version of the modules in the application supplied. 
+%% @spec get_erts_vsn(AppDirPath) -> {ok, ErtsVsn} | {error, Reason}
+%% @end
+%%--------------------------------------------------------------------
+get_erts_vsn(AppDirPath) ->
+    case get_compiler_vsn(AppDirPath) of
+	{ok, CompilerVsn} -> search_static_vsns(CompilerVsn);
+	Error             -> Error
+    end.
+
+search_static_vsns(CompilerVsn) ->
+    search_static_vsns(CompilerVsn, ?COMPILER_VSN_TO_ERTS_VSN).
+
+search_static_vsns(CompilerVsn, [{CompilerVsn, ErtsVsn}|_]) ->
+    {ok, ErtsVsn};
+search_static_vsns(CompilerVsn, [_|T]) ->
+    search_static_vsns(CompilerVsn, T);
+search_static_vsns(CompilerVsn, []) ->
+    search_dynamic_vsns(CompilerVsn).
+
+
+search_dynamic_vsns(_CompilerVsn) ->
+    %% @todo this function will find the version being looked for in a repo and then return the erts vsn it is found for.
+    {error, no_erts_vsn_found}.
+				 
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Fetch the compiler version that all modules in the application were compiled with.
+%% @spec get_compiler_vsn(AppDirPath) -> {ok, CompilerVsn} | {error, Reason}
+%% @end
+%%--------------------------------------------------------------------
+get_compiler_vsn(AppDirPath) ->
+    {ok, [{modules, Modules}]} = ewr_util:fetch_local_appfile_key_values(AppDirPath, [modules]),
+    case catch get_compiler_vsn(AppDirPath, Modules, undefined) of
+	{'EXIT', Reason} ->
+	    ?ERROR_MSG("returned ~p for a module in ~p~n", [Reason, Modules]),
+	    {error, {found_bad_module_in, Modules}};
+	Resp = {ok, _CompilerVsn} ->
+	    Resp
+    end.
+
+get_compiler_vsn(AppDirPath, [Module|Modules], undefined) ->
+    CompilerVsn = fetch_vsn(AppDirPath, Module),
+    get_compiler_vsn(AppDirPath, Modules, CompilerVsn);
+get_compiler_vsn(AppDirPath, [Module|Modules], CompilerVsn) ->
+    case catch fetch_vsn(AppDirPath, Module) of
+	CompilerVsn ->
+	    get_compiler_vsn(AppDirPath, Modules, CompilerVsn);
+	_ ->
+	    throw({bad_module, Module})
+    end;
+get_compiler_vsn(_AppDirPath, [], CompilerVsn) ->
+    {ok, CompilerVsn}.
+	
+fetch_vsn(AppDirPath, Module) ->
+    BeamPath  = AppDirPath ++ "/ebin/" ++ atom_to_list(Module),
+    {ok, {Module, [{compile_info, CompileInfo}]}} = beam_lib:chunks(BeamPath, [compile_info]),
+    fs_lists:get_val(version, CompileInfo).
     
 %%--------------------------------------------------------------------
 %% @private
@@ -147,16 +211,6 @@ pack(TarDirPath) ->
     ok            = file:set_cwd(CWD),
     ok            = ewl_file:delete_dir(TmpDirPath),
     TarFile.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc push a release file out into a remote repo
-%% @end
-%%--------------------------------------------------------------------
-publish_release(Repos, ErtsVsn, RelName, RelVsn, RawRelDirPath, Timeout) ->	       
-    ok = handle_control(RawRelDirPath),
-    RelDirPath = handle_lib_in_release(RawRelDirPath),
-    fax_put:put_release_package(Repos, ErtsVsn, RelName, RelVsn, pack(RelDirPath), Timeout). 
 
 %%--------------------------------------------------------------------
 %% @private

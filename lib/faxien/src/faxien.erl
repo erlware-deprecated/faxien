@@ -443,16 +443,14 @@ install_app_help() ->
 %%--------------------------------------------------------------------
 publish(Repo, PackageDir, Timeout) -> 
     [A,B]         = epkg_util:if_atom_or_integer_to_string([Repo, PackageDir]),
-    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
-    fax_publish:publish([A], TargetErtsVsn, B, Timeout, ?REQUEST_TIMEOUT).
+    fax_publish:publish([A], B, Timeout, ?REQUEST_TIMEOUT).
 
 %% @spec publish(PackageDir, Timeout) -> ok | {error, Reason}
 %% @equiv publish(Repos, PackageDir, Timeout)
 publish(PackageDir, Timeout) when is_integer(Timeout); Timeout == infinity -> 
     {ok, Repos}   = gas:get_env(faxien, repos_to_publish_to, ?ERLWARE_URL),
     [A]           = epkg_util:if_atom_or_integer_to_string([PackageDir]),
-    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
-    fax_publish:publish(Repos, TargetErtsVsn, A, Timeout);
+    fax_publish:publish(Repos, A, Timeout);
 
 %% @spec publish(Repos PackageDir) -> ok | {error, Reason}
 %% @equiv publish(Repos AppDir, Timeout)
