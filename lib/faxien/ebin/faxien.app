@@ -12,4 +12,4 @@
              ]},
   {registered, []},
   {versioned_dependencies, [{ibrowse, "1.2.4.1", gte}]},
-  {applications, [eunit, kernel, stdlib, xmerl, ibrowse, ewrepo, ewlib, fslib, gas]}]}.
+  {applications, [eunit, kernel, stdlib, xmerl, ibrowse, epkg, ewrepo, ewlib, fslib, gas]}]}.

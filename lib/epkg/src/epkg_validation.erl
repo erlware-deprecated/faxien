@@ -26,6 +26,7 @@
 %% Include files
 %%--------------------------------------------------------------------
 -include("epkg.hrl").
+-include("macros.hrl").
 
 %%====================================================================
 %% External functions
@@ -160,15 +161,38 @@ is_package_a_release(PackageDir) ->
 	       end
 	      ]).
 
+%%--------------------------------------------------------------------
+%% @doc determine if a control file supplied is a valid one.
+%% @spec is_valid_control_file(ControlFilePath) -> true | {error, Reason}
+%% where
+%%  Reason = {missing_control_keys, {need, list()}, {found, list()}} | {bad_categories, list()} | no_categories | term()
+%% @end
+%%--------------------------------------------------------------------
 is_valid_control_file(ControlFilePath) ->
     ?INFO_MSG("~p~n", [ControlFilePath]),
-    ControlKeys = [package_owner, description, package_owner_email, categories],
-    case epkg_util:consult_control_file(ControlKeys, ControlFilePath)of
-	{error, _Reason} -> 
-	    false;
-	Values when length(Values) == length(ControlKeys) -> 
-	    true
+    case epkg_util:consult_control_file(?MANDITORY_CONTROL_KEYS, ControlFilePath) of
+	{error, Reason} -> 
+	    {error, Reason};
+	Keys when length(Keys) == length(?MANDITORY_CONTROL_KEYS) -> 
+	    has_bad_control_categories(ControlFilePath);
+	Keys ->
+	    {error, {missing_control_keys, {need, ?MANDITORY_CONTROL_KEYS}, {found, Keys}}}
     end.
+
+has_bad_control_categories(ControlValues) ->
+    case fs_lists:get_val(categories, ControlValues, []) of
+	[] -> 
+	    {error, no_categories};
+	Categories ->
+	    case epkg_util:find_bad_control_categories(Categories) of
+		[] -> 
+		    true;
+		BadCategories -> 
+		    ?INFO_MSG("bad control categories ~p~n", [BadCategories]),
+		    {error, {bad_categories, BadCategories}}
+	    end
+    end.
+	    
 
 %%--------------------------------------------------------------------
 %% @doc Make sure an application contains all the source files that the .app files suggests it does.

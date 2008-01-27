@@ -14,6 +14,7 @@
 -include("eunit.hrl").
 -include("epkg.hrl").
 -include("ewrepo.hrl").
+-include("macros.hrl").
 
 
 %%--------------------------------------------------------------------

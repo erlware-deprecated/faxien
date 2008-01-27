@@ -21,6 +21,7 @@
 	 set_all_executable_perms/1,
 	 unpack_to_tmp/1,
 	 unpack_to_tmp_if_archive/1,
+	 find_bad_control_categories/1,
 	 if_atom_or_integer_to_string/1,
 	 consult_rel_file/2,
 	 consult_control_file/2
@@ -31,6 +32,7 @@
 %%--------------------------------------------------------------------
 -include("epkg.hrl").
 -include("eunit.hrl").
+-include("macros.hrl").
 
 %%====================================================================
 %% API
@@ -134,6 +136,16 @@ set_all_executable_perms(Dir) ->
 	    end
     end.
 
+%%--------------------------------------------------------------------
+%% @doc Check a list of categories from a control file and return any bad ones.
+%% @spec find_bad_control_categories(Categories) -> list()
+%% @end
+%%--------------------------------------------------------------------
+find_bad_control_categories(Categories) ->
+    lists:filter(fun(Category) -> 
+			 not lists:member(Category, ?CONTROL_CATEGORIES) 
+		 end, 
+		 Categories).
 
 %%--------------------------------------------------------------------
 %% @doc take an compressed artifact and unpack it into a unique temporary directory and 

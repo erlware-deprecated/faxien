@@ -24,6 +24,7 @@
 %% Include Files
 %%--------------------------------------------------------------------
 -include("epkg.hrl").
+-include("macros.hrl").
 
 %%====================================================================
 %% API
@@ -196,7 +197,7 @@ fetch_app_specs(InstallationPath, RelName, RelVsn) ->
 %% @doc get rid of all the executable files for a particular release.
 %% @end
 %%--------------------------------------------------------------------
-last_executable_files(InstallationPath, RelName, RelVsn) ->
+blast_executable_files(InstallationPath, RelName, RelVsn) ->
     CmdsDirPath           = epkg_installed_paths:installed_release_cmds_dir_path(InstallationPath, RelName, RelVsn),
     LauncherTemplateFiles = filelib:wildcard(CmdsDirPath ++ "/*"),
     BinDirPath            = epkg_installed_paths:executable_container_path(InstallationPath),

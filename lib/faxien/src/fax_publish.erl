@@ -28,6 +28,7 @@
 %% Include files
 %%--------------------------------------------------------------------
 -include("faxien.hrl").
+-include("epkg.hrl").
 
 %%====================================================================
 %% External functions
@@ -222,8 +223,14 @@ handle_control(RelDirPath) ->
     case epkg_validation:is_valid_control_file(ControlFilePath) of
 	true ->
 	    ok;
-	false ->
-	    io:format("It appears the package does not contain a valid control file. Lets create a basic one.~n"),
+	{error, Reason} when element(1, Reason) == bad_categories; Reason == no_categories ->
+	    io:format("~nOne of more of the categories in the control file are invalid please re-enter them.~n"),
+	    {ok, [{control, PackageName, ControlList}]} = file:consult(ControlFilePath),
+	    ControlTerm = {control, PackageName, lists:keyreplace(categories, 1, ControlList, {categories, enter_categories()})},
+	    write_out(ControlFilePath, ControlTerm);
+	{error, Reason} ->
+	    ?INFO_MSG("Bad control file. Validation failed with ~p~n", [Reason]),
+	    io:format("~nIt appears the package does not contain a valid control file. Lets create a basic one.~n"),
 	    {ok, {PackageName, _PackageVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(RelDirPath),
 	    ControlTerm                      = collect_control_info(PackageName),
 	    io:format("~n~p.~n~nAbove is the control information collected about this package. This information~n", [ControlTerm]),
@@ -256,40 +263,42 @@ collect_control_info(PackageName) when is_atom(PackageName) ->
 collect_control_info(PackageName) ->
     {control, PackageName, lists:flatten([collect_manditory_control_info(),  collect_additional_control_info()])}. 
 
-categories() ->
-Categories = ["database",
-	      "driver",
-	      "game",
-	      "graphic",
-	      "math",
-	      "misc",
-	      "net",
-	      "server",
-	      "test",
-	      "tool",
-	      "web"],
-    string:strip(lists:foldl(fun(C, Acc) -> C ++ ", " ++ Acc end, [], Categories), right, $,).
-			
 collect_manditory_control_info() ->
     [
-     {package_owner, ewl_talk:ask("Enter the package owners full name > ")},
-     {package_owner_email, ewl_talk:ask("Enter a contact email address > ")},
-     {categories, [string:strip(E, both, $ ) || 
-		      E <- string:tokens(
-			     ewl_talk:ask(
-			       lists:flatten(["Enter comma separated categories from this list:\n", categories(), " > "])), ",")]},
-     {description, ewl_talk:ask("Enter a short description of the package > ")}
+     {package_owner, ewl_talk:ask("~nEnter the package owners full name > ")},
+     {package_owner_email, ewl_talk:ask("~nEnter a contact email address > ")},
+     {categories, enter_categories()},
+     {description, ewl_talk:ask("~nEnter a short description of the package > ")}
     ].
 
+enter_categories() ->
+    Categories = [string:strip(E, both, $ ) || 
+		     E <- string:tokens(
+			    ewl_talk:ask(
+			      lists:flatten(["~nEnter from the list below. Separate multiple categories with commas:\n", 
+					     printable_categories(), 
+					     " > "])), ",")],
+    case epkg_util:find_bad_control_categories(Categories) of
+	[] ->
+	    Categories;
+	BadCategories ->
+	    io:format("The following categories are invalid ~p. Please enter only the categories suggested exactly.~n", 
+		      [BadCategories]),
+	    enter_categories()
+    end.
+
+printable_categories() ->
+    string:strip(lists:foldl(fun(C, Acc) -> C ++ ", " ++ Acc end, [], ?CONTROL_CATEGORIES), right, $,).
+			
 collect_additional_control_info() ->
-    case ewl_talk:ask("Would you like to specify additional control information? [yes|no] > ") of
+    case ewl_talk:ask("~nWould you like to specify additional control information? [yes|no] > ") of
 	Yes when Yes == $y; Yes == $Y; Yes == "yes" ->
 	    [
-	     {author, ewl_talk:ask("Enter the authors full name > ")},
-	     {authors_email, ewl_talk:ask("Enter the authors email address > ")},
+	     {author, ewl_talk:ask("~nEnter the authors full name > ")},
+	     {authors_email, ewl_talk:ask("~nEnter the authors email address > ")},
 	     {keywords, [string:strip(E, both, $ ) || 
-			   E <- string:tokens(ewl_talk:ask("Enter comma separated keywords for the package > "), ",")]},
-	     {project_page, ewl_talk:ask("Enter project page url > ")}
+			   E <- string:tokens(ewl_talk:ask("~nEnter comma separated keywords for the package > "), ",")]},
+	     {project_page, ewl_talk:ask("~nEnter project page url > ")}
 	    ];
 	No when No == $n; No == $N; No == "no" ->
 	    [];
