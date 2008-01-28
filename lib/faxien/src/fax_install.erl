@@ -27,7 +27,6 @@
 	 install_latest_remote_release/6,
 	 install_remote_release/7,
 	 install_remote_erts/3,
-	 install_application/5,
 	 install_erts/3,
 	 install_release/6
 	]).
@@ -35,24 +34,6 @@
 %%====================================================================
 %% External functions
 %%====================================================================
-
-%%--------------------------------------------------------------------
-%% @doc 
-%%  Install an application package.  This function will determine whether the target (AppNameOrPath) is a request to install
-%%  an application from a remote repository or to install a tared up release package (.tar.gz) or an untarred package directory.
-%%
-%% @spec install_application(Repos, TargetErtsVsn, AppNameOrPath, Force, Timeout) -> ok | {error, Reason} | exit()
-%% where
-%%     Type = application | release
-%%     AppNameOrPath = string()
-%%     Force = force()
-%% @end
-%%--------------------------------------------------------------------
-install_application(Repos, TargetErtsVsn, AppNameOrPath, Force, Timeout) ->
-    case filelib:is_file(AppNameOrPath) of
-	true  -> epkg:install_app(AppNameOrPath, TargetErtsVsn);
-	false -> install_latest_remote_application(Repos, TargetErtsVsn, AppNameOrPath, Force, Timeout)
-    end.
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -163,7 +144,7 @@ install_remote_erts(Repos, ErtsVsn, Timeout) ->
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Install a release package.  This function will determine whether the target (AppNameOrPath) is a request to install
-%%  an application from a remote repository or to install a tared up release package (.tar.gz) or an untarred package directory.
+%%  an application from a remote repository or to install a release package (.epkg) or an untarred package directory.
 %%  IsLocalBoot indicates whether a local specific boot file is to be created or not. See the systools docs for more information.
 %% @spec install_release(Repos, TargetErtsVsn, ReleasePackageArchiveOrDirPath, IsLocalBoot, Force, Timeout) -> ok | {error, Reason} | exit()
 %% where
@@ -246,27 +227,32 @@ install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLoca
     %% @todo think about continuing to pass IsLocalBoot from faxien to epkg
     
     ReleasePackageDirPath   = epkg_util:unpack_to_tmp_if_archive(ReleasePackageArchiveOrDirPath),
-    {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ReleasePackageDirPath),
-    RelFilePath             = epkg_package_paths:release_package_rel_file_path(ReleasePackageDirPath, RelName, RelVsn),
-    TargetErtsVsn           = epkg_util:consult_rel_file(erts_vsn, RelFilePath),
+    case epkg_validation:is_package_a_release(ReleasePackageDirPath) of
+	false ->
+	    {error, bad_package};
+	true ->
+	    {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ReleasePackageDirPath),
+	    RelFilePath             = epkg_package_paths:release_package_rel_file_path(ReleasePackageDirPath, RelName, RelVsn),
+	    TargetErtsVsn           = epkg_util:consult_rel_file(erts_vsn, RelFilePath),
     
-    case catch epkg:install_release(ReleasePackageDirPath) of
-	{error, {failed_to_install, AppAndVsns}} ->
-	    %% The release package did not contain all the applications required.  Pull them down, install them, and try again.
-	    lists:foreach(fun({AppName, AppVsn}) ->
-				  install_remote_application(Repos, TargetErtsVsn, AppName, AppVsn, Force, Timeout)
-			  end, AppAndVsns),
-	    install_from_local_release_package(Repos, ReleasePackageDirPath, IsLocalBoot, Force, Timeout);
-	
-	{error, badly_formatted_or_missing_erts_package} ->
-	    %% The release package did not contain the appropriate erts package, and it is not already installed, pull it down
-	    %% install it and try again.
-	    ok = install_remote_erts(Repos, TargetErtsVsn, Timeout),
-	    install_from_local_release_package(Repos, ReleasePackageDirPath, IsLocalBoot, Force, Timeout);
-	
-	Other ->
-	    ?INFO_MSG("exited release install on a local package with ~p~n", [Other]),
-	    Other
+	    case catch epkg:install_release(ReleasePackageDirPath) of
+		{error, {failed_to_install, AppAndVsns}} ->
+		    %% The release does not contain all the applications required.  Pull them down, install them, and try again.
+		    lists:foreach(fun({AppName, AppVsn}) ->
+					  install_remote_application(Repos, TargetErtsVsn, AppName, AppVsn, Force, Timeout)
+				  end, AppAndVsns),
+		    install_from_local_release_package(Repos, ReleasePackageDirPath, IsLocalBoot, Force, Timeout);
+		
+		{error, badly_formatted_or_missing_erts_package} ->
+		    %% The release package does not contain the appropriate erts package, and it is 
+		    %% not already installed, pull it down install it and try again.
+		    ok = install_remote_erts(Repos, TargetErtsVsn, Timeout),
+		    install_from_local_release_package(Repos, ReleasePackageDirPath, IsLocalBoot, Force, Timeout);
+		
+		Other ->
+		    ?INFO_MSG("exited release install on a local package with ~p~n", [Other]),
+		    Other
+	    end
     end.
 
 %%====================================================================

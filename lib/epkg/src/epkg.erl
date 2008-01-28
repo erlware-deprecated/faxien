@@ -60,10 +60,10 @@ install(PackageDirOrArchive, ErtsVsn) ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
     PackageDirPath         = epkg_util:unpack_to_tmp_if_archive(PackageDirOrArchive), 
     case epkg_validation:validate_type(PackageDirPath) of
-	binary  -> epkg_install:install_application(PackageDirPath, InstallationPath, ErtsVsn);
-	generic -> epkg_install:install_application(PackageDirPath, InstallationPath, ErtsVsn);
-	release -> epkg_install:install_release(PackageDirPath, InstallationPath, false);
-	erts    -> epkg_install:install_erts(PackageDirPath, InstallationPath);
+	{ok, binary}  -> epkg_install:install_application(PackageDirPath, InstallationPath, ErtsVsn);
+	{ok, generic} -> epkg_install:install_application(PackageDirPath, InstallationPath, ErtsVsn);
+	{ok, release} -> epkg_install:install_release(PackageDirPath, InstallationPath, false);
+	{ok, erts}    -> epkg_install:install_erts(PackageDirPath, InstallationPath);
 	Error   -> Error
     end.
 
@@ -281,7 +281,7 @@ examples_help() ->
      "\nInstall the tools application from the local filesystem", 
      "  epkg install /usr/local/erlang/lib/tools-2.5.4 5.5.5",
      "\nInstall a new version of epkg from a release tarball", 
-     "  epkg install epkg-0.19.3.tar.gz 5.5.5"
+     "  epkg install epkg-0.19.3.epkg 5.5.5"
     ].
 
 %% @private

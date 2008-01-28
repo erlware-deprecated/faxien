@@ -362,8 +362,8 @@ install(ReleaseName, ReleaseVsn) ->
 install(ReleaseNameOrPath) when is_atom(ReleaseNameOrPath) -> 
     install(atom_to_list(ReleaseNameOrPath));
 install(ReleaseNameOrPath) -> 
-    {ok, Repos}       = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
-    {ok, IsLocalBoot} = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
+    {ok, Repos}         = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
+    {ok, IsLocalBoot}   = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     fax_install:install_release(Repos, TargetErtsVsn, ReleaseNameOrPath, IsLocalBoot, false, ?REQUEST_TIMEOUT).
 	
@@ -418,9 +418,21 @@ install_app(AppName, AppVsn) ->
 install_app(AppNameOrPath) when is_atom(AppNameOrPath) -> 
     install_app(atom_to_list(AppNameOrPath));
 install_app(AppNameOrPath) -> 
-    {ok, Repos}   = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
-    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
-    fax_install:install_application(Repos, TargetErtsVsn, AppNameOrPath, false, ?REQUEST_TIMEOUT).
+    {ok, Repos} = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
+    case filelib:is_file(AppNameOrPath) of
+	true  -> 
+	    AppDirPath = epkg_util:unpack_to_tmp_if_archive(AppNameOrPath),
+	    case fax_util:get_erts_vsn(AppDirPath) of
+		{ok, ErtsVsn} ->
+		    epkg:install_app(AppDirPath, ErtsVsn);
+		_ ->
+		    io:format("Could not find an erts vsn for the app you are trying to install."),
+		    {error, wrong_erts_vsn}
+	    end;
+	false -> 
+	    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+	    fax_install:install_latest_remote_application(Repos, TargetErtsVsn, AppNameOrPath, false, ?REQUEST_TIMEOUT)
+    end.
 
 %% @private
 install_app_help() ->
@@ -468,7 +480,7 @@ publish(PackageDir) ->
 publish_help() ->
     ["\nHelp for publish\n",
      "Usage: publish <release package|app package>: will publish an erts, release, or application package. Faxien figures out which based on inspection.\n",
-     "Packages should be of the form <package name>-<package version>[.tar.gz] for example erts-5.5.5.tar.gz"]. 
+     "Packages should be of the form <package name>-<package version>[.tar.gz|.epkg] for example erts-5.5.5.tar.gz"]. 
 
 
 %%--------------------------------------------------------------------
@@ -518,7 +530,7 @@ examples_help() ->
      "\nInstall sinan version 0.8.8 from a remote repository",
      "  faxien install sinan 0.8.8",
      "\nInstall a new version of faxien from a release tarball",
-     "  faxien install faxien-0.19.3.tar.gz",
+     "  faxien install faxien-0.19.3.epkg",
      "\nSearch for an appliction or release with the word \"cloth\" in it",
      "  faxien search cloth",
      "  or",

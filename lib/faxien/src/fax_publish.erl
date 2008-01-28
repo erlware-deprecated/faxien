@@ -39,7 +39,7 @@
 %% @doc 
 %%  Publish a release or appliation to a repository. The PackageDirPath must be formatted in the following 
 %%  way &lt;relname&gt;-&lt;rel version&gt; If you are publishing a tarball it must be compressed and have 
-%%  the extention .tar.gz.
+%%  the extention .epkg.
 %%
 %% <pre>
 %% Example:
@@ -105,7 +105,7 @@ publish2(erts, Repos, ErtsDirPath, Timeout) ->
 publish2(generic, Repos, AppDirPath, Timeout) -> 
     {ok, {AppName, AppVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(AppDirPath),
     {ok, AppFileBinary}     = file:read_file(ewl_file:join_paths(AppDirPath, "ebin/" ++ AppName ++ ".app")),
-    {ok, ErtsVsn}           = get_erts_vsn(AppDirPath),
+    {ok, ErtsVsn}           = fax_util:get_erts_vsn(AppDirPath),
     %% @todo make this transactional - if .app file put fails run a delete.
     fax_put:put_dot_app_file(Repos, ErtsVsn, AppName, AppVsn, AppFileBinary, Timeout), 
     fax_put:put_generic_app_package(Repos, ErtsVsn, AppName, AppVsn, pack(AppDirPath), Timeout); 
@@ -113,7 +113,7 @@ publish2(generic, Repos, AppDirPath, Timeout) ->
 publish2(binary, Repos, AppDirPath, Timeout) -> 
     {ok, {AppName, AppVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(AppDirPath),
     {ok, AppFileBinary}     = file:read_file(ewl_file:join_paths(AppDirPath, "ebin/" ++ AppName ++ ".app")),
-    {ok, ErtsVsn}           = get_erts_vsn(AppDirPath),
+    {ok, ErtsVsn}           = fax_util:get_erts_vsn(AppDirPath),
     %% @todo make this transactional - if .app file put fails run a delete.
     fax_put:put_dot_app_file(Repos, ErtsVsn, AppName, AppVsn, AppFileBinary, Timeout), 
     fax_put:put_binary_app_package(Repos, ErtsVsn, AppName, AppVsn, pack(AppDirPath), Timeout); 
@@ -125,68 +125,6 @@ publish2(release, Repos, RelDirPath, Timeout) ->
     ok                      = handle_control(RelDirPath),
     fax_put:put_release_package(Repos, ErtsVsn, RelName, RelVsn, pack(handle_lib_in_release(RelDirPath)), Timeout).
 	
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Fetch the erts version that matches the compiler version of the modules in the application supplied. 
-%% @spec get_erts_vsn(AppDirPath) -> {ok, ErtsVsn} | {error, Reason}
-%% @end
-%%--------------------------------------------------------------------
-get_erts_vsn(AppDirPath) ->
-    case get_compiler_vsn(AppDirPath) of
-	{ok, CompilerVsn} -> search_static_vsns(CompilerVsn);
-	Error             -> Error
-    end.
-
-search_static_vsns(CompilerVsn) ->
-    search_static_vsns(CompilerVsn, ?COMPILER_VSN_TO_ERTS_VSN).
-
-search_static_vsns(CompilerVsn, [{CompilerVsn, ErtsVsn}|_]) ->
-    {ok, ErtsVsn};
-search_static_vsns(CompilerVsn, [_|T]) ->
-    search_static_vsns(CompilerVsn, T);
-search_static_vsns(CompilerVsn, []) ->
-    search_dynamic_vsns(CompilerVsn).
-
-
-search_dynamic_vsns(_CompilerVsn) ->
-    %% @todo this function will find the version being looked for in a repo and then return the erts vsn it is found for.
-    {error, no_erts_vsn_found}.
-				 
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Fetch the compiler version that all modules in the application were compiled with.
-%% @spec get_compiler_vsn(AppDirPath) -> {ok, CompilerVsn} | {error, Reason}
-%% @end
-%%--------------------------------------------------------------------
-get_compiler_vsn(AppDirPath) ->
-    {ok, [{modules, Modules}]} = ewr_util:fetch_local_appfile_key_values(AppDirPath, [modules]),
-    case catch get_compiler_vsn(AppDirPath, Modules, undefined) of
-	{'EXIT', Reason} ->
-	    ?ERROR_MSG("returned ~p for a module in ~p~n", [Reason, Modules]),
-	    {error, {found_bad_module_in, Modules}};
-	Resp = {ok, _CompilerVsn} ->
-	    Resp
-    end.
-
-get_compiler_vsn(AppDirPath, [Module|Modules], undefined) ->
-    CompilerVsn = fetch_vsn(AppDirPath, Module),
-    get_compiler_vsn(AppDirPath, Modules, CompilerVsn);
-get_compiler_vsn(AppDirPath, [Module|Modules], CompilerVsn) ->
-    case catch fetch_vsn(AppDirPath, Module) of
-	CompilerVsn ->
-	    get_compiler_vsn(AppDirPath, Modules, CompilerVsn);
-	_ ->
-	    throw({bad_module, Module})
-    end;
-get_compiler_vsn(_AppDirPath, [], CompilerVsn) ->
-    {ok, CompilerVsn}.
-	
-fetch_vsn(AppDirPath, Module) ->
-    BeamPath  = AppDirPath ++ "/ebin/" ++ atom_to_list(Module),
-    {ok, {Module, [{compile_info, CompileInfo}]}} = beam_lib:chunks(BeamPath, [compile_info]),
-    fs_lists:get_val(version, CompileInfo).
     
 %%--------------------------------------------------------------------
 %% @private

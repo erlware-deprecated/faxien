@@ -264,6 +264,9 @@ package_dir_to_name_and_vsn(RawPackageDir) ->
 lop_off_end(Vsn) ->
     lop_off_end2(lists:reverse(Vsn)).
 
+%% Lop of suffixes like .epkg and .tar.gz
+lop_off_end2([$g,$k,$p,$e,$.|Vsn]) ->
+    lists:reverse(Vsn);
 lop_off_end2([$z,$g,$.,$r,$a,$t,$.|Vsn]) ->
     lists:reverse(Vsn);
 lop_off_end2(Vsn) ->
@@ -316,6 +319,7 @@ installed_release_file_dir(InstallationPath, RelName, RelVsn) ->
 %%====================================================================
 
 package_dir_to_name_and_vsn_test() ->
-    ?assertMatch({ok, {"epkg", "12.34-alpha"}}, package_dir_to_name_and_vsn("/usr/local/erlware/tib/faxien-12.34-alpha")),
-    ?assertMatch({ok, {"epkg", "12.34-alpha"}}, package_dir_to_name_and_vsn("/usr/local/erlware/lib/faxien-12.34-alpha.tar.gz")),
-    ?assertMatch({ok, {"epkg", "12.34-alpha"}}, package_dir_to_name_and_vsn("/usr/local/erlware/lib/faxien-12.34-alpha/")).
+    ?assertMatch({ok, {"epkg", "12.34-alpha"}}, package_dir_to_name_and_vsn("/usr/local/erlware/lib/epkg-12.34-alpha")),
+    ?assertMatch({ok, {"epkg", "12.34-alpha"}}, package_dir_to_name_and_vsn("/usr/local/erlware/lib/epkg-12.34-alpha.tar.gz")),
+    ?assertMatch({ok, {"epkg", "12.34-alpha"}}, package_dir_to_name_and_vsn("/usr/local/erlware/lib/epkg-12.34-alpha.epkg")),
+    ?assertMatch({ok, {"epkg", "12.34-alpha"}}, package_dir_to_name_and_vsn("/usr/local/erlware/lib/epkg-12.34-alpha/")).

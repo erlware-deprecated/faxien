@@ -31,6 +31,7 @@
 %% Include files
 %%--------------------------------------------------------------------
 -include("epkg.hrl").
+-include("ewrepo.hrl").
 -include("eunit.hrl").
 -include("macros.hrl").
 
@@ -177,7 +178,7 @@ unpack_to_tmp(ArtifactFilePath) ->
 %% @end
 %%--------------------------------------------------------------------
 unpack_to_tmp_if_archive(ArchiveFilePath) ->
-    case regexp:match(ArchiveFilePath, ".*\.tar\.gz$") of
+    case regexp:match(ArchiveFilePath, ".*" ++ ?REPO_FILE_EXT_REGEXP ++ "$") of
 	{match, _, _} ->
 	    epkg_util:unpack_to_tmp(ArchiveFilePath);
 	_NoMatch ->

@@ -26,7 +26,8 @@
 	 to_app_dirs/1,
 	 flatten_term/1,
 	 repo_list/1,
-	 add_pzs/1
+	 add_pzs/1,
+	 get_erts_vsn/1
         ]).
 
 %%====================================================================
@@ -248,6 +249,67 @@ foreach_erts_vsn(TargetErtsVsn, Fun) ->
     foreach_erts_vsn(TargetErtsVsn, ErtsLowerBound, Fun).
 
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Fetch the erts version that matches the compiler version of the modules in the application supplied. 
+%% @spec get_erts_vsn(AppDirPath) -> {ok, ErtsVsn} | {error, Reason}
+%% @end
+%%--------------------------------------------------------------------
+get_erts_vsn(AppDirPath) ->
+    case get_compiler_vsn(AppDirPath) of
+	{ok, CompilerVsn} -> search_static_vsns(CompilerVsn);
+	Error             -> Error
+    end.
+
+search_static_vsns(CompilerVsn) ->
+    search_static_vsns(CompilerVsn, ?COMPILER_VSN_TO_ERTS_VSN).
+
+search_static_vsns(CompilerVsn, [{CompilerVsn, ErtsVsn}|_]) ->
+    {ok, ErtsVsn};
+search_static_vsns(CompilerVsn, [_|T]) ->
+    search_static_vsns(CompilerVsn, T);
+search_static_vsns(CompilerVsn, []) ->
+    search_dynamic_vsns(CompilerVsn).
+
+
+search_dynamic_vsns(_CompilerVsn) ->
+    %% @todo this function will find the version being looked for in a repo and then return the erts vsn it is found for.
+    {error, no_erts_vsn_found}.
+				 
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Fetch the compiler version that all modules in the application were compiled with.
+%% @spec get_compiler_vsn(AppDirPath) -> {ok, CompilerVsn} | {error, Reason}
+%% @end
+%%--------------------------------------------------------------------
+get_compiler_vsn(AppDirPath) ->
+    {ok, [{modules, Modules}]} = ewr_util:fetch_local_appfile_key_values(AppDirPath, [modules]),
+    case catch get_compiler_vsn(AppDirPath, Modules, undefined) of
+	{'EXIT', Reason} ->
+	    ?ERROR_MSG("returned ~p for a module in ~p~n", [Reason, Modules]),
+	    {error, {found_bad_module_in, Modules}};
+	Resp = {ok, _CompilerVsn} ->
+	    Resp
+    end.
+
+get_compiler_vsn(AppDirPath, [Module|Modules], undefined) ->
+    CompilerVsn = fetch_vsn(AppDirPath, Module),
+    get_compiler_vsn(AppDirPath, Modules, CompilerVsn);
+get_compiler_vsn(AppDirPath, [Module|Modules], CompilerVsn) ->
+    case catch fetch_vsn(AppDirPath, Module) of
+	CompilerVsn ->
+	    get_compiler_vsn(AppDirPath, Modules, CompilerVsn);
+	_ ->
+	    throw({bad_module, Module})
+    end;
+get_compiler_vsn(_AppDirPath, [], CompilerVsn) ->
+    {ok, CompilerVsn}.
+	
+fetch_vsn(AppDirPath, Module) ->
+    BeamPath  = AppDirPath ++ "/ebin/" ++ atom_to_list(Module),
+    {ok, {Module, [{compile_info, CompileInfo}]}} = beam_lib:chunks(BeamPath, [compile_info]),
+    fs_lists:get_val(version, CompileInfo).
 %%====================================================================
 %% Internal functions
 %%====================================================================
