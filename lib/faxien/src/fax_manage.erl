@@ -482,6 +482,8 @@ highest_vsn(Error) ->
 format_app_terms(Terms) ->
     lists:concat([format_app_term(T) || T <- Terms]).
 
+format_app_term({_Key, []}) ->
+    "";
 format_app_term({Key, Val}) ->
     lists:concat([Key, ":\n    ", format_app_val(Key, Val), "\n"]).
 
