@@ -93,7 +93,7 @@ describe_app(Repos, TargetErtsVsn, AppName, AppVsn, Timeout) ->
 		    fun(Repo) ->
 			    case ewr_util:repo_consult(Repo, Suffix, Timeout) of
 				{ok, {application, _, Terms}} -> 
-				    io:format("~nDescribing Application: ~s~n~n ~p~n", [AppName, Terms]);
+				    io:format("~nDescribing Application: ~s~n~n~s~n", [AppName, format_app_terms(Terms)]);
 				Error ->
 				    ?ERROR_MSG("consulting ~s with suffix ~s returns ~p~n", [Repo, Suffix, Error]),
 				    Error
@@ -472,4 +472,22 @@ highest_vsn([]) ->
 highest_vsn(Error) ->
     {error, Error}.
 
-    
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Return a pretty-print string version of application configuration terms.
+%% @spec format_app_terms(Terms) -> string()
+%% @end
+%%--------------------------------------------------------------------
+format_app_terms(Terms) ->
+    lists:concat([format_app_term(T) || T <- Terms]).
+
+format_app_term({Key, Val}) ->
+    lists:concat([Key, ":\n    ", format_app_val(Key, Val), "\n"]).
+
+format_app_val(description, Val) ->
+    Val;
+format_app_val(vsn, Val) ->
+    Val;
+format_app_val(_Key, Val) ->
+    io_lib:format("~p", [Val]).
