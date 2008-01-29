@@ -211,8 +211,10 @@ create_unique_tmp_dir() ->
 %% @end
 %%--------------------------------------------------------------------
 consult_control_file(Key, ControlFilePath) when is_atom(Key) ->
-    [Value] = consult_control_file([Key], ControlFilePath),
-    Value;
+    case consult_control_file([Key], ControlFilePath) of
+	[Value] -> Value;
+	Error   -> Error
+    end;
 consult_control_file(Keys, ControlFilePath) ->
     ?INFO_MSG("consulting ~s~n", [ControlFilePath]),
     case file:consult(ControlFilePath) of

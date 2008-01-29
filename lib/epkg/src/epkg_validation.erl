@@ -180,18 +180,17 @@ is_valid_control_file(ControlFilePath) ->
     end.
 
 has_bad_control_categories(ControlFilePath) ->
-    {ok, [{control, _PackageName, ControlList}]} = file:consult(ControlFilePath),
-    case fs_lists:get_val(categories, ControlList, []) of
-	[] -> 
-	    {error, no_categories};
-	Categories ->
+    case epkg_util:consult_control_file(categories, ControlFilePath) of
+	Categories when is_list(Categories), Categories /= [] ->
 	    case epkg_util:find_bad_control_categories(Categories) of
 		[] -> 
 		    true;
 		BadCategories -> 
 		    ?ERROR_MSG("bad control categories ~p~n", [BadCategories]),
 		    {error, {bad_categories, BadCategories}}
-	    end
+	    end;
+	_Error ->
+	    {error, no_categories}
     end.
 	    
 
