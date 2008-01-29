@@ -162,12 +162,13 @@ handle_control(RelDirPath) ->
 	true ->
 	    ok;
 	{error, Reason} when element(1, Reason) == bad_categories; Reason == no_categories ->
+	    ?ERROR_MSG("Bad control file. Validation failed with ~p~n", [Reason]),
 	    io:format("~nOne of more of the categories in the control file are invalid please re-enter them.~n"),
 	    {ok, [{control, PackageName, ControlList}]} = file:consult(ControlFilePath),
 	    ControlTerm = {control, PackageName, lists:keyreplace(categories, 1, ControlList, {categories, enter_categories()})},
 	    write_out(ControlFilePath, ControlTerm);
 	{error, Reason} ->
-	    ?INFO_MSG("Bad control file. Validation failed with ~p~n", [Reason]),
+	    ?ERROR_MSG("Bad control file. Validation failed with ~p~n", [Reason]),
 	    io:format("~nIt appears the package does not contain a valid control file. Lets create a basic one.~n"),
 	    {ok, {PackageName, _PackageVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(RelDirPath),
 	    ControlTerm                      = collect_control_info(PackageName),

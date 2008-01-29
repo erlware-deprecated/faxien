@@ -179,8 +179,9 @@ is_valid_control_file(ControlFilePath) ->
 	    {error, {missing_control_keys, {need, ?MANDITORY_CONTROL_KEYS}, {found, Keys}}}
     end.
 
-has_bad_control_categories(ControlValues) ->
-    case fs_lists:get_val(categories, ControlValues, []) of
+has_bad_control_categories(ControlFilePath) ->
+    {ok, [{control, _PackageName, ControlList}]} = file:consult(ControlFilePath),
+    case fs_lists:get_val(categories, ControlList, []) of
 	[] -> 
 	    {error, no_categories};
 	Categories ->
@@ -188,7 +189,7 @@ has_bad_control_categories(ControlValues) ->
 		[] -> 
 		    true;
 		BadCategories -> 
-		    ?INFO_MSG("bad control categories ~p~n", [BadCategories]),
+		    ?ERROR_MSG("bad control categories ~p~n", [BadCategories]),
 		    {error, {bad_categories, BadCategories}}
 	    end
     end.
