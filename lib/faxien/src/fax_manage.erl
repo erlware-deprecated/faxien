@@ -485,11 +485,69 @@ format_app_terms(Terms) ->
 format_app_term({_Key, []}) ->
     "";
 format_app_term({Key, Val}) ->
-    lists:concat([Key, ":\n    ", format_app_val(Key, Val), "\n"]).
+    lists:concat([Key, ":\n", format_app_val(Key, Val), "\n"]).
 
+format_app_val(applications, Val) ->
+    format_atom_list(Val);
 format_app_val(description, Val) ->
-    Val;
+    format_app_string(Val);
+format_app_val(modules, Val) ->
+    format_atom_list(Val);
+format_app_val(registered, Val) ->
+    format_atom_list(Val);
 format_app_val(vsn, Val) ->
-    Val;
+    format_app_string(Val);
 format_app_val(_Key, Val) ->
-    io_lib:format("~p", [Val]).
+    io_lib:format("    ~p", [Val]).
+
+
+format_app_string(Str) ->
+    string:concat("    ", Str).
+
+format_atom_list(Atoms) ->
+    Words = join([erlang:atom_to_list(A) || A <- Atoms], ","),
+    wrap(Words, 60, "    ").
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Join list terms together with a separator.
+%% @spec join(Items:list(), Sep) -> list()
+%% @end
+%%--------------------------------------------------------------------
+join(Items, Sep) ->
+    lists:reverse(join(Items, Sep, [])).
+
+join([], _Sep, Acc) ->
+    Acc;
+join([Head | []], _Sep, Acc) ->
+    [Head | Acc];
+join([Head | Tail], Sep, Acc) ->
+    join(Tail, Sep, [Sep, Head | Acc]).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Text wrap a list of words with the given column width and leading
+%% indentation string.
+%% @spec wrap(Words:list(), Width:integer(), Indent:string()) -> string()
+%% @end
+%%--------------------------------------------------------------------
+wrap(Words, Width, Indent) ->
+    RRLines = wrap(Words, Width, Indent, [[]]), % reversed, reversed line list
+    RLines = lists:map(fun lists:reverse/1, RRLines), % reversed line list
+    Lines = lists:reverse(RLines),
+    lists:flatten(join(Lines, "\n")).
+
+wrap([], _Width, _Indent, Acc) ->
+    Acc;
+wrap([Word | Words], Width, Indent, [[] | Lines]) ->
+    wrap(Words, Width, Indent, [[Word, Indent] | Lines]);
+wrap(["," | Words], Width, Indent, [Line | Lines]) ->
+    wrap(Words, Width, Indent, [["," | Line] | Lines]);
+wrap([Word | Words], Width, Indent, [Line | Lines]) ->
+  case lists:flatlength(Line) + length(Word) + 1 < Width of
+      true -> wrap(Words, Width, Indent, [[Word, " " | Line] | Lines]);
+      false -> wrap([Word | Words], Width, Indent, [[], Line | Lines])
+  end.
