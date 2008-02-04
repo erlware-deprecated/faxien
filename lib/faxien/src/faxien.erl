@@ -188,7 +188,7 @@ upgrade_all_apps(Repo) when is_atom(Repo) ->
     upgrade_all_apps([atom_to_list(Repo)]);
 upgrade_all_apps(Repos) ->
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
-    fax_manage:upgrade_all_appslications(Repos, TargetErtsVsn, false, ?REQUEST_TIMEOUT).
+    fax_manage:upgrade_applications(Repos, TargetErtsVsn, false, ?REQUEST_TIMEOUT).
 
 upgrade_all_apps() -> 
     {ok, Repos} = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),

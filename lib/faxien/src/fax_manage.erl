@@ -508,7 +508,6 @@ format_atom_list(Atoms) ->
     Words = join([erlang:atom_to_list(A) || A <- Atoms], ","),
     wrap(Words, 60, "    ").
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Join list terms together with a separator.
@@ -524,7 +523,6 @@ join([Head | []], _Sep, Acc) ->
     [Head | Acc];
 join([Head | Tail], Sep, Acc) ->
     join(Tail, Sep, [Sep, Head | Acc]).
-
 
 %%--------------------------------------------------------------------
 %% @private
