@@ -123,7 +123,9 @@ publish2(release, Repos, RelDirPath, Timeout) ->
     RelFilePath             = epkg_package_paths:release_package_rel_file_path(RelDirPath, RelName, RelVsn),
     ErtsVsn                 = epkg_util:consult_rel_file(erts_vsn, RelFilePath),
     ok                      = handle_control(RelDirPath),
-    fax_put:put_release_package(Repos, ErtsVsn, RelName, RelVsn, pack(handle_lib_in_release(RelDirPath)), Timeout).
+    FilesToBeIgnored        = ["erts-" ++ ErtsVsn, "lib", "install.sh"],
+    fax_put:put_release_package(Repos, ErtsVsn, RelName, RelVsn, 
+				pack(ignore_files_in_release(RelDirPath, FilesToBeIgnored)), Timeout).
 	
     
 %%--------------------------------------------------------------------
@@ -249,16 +251,18 @@ collect_additional_control_info() ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc if a release contains a lib dir copy the release to a temp dir and get rid of lib.  Return a path to the new package dir.
-%%      If the release contains no lib dir just return the path to the unaltered release.
+%% @doc if a release contains one of the directories or files to be ignored then
+%%      dir copy the release to a temp dir and get rid the files.  Return a path to the new package dir.
+%%      If the release contains no files to be ignored just return the path to the unaltered release.
 %% @end
 %%--------------------------------------------------------------------
-handle_lib_in_release(RelDirPath) ->
-    case filelib:is_dir(RelDirPath ++ "/lib") of
+ignore_files_in_release(RelDirPath, FilesToBeIgnored) ->
+    Res = lists:any(fun(File) ->  filelib:is_file(ewl_file:join_paths(RelDirPath, File)) end, FilesToBeIgnored),
+    case Res of
 	true ->
-	    ?INFO_MSG("ignoring the lib dir when publishing of ~p~n", [RelDirPath]),
+	    ?INFO_MSG("ignoring ~p dir when publishing of ~p~n", [FilesToBeIgnored, RelDirPath]),
 	    TmpRelDirPath = fax_util:copy_dir_to_tmp_dir(RelDirPath),
-	    ok = ewl_file:delete_dir(TmpRelDirPath ++ "/lib"),
+	    ok = lists:foreach(fun(File) -> ewl_file:delete_dir(ewl_file:join_paths(TmpRelDirPath, File)) end, FilesToBeIgnored),
 	    TmpRelDirPath;
 	false ->
 	    RelDirPath
