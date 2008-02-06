@@ -579,6 +579,8 @@ commands_help() ->
 %% @end
 %%--------------------------------------------------------------------
 help(Command) when is_atom(Command) ->
+    help_for_command(atom_to_list(Command));
+help(Command) when is_list(Command) ->
     help_for_command(Command).
 
 %%--------------------------------------------------------------------
@@ -942,12 +944,12 @@ show_publish_repos_help() ->
 %% Internal functions
 %%====================================================================
 
-help_for_command(Command) ->
-    StrCommand = atom_to_list(Command),
-    Func       = list_to_atom(StrCommand ++ "_help"),
+help_for_command(RawCommand) ->
+    {ok, Command, _} = regexp:gsub(RawCommand, "-", "_"),
+    Func             = list_to_atom(Command ++ "_help"),
     case catch ?MODULE:Func() of
 	{'EXIT', _Reason} ->
-	    io:format("That command does not have detailed help associated with it~n");
+	    io:format("The command ~s does not have detailed help associated with it~n", [Command]);
 	HelpList -> 
 	    print_help_list(HelpList) 
     end.
