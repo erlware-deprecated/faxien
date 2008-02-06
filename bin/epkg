@@ -4,7 +4,7 @@ PREFIX=$(cd $(dirname $(dirname $0)); pwd)
 
 #### Fill in values for these variables ####
 REL_NAME=faxien
-REL_VSN=0.28.0.3
+REL_VSN=0.28.0.4
 ERTS_VSN=5.5.5
 INVOCATION_SUFFIX="-s epkg_cmdln epkg_apply epkg $@ -s init stop -noshell -prefix $PREFIX"
 ###########################################
