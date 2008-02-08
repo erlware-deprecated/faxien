@@ -333,7 +333,7 @@ build_if_build_file(InstalledPackagePath) ->
 %%--------------------------------------------------------------------
 create_executable_script(InstallationPath, RelName, RelVsn, ErtsVsn) ->
     create_executable_script_use_cmdr(InstallationPath, RelName, RelVsn, ErtsVsn),
-    create_executable_script_use_bin(InstallationPath, RelName, RelVsn).
+    create_executable_script_use_bin(InstallationPath, RelName, RelVsn, ErtsVsn).
     
 create_executable_script_use_cmdr(InstallationPath, RelName, RelVsn, ErtsVsn) ->
     CmdsDirPath = epkg_installed_paths:installed_release_cmds_dir_path(InstallationPath, RelName, RelVsn),
@@ -357,16 +357,28 @@ create_executable_script_use_cmdr(InstallationPath, RelName, RelVsn, ErtsVsn) ->
 			  end
 		  end, LauncherTemplateFiles). 
 
-create_executable_script_use_bin(InstallationPath, RelName, RelVsn) ->
+create_executable_script_use_bin(InstallationPath, RelName, RelVsn, ErtsVsn) ->
     BinDirPath   = epkg_installed_paths:installed_release_bin_dir_path(InstallationPath, RelName, RelVsn),
     BinFilePaths = filelib:wildcard(BinDirPath ++ "/*"),
     ?INFO_MSG("bindir path ~p~nbin file paths ~p~n", [BinDirPath, BinFilePaths]),
     lists:foreach(fun(BinFilePath) -> 
-			  ExecutableContainerPath = epkg_installed_paths:executable_container_path(InstallationPath),
-			  InstalledBinFilePath    = ewl_file:join_paths(ExecutableContainerPath, filename:basename(BinFilePath)),
-			  ok                      = remove_existing_executable_script(InstalledBinFilePath), 
+			  BinFileName                      = filename:basename(BinFilePath),
+			  ExecutableContainerPath          = epkg_installed_paths:executable_container_path(InstallationPath),
+			  ExecutableContainerPlusErtsPath  = ewl_file:join_paths(ExecutableContainerPath, ErtsVsn),
+			  InstalledBinFilePath             = ewl_file:join_paths(ExecutableContainerPath, BinFileName),
+			  InstalledBinPlusErtsFilePath     = ewl_file:join_paths(ExecutableContainerPlusErtsPath, BinFileName),
+
+			  ok = remove_existing_executable_script(InstalledBinFilePath), 
+			  ok = remove_existing_executable_script(InstalledBinPlusErtsFilePath), 
+
 			  file:copy(BinFilePath, InstalledBinFilePath),
-			  epkg_util:set_executable_perms(InstalledBinFilePath)
+			  ewl_file:gsub_file(InstalledBinFilePath, "%BACKUP%", ".."),
+			  epkg_util:set_executable_perms(InstalledBinFilePath),
+
+			  ok = ewl_file:mkdir_p(ExecutableContainerPlusErtsPath),
+			  file:copy(BinFilePath, InstalledBinPlusErtsFilePath),
+			  ewl_file:gsub_file(InstalledBinPlusErtsFilePath, "%BACKUP%", "../.."),
+			  epkg_util:set_executable_perms(InstalledBinPlusErtsFilePath)
 		  end, BinFilePaths). 
 
 %%--------------------------------------------------------------------
