@@ -30,7 +30,7 @@
 		     {"install",  "install-release"},
 		     {"i",        "install-release"},
 		     {"p",        "publish"},
-		     {"outdated", "outdated-release"},
+		     {"outdated", "outdated-releases"},
 		     {"remove",   "remove-release"}
 		    ]).
 
