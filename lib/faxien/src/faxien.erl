@@ -30,9 +30,9 @@
 	 install_app/3,
 	 install_app/2,
 	 install_app/1,
-	 install/3,
-	 install/2,
-	 install/1
+	 install_release/3,
+	 install_release/2,
+	 install_release/1
 	]).
 
 -export([
@@ -41,6 +41,8 @@
 	 search/1,
 	 search/0,
 
+	 describe_release/2,
+	 describe_release/1,
 	 describe_app/2,
 	 describe_app/1,
 
@@ -64,8 +66,8 @@
 	 help/1,
 	 version/0,
 
-	 remove/1, 
-	 remove/2,
+	 remove_release/1, 
+	 remove_release/2,
 
 	 remove_app/1, 
 	 remove_app/2
@@ -80,8 +82,8 @@
 -export([
 	 outdated_apps/1,
 	 outdated_apps/0,
-	 outdated/1,
-	 outdated/0,
+	 outdated_releases/1,
+	 outdated_releases/0,
 	 upgrade_all/1,
 	 upgrade_all/0,
 	 upgrade/2,
@@ -93,7 +95,7 @@
 	]).
 
 -export([
-	 outdated_help/0,
+	 outdated_release_help/0,
 	 outdated_apps_help/0,
 	 examples_help/0,
 	 commands_help/0,
@@ -111,13 +113,14 @@
 	 upgrade_all_apps_help/0,
 	 upgrade_help/0,
 	 upgrade_all_help/0,
-	 install_help/0,
+	 install_release_help/0,
 	 install_app_help/0,
 	 publish_help/0,
 	 search_help/0,
 	 installed_help/0,
+	 describe_release_help/0,
 	 describe_app_help/0,
-	 remove_help/0,
+	 remove_release_help/0,
 	 remove_app_help/0
 	]).
 
@@ -202,30 +205,30 @@ upgrade_all_apps_help() ->
 
 %%--------------------------------------------------------------------
 %% @doc Display all currently installed releases that have available updates.
-%% @spec outdated(Repos)-> {ok, OutdatedReleases}
+%% @spec outdated_releases(Repos)-> {ok, OutdatedReleases}
 %%  where
 %%   Repos = [repo] | repo()
 %% @end
 %%--------------------------------------------------------------------
-outdated(Repo) when is_atom(Repo) ->
-    outdated([atom_to_list(Repo)]);
-outdated(Repos) ->
+outdated_releases(Repo) when is_atom(Repo) ->
+    outdated_releases([atom_to_list(Repo)]);
+outdated_releases(Repos) ->
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     lists:foreach(fun({Name, CurrentVsn, UpgradeVsn}) ->
 			  io:format("The ~s release has an available upgrade from ~s to ~s~n", [Name, CurrentVsn, UpgradeVsn])
 		  end, 
 		  fax_manage:outdated_releases(Repos, TargetErtsVsn, ?REQUEST_TIMEOUT)).
 
-%% @spec outdated()-> {ok, OutdatedReleases}
-%% @equiv outdated(Repos)
-outdated() -> 
+%% @spec outdated_releases()-> {ok, OutdatedReleases}
+%% @equiv outdated_releases(Repos)
+outdated_releases() -> 
     {ok, Repos} = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
-    outdated(Repos).
+    outdated_releases(Repos).
 
 %% @private
-outdated_help() ->
-    ["\nHelp for outdated\n",
-     "outdated: will display all releases that have available updates"]. 
+outdated_release_help() ->
+    ["\nHelp for outdated-releases\n",
+     "outdated-releases: will display all releases that have available updates"]. 
 
 %%--------------------------------------------------------------------
 %% @doc Display all currently installed applications that have available updates.
@@ -331,10 +334,10 @@ upgrade_all_help() ->
 %%     ReleaseVsn = 'LATEST' | string() | atom()
 %% @end
 %%--------------------------------------------------------------------
-install(Repos, ReleaseName, ReleaseVsn) when is_atom(Repos)  -> 
-    install([atom_to_list(Repos)], ReleaseName, ReleaseVsn);
-install(Repos, ReleaseName, ReleaseVsn)  -> 
-    ?INFO_MSG("faxien:install(~p, ~p, ~p)~n", [Repos, ReleaseName, ReleaseVsn]),
+install_release(Repos, ReleaseName, ReleaseVsn) when is_atom(Repos)  -> 
+    install_release([atom_to_list(Repos)], ReleaseName, ReleaseVsn);
+install_release(Repos, ReleaseName, ReleaseVsn)  -> 
+    ?INFO_MSG("faxien:install_release(~p, ~p, ~p)~n", [Repos, ReleaseName, ReleaseVsn]),
     % Any atoms must be turned to strings.  Atoms are accepted because it makes
     % the invocation from the command line cleaner. 
     [A,B]                  = epkg_util:if_atom_or_integer_to_string([ReleaseName, ReleaseVsn]),
@@ -342,11 +345,11 @@ install(Repos, ReleaseName, ReleaseVsn)  ->
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     fax_install:install_remote_release(Repos, TargetErtsVsn, A, B, IsLocalBoot, false, ?REQUEST_TIMEOUT).
 
-%% @spec install(ReleaseName, ReleaseVsn) -> ok | {error, Reason}
-%% @equiv install(ERLWARE, ReleaseName, ReleaseVsn)
-install(ReleaseName, ReleaseVsn) -> 
+%% @spec install_release(ReleaseName, ReleaseVsn) -> ok | {error, Reason}
+%% @equiv install_release(ERLWARE, ReleaseName, ReleaseVsn)
+install_release(ReleaseName, ReleaseVsn) -> 
     {ok, Repos} = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
-    install(Repos, ReleaseName, ReleaseVsn).
+    install_release(Repos, ReleaseName, ReleaseVsn).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -354,14 +357,14 @@ install(ReleaseName, ReleaseVsn) ->
 %%  first be pulled down from a remote repo and pulled down.  If the package is local then it will be installed into the 
 %%  configured location.  If the package is remote than the latest version of that package will be pulled down and installed. 
 %%
-%% @spec install(ReleaseNameOrPath) -> ok | {error, Reason}
+%% @spec install_release(ReleaseNameOrPath) -> ok | {error, Reason}
 %%  where
 %%   ReleaseNameOrPath = atom() | string()
 %% @end
 %%--------------------------------------------------------------------
-install(ReleaseNameOrPath) when is_atom(ReleaseNameOrPath) -> 
-    install(atom_to_list(ReleaseNameOrPath));
-install(ReleaseNameOrPath) -> 
+install_release(ReleaseNameOrPath) when is_atom(ReleaseNameOrPath) -> 
+    install_release(atom_to_list(ReleaseNameOrPath));
+install_release(ReleaseNameOrPath) -> 
     {ok, Repos}         = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
     {ok, IsLocalBoot}   = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
@@ -369,9 +372,9 @@ install(ReleaseNameOrPath) ->
 	
     
 %% @private
-install_help() ->
-    ["\nHelp for install\n",
-     "Usage: install <release name|release tarball> [release version]: will install a release remotely or from a local package depending on its argument\n"]. 
+install_release_help() ->
+    ["\nHelp for install_release\n",
+     "Usage: install_release <release name|release tarball> [release version]: will install a release remotely or from a local package depending on its argument\n"]. 
 
 
 %%--------------------------------------------------------------------
@@ -512,7 +515,7 @@ help() ->
        "faxien help <command>: Gives help on an individual command",
        "faxien help examples: Lists example usages of faxien",
        "\nShort Examples:",
-       "faxien install sinan",
+       "faxien install-release sinan",
        "faxien search yaws",
        "faxien help search"
       ]).  
@@ -526,11 +529,11 @@ examples_help() ->
      "\nInstall the tools application from the local filesystem",
      "  faxien install-app /usr/local/erlang/lib/tools-2.5.4",
      "\nInstall sinan from a remote repository",
-     "  faxien install sinan",
-     "\nInstall sinan version 0.8.8 from a remote repository",
-     "  faxien install sinan 0.8.8",
+     "  faxien install-release sinan",
+     "\nInstall sinan-release version 0.8.8 from a remote repository",
+     "  faxien install-release sinan 0.8.8",
      "\nInstall a new version of faxien from a release tarball",
-     "  faxien install faxien-0.19.3.epkg",
+     "  faxien install-release faxien-0.19.3.epkg",
      "\nSearch for an appliction or release with the word \"cloth\" in it",
      "  faxien search cloth",
      "  or",
@@ -547,10 +550,10 @@ commands_help() ->
      "search                  search for remote packages",
      "installed               list the packages installed on the local system",
      "describe-app            print more information about a specific application package",
-     "install                 install a release package",
+     "install-release         install a release package",
      "install-app             install an application package",
      "publish                 publish a package to remote repositories",
-     "remove                  uninstall a release package",
+     "remove-release          uninstall a release package",
      "remove-app              uninstall an application package",
      "upgrade                 upgrade a release package installed on the local system",
      "upgrade-all             upgrade all the release packages installed on the local system",
@@ -691,32 +694,32 @@ remove_app_help() ->
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Remove an installed release.
-%% @spec remove(RelName, RelVsn) -> ok
+%% @spec remove_release(RelName, RelVsn) -> ok
 %%  where
 %%   RelName = string()
 %%   RelVsn = string() | atom() | integer()
 %% @end
 %%--------------------------------------------------------------------
-remove(RelName, RelVsn) ->
+remove_release(RelName, RelVsn) ->
     epkg:remove(RelName, RelVsn). 
 
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Remove all versions of an installed release.
-%% @spec remove(RelName) -> ok
+%% @spec remove_release(RelName) -> ok
 %%  where
 %%   RelName = string()
 %% @end
 %%--------------------------------------------------------------------
-remove(RelName) ->
+remove_release(RelName) ->
     epkg:remove_all(RelName). 
 
 %% @private
-remove_help() ->
-    ["\nHelp for remove\n",
-     "Usage: remove <release name> [release version]: remove all versions or a specific version of a particular release.\n",
-     "Example: remove sinan - removes all versions of the sinan release that are currently installed.",
-     "Example: remove sinan 0.8.8 - removes version 0.8.8 of the sinan release."].
+remove_release_help() ->
+    ["\nHelp for remove-release\n",
+     "Usage: remove-release <release name> [release version]: remove all versions or a specific version of a particular release.\n",
+     "Example: remove-release sinan - removes all versions of the sinan release that are currently installed.",
+     "Example: remove-release sinan 0.8.8 - removes version 0.8.8 of the sinan release."].
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -753,6 +756,42 @@ describe_app_help() ->
      "Usage: describe-app <application name> [app version]: Fetch the description for a particular application.\n",
      "Example: describe-app sinan - Bring back a description of the highest version available for Sinan.",
      "Example: describe-app sinan 0.8.8 - Bring back a description of version 0.8.8 of the Sinan application."].
+
+%%--------------------------------------------------------------------
+%% @doc 
+%%  Fetch the description for a particular release.
+%% @spec describe_release(RelName, RelVsn) -> ok
+%%  where
+%%   RelName = string() | atom()
+%%   RelVsn = string() | atom() | integer()
+%% @end
+%%--------------------------------------------------------------------
+describe_release(RelName, RelVsn) ->
+    [A, B]              = epkg_util:if_atom_or_integer_to_string([RelName, RelVsn]),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    {ok, Repos}         = gas:get_env(faxien, repos_to_fetch_from, []),
+    fax_manage:describe_release(Repos, TargetErtsVsn, A, B, ?REQUEST_TIMEOUT).
+
+%%--------------------------------------------------------------------
+%% @doc 
+%%  Fetch the description for the highest vesion available for a particular release.
+%% @spec describe_release(RelName) -> ok
+%%  where
+%%   RelName = string() | atom()
+%% @end
+%%--------------------------------------------------------------------
+describe_release(RelName) ->
+    [A]                 = epkg_util:if_atom_or_integer_to_string([RelName]),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    {ok, Repos}         = gas:get_env(faxien, repos_to_fetch_from, []),
+    fax_manage:describe_latest_release(Repos, TargetErtsVsn, A, ?REQUEST_TIMEOUT).
+
+%% @private
+describe_release_help() ->
+    ["\nHelp for describe-release\n",
+     "Usage: describe-release <release name> [release version]: Fetch the description for a particular release.\n",
+     "Example: describe-release sinan - Bring back a description of the highest version available for Sinan.",
+     "Example: describe-release sinan 0.8.8 - Bring back a description of version 0.8.8 of the Sinan release."].
 
 %%====================================================================
 %% Config Management External Functions
@@ -916,8 +955,6 @@ remove_publish_repo_help() ->
 %%   Repo = string() | atom()
 %% @end
 %%--------------------------------------------------------------------
-add_publish_repo(Repo) when is_atom(Repo)->
-    add_publish_repo(atom_to_list(Repo));
 add_publish_repo(Repo) ->
     fax_manage:add_repo_to_publish_to(Repo, epkg_installed_paths:installed_config_file_path()).
     
@@ -945,7 +982,7 @@ show_publish_repos_help() ->
 %%====================================================================
 
 help_for_command(RawCommand) ->
-    {ok, Command, _} = regexp:gsub(RawCommand, "-", "_"),
+    Command = fax_cmdln:sub_func(RawCommand, ?ALIAS_LIST),
     Func             = list_to_atom(Command ++ "_help"),
     case catch ?MODULE:Func() of
 	{'EXIT', _Reason} ->
