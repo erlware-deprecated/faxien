@@ -374,7 +374,7 @@ search(Repos, Side, SearchType, SearchString) ->
 print_list(_Side, []) ->
     ok;
 print_list(lib, List) ->
-    print_list2("Applications (install with: faxien install_app)", List);
+    print_list2("Applications (install with: faxien install-app)", List);
 print_list(releases, List) ->
     print_list2("Releases (install with: faxien install)", List).
 
