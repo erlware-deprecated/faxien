@@ -557,7 +557,7 @@ format_atom_list(Atoms) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Join list terms together with a separator.
-%% @spec join(Items:list(), Sep) -> list()
+%% @spec join(Items::list(), Sep) -> list()
 %% @end
 %%--------------------------------------------------------------------
 join(Items, Sep) ->
@@ -575,7 +575,7 @@ join([Head | Tail], Sep, Acc) ->
 %% @doc
 %% Text wrap a list of words with the given column width and leading
 %% indentation string.
-%% @spec wrap(Words:list(), Width:integer(), Indent:string()) -> string()
+%% @spec wrap(Words::list(), Width::integer(), Indent::string()) -> string()
 %% @end
 %%--------------------------------------------------------------------
 wrap(Words, Width, Indent) ->

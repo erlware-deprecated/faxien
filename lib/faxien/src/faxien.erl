@@ -327,7 +327,7 @@ upgrade_all_help() ->
 %%  Install a release and all its applications from a repository. This function will pull down the release tarball for the 
 %%  specified application unpack it, pull down all the applications specified by the included .rel file and finally build
 %%  a local .boot file used for startup.  
-%% @spec install(Repos, ReleaseName, ReleaseVsn) -> ok | {error, Reason}
+%% @spec install_release(Repos, ReleaseName, ReleaseVsn) -> ok | {error, Reason}
 %% where
 %%     Repos = [string()] | [atom()] | atom()
 %%     ReleaseName = string() | atom()
