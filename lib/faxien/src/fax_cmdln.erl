@@ -16,6 +16,7 @@
 %% External exports
 %%--------------------------------------------------------------------
 -export([
+	 sub_func/2,
 	 faxien_apply/1
         ]).
 
@@ -51,29 +52,43 @@
 faxien_apply([_Mod]) ->
     faxien:help();
 faxien_apply([Mod, RawFunc|Args]) ->
-    Func = sub_func(RawFunc),
+    Func = sub_func(RawFunc, ?ALIAS_LIST),
     ?INFO_MSG("mod:func ~p:~p with raw args from commandline: ~w~n", [Mod, Func, Args]),
     TokedArgs   = lists:map(fun(ArgAtom) -> convert_string_to_terms(atom_to_list(ArgAtom)) end, no_space(Args)),
     Result = apply_from_commandline(Mod, Func, TokedArgs),
     ?INFO_MSG("apply the following: apply(~w, ~w, ~p) -> ~p~n", [Mod, Func, TokedArgs, Result]),
     handle_apply_result(Result).
 
+%%--------------------------------------------------------------------
+%% @doc change any -'s into _'s and resolve any alias's in the function to be applied.
+%% @spec sub_func(Func, AliasList) -> ResolvedFunc
+%% where
+%%  Func = atom() | string()
+%%  AliasList = {string(), string()}
+%%  ResolvedFunc = atom() | string()
+%% @end
+%%--------------------------------------------------------------------
+sub_func(Func, AliasList) when is_atom(Func) ->
+    list_to_atom(sub_func(atom_to_list(Func), AliasList));
+sub_func(Func, AliasList) ->
+    case regexp:gsub(resolve_alias(Func, AliasList), "-", "_") of
+	{ok, NewFunc, _} ->
+	    resolve_alias(NewFunc, AliasList);
+	_ ->
+	    Func
+    end.
+
 %%====================================================================
 %% Internal functions
 %%====================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc change any -'s into _'s in the function to be applied. 
-%% @end
-%%--------------------------------------------------------------------
-sub_func(Func) ->
-    case regexp:gsub(atom_to_list(Func), "-", "_") of
-	{ok, NewFunc, _} ->
-	    list_to_atom(NewFunc);
-	_ ->
-	    Func
-    end.
+
+resolve_alias(AliasFunc, [{AliasFunc, Func}|_]) ->
+    Func;
+resolve_alias(AliasFunc, [_|T]) ->
+    resolve_alias(AliasFunc, T);
+resolve_alias(Func, []) ->
+    Func.
 
 %%--------------------------------------------------------------------
 %% @private
