@@ -12,7 +12,9 @@
 	 put_binary_app_package/6,
 	 put_generic_app_package/6,
 	 put_release_package/6,
-	 put_dot_app_file/6
+	 put_dot_app_file/6,
+	 put_release_control_file/6,
+	 put_dot_rel_file/6
 	]).
 
 %%====================================================================
@@ -65,6 +67,28 @@ put_release_package(Repos, ErtsVsn, RelName, RelVsn, Payload, Timeout) when is_b
     Suffix = ewr_repo_paths:package_suffix(ErtsVsn, "Generic", "releases", RelName, RelVsn),
     repos_put(Repos, Suffix, Payload, Timeout).
     
+%%--------------------------------------------------------------------
+%% @doc put a control onto a remote repository.
+%% @spec put_release_control_file(Repos, ErtsVsn, RelName, RelVsn, Payload, Timeout) -> {ok, Urls} | {error, Reason}
+%% where
+%%  Timeout = Milliseonds::integer()
+%% @end 
+%%--------------------------------------------------------------------
+put_release_control_file(Repos, ErtsVsn, RelName, RelVsn, Payload, Timeout) when is_binary(Payload) -> 
+    Suffix = ewr_repo_paths:release_control_file_suffix(ErtsVsn, RelName, RelVsn),
+    repos_put(Repos, Suffix, Payload, Timeout).
+
+%%--------------------------------------------------------------------
+%% @doc put a .rel onto a remote repository.
+%% @spec put_dot_rel_file(Repos, ErtsVsn, RelName, RelVsn, Payload, Timeout) -> {ok, Urls} | {error, Reason}
+%% where
+%%  Timeout = Milliseonds::integer()
+%% @end 
+%%--------------------------------------------------------------------
+put_dot_rel_file(Repos, ErtsVsn, RelName, RelVsn, Payload, Timeout) when is_binary(Payload) -> 
+    Suffix = ewr_repo_paths:dot_rel_file_suffix(ErtsVsn, RelName, RelVsn),
+    repos_put(Repos, Suffix, Payload, Timeout).
+
 %%--------------------------------------------------------------------
 %% @doc put a .app onto a remote repository.
 %% @spec put_dot_app_file(Repos, ErtsVsn, AppName, AppVsn, Payload, Timeout) -> {ok, Urls} | {error, Reason}

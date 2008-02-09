@@ -123,6 +123,10 @@ publish2(release, Repos, RelDirPath, Timeout) ->
     RelFilePath             = epkg_package_paths:release_package_rel_file_path(RelDirPath, RelName, RelVsn),
     ErtsVsn                 = epkg_util:consult_rel_file(erts_vsn, RelFilePath),
     ok                      = handle_control(RelDirPath),
+    {ok, ControlFileBinary} = file:read_file(epkg_package_paths:release_package_control_file_path(RelDirPath)),
+    {ok, RelFileBinary}     = file:read_file(RelFilePath),
+    fax_put:put_release_control_file(Repos, ErtsVsn, RelName, RelVsn, ControlFileBinary, Timeout),
+    fax_put:put_dot_rel_file(Repos, ErtsVsn, RelName, RelVsn, RelFileBinary, Timeout),
     FilesToBeIgnored        = ["erts-" ++ ErtsVsn, "lib", "install.sh"],
     fax_put:put_release_package(Repos, ErtsVsn, RelName, RelVsn, 
 				pack(ignore_files_in_release(RelDirPath, FilesToBeIgnored)), Timeout).
