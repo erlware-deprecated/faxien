@@ -25,3 +25,14 @@
 				   {"4.4.5", "5.5.5"}
 				  ]).
 
+%% Must be a list of tuples of strings. Commands can use either the _ or the - separator notation.
+-define(ALIAS_LIST, [
+		     {"install",  "install-release"},
+		     {"i",        "install-release"},
+		     {"p",        "publish"},
+		     {"outdated", "outdated-release"},
+		     {"remove",   "remove-release"}
+		    ]).
+
+		   
+		     
