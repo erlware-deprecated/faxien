@@ -1,6 +1,6 @@
 {application, epkg,
  [{description, "Manages local erlang/OTP packages. Faxien depends on this for local operations."},
-  {vsn, "0.3.1.0"},
+  {vsn, "0.3.2.0"},
   {modules, [
 	epkg,
 	epkg_cmdln,
