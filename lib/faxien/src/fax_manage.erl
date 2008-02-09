@@ -40,6 +40,8 @@
 	 set_request_timeout/2,
 	 set_target_erts_vsn/2,
 	 search/4,
+	 describe_release/5,
+	 describe_latest_release/4,
 	 describe_app/5,
 	 describe_latest_app/4
 	]).
@@ -56,6 +58,50 @@
 %% External functions
 %%====================================================================
 
+%%--------------------------------------------------------------------
+%% @doc 
+%%  Fetch the description for the latest version of a particular release from a remote repository.
+%% @spec describe_latest_release(Repos, TargetErtsVsn, RelName, Timeout) -> ok | {error, Reason} | exit()
+%%  where
+%%   Repos = list()
+%%   TargetErtsVsn = string()
+%%   RelName = string()
+%%   Timeout = Milliseconds::integer() | infinity
+%% @end
+%%--------------------------------------------------------------------
+describe_latest_release(Repos, TargetErtsVsn, RelName, Timeout) ->
+    Fun = fun(ManagedRepos, RelVsn) ->
+		  describe_release(ManagedRepos, TargetErtsVsn, RelName, RelVsn, Timeout)
+	  end,
+    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, RelName, Fun, lib). 
+
+%%--------------------------------------------------------------------
+%% @doc 
+%%  Fetch the description for a particular release from a remote repository.
+%% @spec describe_release(Repos, TargetErtsVsn, RelName, RelVsn, Timeout) -> ok | {error, Reason} | exit()
+%%  where
+%%   Repos = list()
+%%   TargetErtsVsn = string()
+%%   RelName = string()
+%%   RelVsn = string()
+%%   Timeout = Milliseconds::integer() | infinity
+%% @end
+%%--------------------------------------------------------------------
+describe_release(Repos, TargetErtsVsn, RelName, RelVsn, Timeout) ->
+    Fun = fun(ErtsVsn) -> 
+		  ControlSuffix = ewr_repo_paths:release_control_file_suffix(ErtsVsn, RelName, RelVsn),
+		  fs_lists:do_until(
+		    fun(Repo) ->
+			    case ewr_util:repo_consult(Repo, ControlSuffix, Timeout) of
+				{ok, {control, RelName, Terms}} -> 
+				    io:format("~nDescribing Release: ~s ~s~n~n~p~n", [RelName, RelVsn, Terms]);
+				Error ->
+				    ?ERROR_MSG("consulting ~s with suffix ~s returns ~p~n", [Repo, ControlSuffix, Error]),
+				    Error
+			    end
+		    end, ok, Repos)
+	  end,
+    ok = fax_util:foreach_erts_vsn(TargetErtsVsn, Fun).
 
 %%--------------------------------------------------------------------
 %% @doc 

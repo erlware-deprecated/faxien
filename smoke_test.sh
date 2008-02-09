@@ -25,9 +25,6 @@ faxien outdated
 echo "upgrade all installed releases"
 faxien upgrade_all
 
-echo "install the local application package typer from the installed erlang sources"
-faxien install_app /usr/local/lib/erlang/lib/typer-0.1.0.1/
-
 echo "add and remove publish repos"
 faxien add_publish_repo http://test_publish_repo.com
 faxien show_publish_repos
