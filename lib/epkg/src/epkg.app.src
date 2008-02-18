@@ -1,11 +1,11 @@
 %%% -*- mode:erlang -*-
-{application, 'epkg',
+{application, '%APP_NAME%',
  [
   % A quick description of the application.
   {description, "Manages local erlang/OTP packages. Faxien depends on this for local operations."},
 
   % The version of the applicaton
-  {vsn, "0.3.2.1"},
+  {vsn, "%VSN%"},
 
   % All modules used by the application.
   {modules,

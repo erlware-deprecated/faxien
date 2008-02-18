@@ -1,0 +1,21 @@
+%%% -*- mode:erlang -*-
+{release, 
+ {"faxien", "%REL_VSN%"},
+ erts,
+ [
+   stdlib,
+   kernel,
+   xmerl,
+   eunit,
+   ewrepo,
+   ewlib,
+   gas,
+   fslib,
+   epkg,
+   ibrowse,
+   sasl,
+   faxien
+ ]
+}. 
+
+

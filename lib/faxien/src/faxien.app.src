@@ -1,11 +1,11 @@
 %%% -*- mode:erlang -*-
-{application, 'faxien',
+{application, '%APP_NAME%',
  [
   % A quick description of the application.
   {description, "The erlang package management tool."},
 
   % The version of the applicaton
-  {vsn, "0.28.4.2"},
+  {vsn, "%VSN%"},
 
   % All modules used by the application. 
   {modules,

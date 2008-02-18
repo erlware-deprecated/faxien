@@ -1,0 +1,14 @@
+%%% -*- mode:erlang -*-
+{release, 
+ {"%%REL_NAME%%", "%REL_VSN%"},
+ erts,
+ [
+  kernel,
+  stdlib,
+  sasl,
+  eunit,
+  fslib,
+  gas
+ ]
+}. 
+

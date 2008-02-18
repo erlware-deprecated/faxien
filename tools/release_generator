@@ -1,0 +1,49 @@
+#!/bin/sh
+
+cd $(dirname $0)
+
+
+if [ "$#" != "1" ];then
+	echo ""
+	echo "usage: $0 <release-name>"
+	echo ""
+	echo ""
+	echo "example: $0 chat_server"
+	echo ""
+	exit 1
+fi
+
+if [ -e ../release/$1 ];then
+	echo "a release with name $1 already exists would you like to delete it [y|N] $> \c"
+	read DEL
+	if [ "$DEL" != "y" ];then
+		echo "aborting release creation"
+		exit 1
+	fi
+	echo "deleting $1"
+	rm -rf ../release/$1
+fi
+
+REL_NAME=$1
+REL_NAME_UPPER_CASE=$(echo $REL_NAME | tr a-z A-Z)
+
+cd .appgen
+echo `pwd`
+
+rm -rf $REL_NAME
+cp -r blank_app_rel $REL_NAME
+
+cd $REL_NAME
+ls blank_app* | ../rename.sh blank_app $REL_NAME
+cd ..
+
+# The base directory of the release
+./substitute.sh %%REL_NAME%% $REL_NAME $REL_NAME/$REL_NAME.rel.src
+./substitute.sh %%REL_NAME%% $REL_NAME $REL_NAME/$REL_NAME.src
+
+
+mv $REL_NAME ../../release
+
+echo ""
+echo "$REL_NAME has been generated and placed under release/$REL_NAME"
+echo ""
