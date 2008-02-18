@@ -93,10 +93,11 @@ $(LOCAL_DIR)/$(RELS).config: $(RELS).config.src
 	    -e "s;%HOSTNAME%;`hostname --long`;" \
              $< > $@
 
-# Create the config file for local mode.
+# Create the release file for local mode.
 vsnit: $(RELS).rel.src 
 	sed -e 's;%REL_VSN%;$(REL_VSN);' \
 	    -e 's;%REL_NAME%;$(RELS);' \
+	    -e 's;%ERTS_VSN%;$(TARGET_ERTS_VSN);' \
 	       $< > $<.tmp
 
 # Create and position script and boot files for local mode.

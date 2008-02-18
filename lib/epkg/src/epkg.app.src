@@ -10,6 +10,7 @@
   % All modules used by the application.
   {modules,
    [
+    %MODULES%
    ]},
 
   % A list of the registered processes in your application.  Used to prevent collisions. 

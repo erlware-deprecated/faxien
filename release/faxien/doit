@@ -1,7 +1,0 @@
-cd ~/work/erlware-projects/vfs_otp/
-(sleep 1; echo "no") | sinan
-(sleep 1; echo "no") | sinan
-faxien install-app _build/development/apps/fslib-5.3.0/
-cd /Users/martinjlogan/work/erlware-projects/faxien/release/faxien
-make clean; make package
-

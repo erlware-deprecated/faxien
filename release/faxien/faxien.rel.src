@@ -1,7 +1,7 @@
 %%% -*- mode:erlang -*-
 {release, 
  {"faxien", "%REL_VSN%"},
- erts,
+ {erts, "%ERTS_VSN%"},
  [
    stdlib,
    kernel,

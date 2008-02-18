@@ -32,7 +32,7 @@
   [
 	{repos_to_fetch_from, ["http://repo.erlware.org/pub", "http://repo.martinjlogan.com/pub"]},
 	{repos_to_publish_to, ["http://repo.erlware.org/writable", "http://repo.martinjlogan.com/writable"]},
-	{request_timeout, 35000},
+	{request_timeout, 120000},
 	{is_local_boot, false}
   ]
  }
