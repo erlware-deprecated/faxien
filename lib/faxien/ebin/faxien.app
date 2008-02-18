@@ -1,15 +1,27 @@
-{application, faxien,
- [{description, "The erlang package management tool."},
-  {vsn, "0.28.3.1"},
-  {modules, [
-	faxien,
-	fax_publish,
-	fax_put,
-	fax_install,
-	fax_manage,
-	fax_cmdln,
-	fax_util
-             ]},
+%%% -*- mode:erlang -*-
+{application, 'faxien',
+ [
+  % A quick description of the application.
+  {description, "The erlang package management tool."},
+
+  % The version of the applicaton
+  {vsn, "0.28.4.2"},
+
+  % All modules used by the application. 
+  {modules,
+   [
+   ]},
+  
+  % A list of the registered processes in your application.  Used to prevent collisions. 
   {registered, []},
-  {versioned_dependencies, [{ibrowse, "1.2.4.1", gte}]},
-  {applications, [eunit, kernel, stdlib, xmerl, ibrowse, epkg, ewrepo, ewlib, fslib, gas]}]}.
+
+  % This is a list of the applications that your application depends on. This list must be filled out
+  % carefully so that dependency resolution systems can function properly.
+  {applications, [eunit, kernel, stdlib, xmerl, ibrowse, epkg, ewrepo, ewlib, fslib, gas]},
+
+  % configuration parameters similar to those in the config file specified
+  % on the command line. can be fetched with gas:get_env
+  {env, []}
+ ]
+}.
+

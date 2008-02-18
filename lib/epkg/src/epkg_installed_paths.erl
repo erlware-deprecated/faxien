@@ -308,7 +308,7 @@ installed_config_file_path() ->
 config_file_path(InstallationPath) ->
     %% @todo this is not compatible with composable apps - this must run with faxien.  Fix this.
     {ok, Version} = faxien:version(),
-    lists:flatten([installed_release_file_dir(InstallationPath, "faxien", Version), "sys.config"]).
+    lists:flatten([installed_release_file_dir(InstallationPath, "faxien", Version), "faxien.config"]).
 
 
 installed_release_file_dir(InstallationPath, RelName, RelVsn) ->
