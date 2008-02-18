@@ -14,7 +14,7 @@ faxien installed #| head -n 5
 echo "describe the sinan application at its latest version"
 faxien describe_app sinan #| head -n 5
 
-faxien remove sinan
+(sleep 1; echo "yes") | faxien remove sinan
 faxien install sinan 0.8.6
 
 faxien outdated_apps
