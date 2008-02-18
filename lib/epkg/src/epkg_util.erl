@@ -32,7 +32,7 @@
 %%--------------------------------------------------------------------
 -include("epkg.hrl").
 -include("ewrepo.hrl").
--include("eunit.hrl").
+%-include("eunit.hrl").
 -include("macros.hrl").
 
 %%====================================================================
@@ -270,11 +270,11 @@ extract_rel_value(_, _Junk) ->
 %%%===================================================================
 %%% Testing Functions
 %%%===================================================================
-is_string_test() ->
-    ?assertMatch(false, is_string([hello])),
-    ?assertMatch(false, is_string({})),
-    ?assertMatch(true, is_string("hell]o")),
-    ?assertMatch(true, is_string("hello")).
+%is_string_test() ->
+    %?assertMatch(false, is_string([hello])),
+    %?assertMatch(false, is_string({})),
+    %?assertMatch(true, is_string("hell]o")),
+    %?assertMatch(true, is_string("hello")).
 
     
 			       

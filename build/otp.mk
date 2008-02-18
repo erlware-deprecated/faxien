@@ -9,7 +9,7 @@
 
 # The erts version to use when running your release
 ifndef TARGET_ERTS_VSN
-TARGET_ERTS_VSN=5.5.5
+TARGET_ERTS_VSN=5.6.1
 endif
 
 # The location of systemwide installed packages.

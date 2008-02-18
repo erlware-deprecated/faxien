@@ -102,22 +102,21 @@ publish2(erts, Repos, ErtsDirPath, Timeout) ->
     {ok, {"erts", ErtsVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ErtsDirPath),
     fax_put:put_erts_package(Repos, ErtsVsn, pack(ErtsDirPath), Timeout); 
 
-publish2(generic, Repos, AppDirPath, Timeout) -> 
+publish2(Type, Repos, AppDirPath, Timeout) when Type == binary; Type == generic -> 
     {ok, {AppName, AppVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(AppDirPath),
     {ok, AppFileBinary}     = file:read_file(ewl_file:join_paths(AppDirPath, "ebin/" ++ AppName ++ ".app")),
-    {ok, ErtsVsn}           = fax_util:get_erts_vsn(AppDirPath),
-    %% @todo make this transactional - if .app file put fails run a delete.
-    fax_put:put_dot_app_file(Repos, ErtsVsn, AppName, AppVsn, AppFileBinary, Timeout), 
-    fax_put:put_generic_app_package(Repos, ErtsVsn, AppName, AppVsn, pack(AppDirPath), Timeout); 
-
-publish2(binary, Repos, AppDirPath, Timeout) -> 
-    {ok, {AppName, AppVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(AppDirPath),
-    {ok, AppFileBinary}     = file:read_file(ewl_file:join_paths(AppDirPath, "ebin/" ++ AppName ++ ".app")),
-    {ok, ErtsVsn}           = fax_util:get_erts_vsn(AppDirPath),
-    %% @todo make this transactional - if .app file put fails run a delete.
-    fax_put:put_dot_app_file(Repos, ErtsVsn, AppName, AppVsn, AppFileBinary, Timeout), 
-    fax_put:put_binary_app_package(Repos, ErtsVsn, AppName, AppVsn, pack(AppDirPath), Timeout); 
-
+    case fax_util:get_erts_vsn(AppDirPath) of
+	{ok, ErtsVsn} ->
+	    %% @todo make this transactional - if .app file put fails run a delete.
+	    fax_put:put_dot_app_file(Repos, ErtsVsn, AppName, AppVsn, AppFileBinary, Timeout), 
+	    case Type of
+		generic -> fax_put:put_generic_app_package(Repos, ErtsVsn, AppName, AppVsn, pack(AppDirPath), Timeout); 
+		binary  -> fax_put:put_binary_app_package(Repos, ErtsVsn, AppName, AppVsn, pack(AppDirPath), Timeout)
+	    end;
+	Error ->
+	    ?ERROR_MSG("beams compiled with an unsuppored erts vsn.~n", []),
+	    Error
+    end;
 publish2(release, Repos, RelDirPath, Timeout) -> 
     {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(RelDirPath),
     RelFilePath             = epkg_package_paths:release_package_rel_file_path(RelDirPath, RelName, RelVsn),

@@ -8,7 +8,7 @@
 %%--------------------------------------------------------------------
 %% Include files
 %%--------------------------------------------------------------------
--include("eunit.hrl").
+%-include("eunit.hrl").
 -include("faxien.hrl").
 
 
@@ -285,12 +285,13 @@ search_dynamic_vsns(_CompilerVsn) ->
 %%--------------------------------------------------------------------
 get_compiler_vsn(AppDirPath) ->
     {ok, [{modules, Modules}]} = ewr_util:fetch_local_appfile_key_values(AppDirPath, [modules]),
-    case catch get_compiler_vsn(AppDirPath, Modules, undefined) of
-	{'EXIT', Reason} ->
-	    ?ERROR_MSG("returned ~p for a module in ~p~n", [Reason, Modules]),
-	    {error, {found_bad_module_in, Modules}};
-	Resp = {ok, _CompilerVsn} ->
-	    Resp
+    try
+	{ok, _CompilerVsn} = Resp = get_compiler_vsn(AppDirPath, Modules, undefined),
+	Resp
+    catch
+	_C:Error ->
+	    ?ERROR_MSG("error ~p ~n", [Error]),
+	    {error, {bad_module, "found a module compiled with unsuppored version", Modules}}
     end.
 
 get_compiler_vsn(AppDirPath, [Module|Modules], undefined) ->
