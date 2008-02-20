@@ -25,7 +25,7 @@ BASE_DIR=`dirname $PROG_NAME`
 cd $BASE_DIR
 BASE_DIR=`pwd`
 cd -
-CONFIG_FILE=`ls $BASE_DIR/releases/*/sys.config 2> /dev/null`
+CONFIG_FILE=`ls $BASE_DIR/releases/*/faxien.config 2> /dev/null`
 FAX_DIR=$(dirname `ls $BASE_DIR/lib/faxien*/ebin/faxien.app 2> /dev/null`)
 uname | grep CYGWIN
 

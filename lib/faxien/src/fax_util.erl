@@ -8,7 +8,7 @@
 %%--------------------------------------------------------------------
 %% Include files
 %%--------------------------------------------------------------------
--include("eunit.hrl").
+%-include("eunit.hrl").
 -include("faxien.hrl").
 
 
@@ -272,9 +272,9 @@ search_static_vsns(CompilerVsn, []) ->
     search_dynamic_vsns(CompilerVsn).
 
 
-search_dynamic_vsns(_CompilerVsn) ->
+search_dynamic_vsns(CompilerVsn) ->
     %% @todo this function will find the version being looked for in a repo and then return the erts vsn it is found for.
-    {error, no_erts_vsn_found}.
+    {error, {no_erts_vsn_found, {compiler_vsn, CompilerVsn}}}.
 				 
 
 %%--------------------------------------------------------------------
@@ -285,12 +285,18 @@ search_dynamic_vsns(_CompilerVsn) ->
 %%--------------------------------------------------------------------
 get_compiler_vsn(AppDirPath) ->
     {ok, [{modules, Modules}]} = ewr_util:fetch_local_appfile_key_values(AppDirPath, [modules]),
-    case catch get_compiler_vsn(AppDirPath, Modules, undefined) of
-	{'EXIT', Reason} ->
-	    ?ERROR_MSG("returned ~p for a module in ~p~n", [Reason, Modules]),
-	    {error, {found_bad_module_in, Modules}};
-	Resp = {ok, _CompilerVsn} ->
-	    Resp
+    try
+	case Modules of
+	    [] ->
+		{error, {empty_module_list_for_app, AppDirPath}};
+	    Modules ->
+		{ok, _CompilerVsn} = Resp = get_compiler_vsn(AppDirPath, Modules, undefined),
+		Resp
+	end
+    catch
+	_C:Error ->
+	    ?ERROR_MSG("error ~p ~n", [Error]),
+	    {error, {bad_module, "found a module compiled with unsuppored version", Error, Modules}}
     end.
 
 get_compiler_vsn(AppDirPath, [Module|Modules], undefined) ->
@@ -300,8 +306,8 @@ get_compiler_vsn(AppDirPath, [Module|Modules], CompilerVsn) ->
     case catch fetch_vsn(AppDirPath, Module) of
 	CompilerVsn ->
 	    get_compiler_vsn(AppDirPath, Modules, CompilerVsn);
-	_ ->
-	    throw({bad_module, Module})
+	Error ->
+	    throw(Error)
     end;
 get_compiler_vsn(_AppDirPath, [], CompilerVsn) ->
     {ok, CompilerVsn}.
@@ -309,7 +315,13 @@ get_compiler_vsn(_AppDirPath, [], CompilerVsn) ->
 fetch_vsn(AppDirPath, Module) ->
     BeamPath  = AppDirPath ++ "/ebin/" ++ atom_to_list(Module),
     {ok, {Module, [{compile_info, CompileInfo}]}} = beam_lib:chunks(BeamPath, [compile_info]),
-    fs_lists:get_val(version, CompileInfo).
+    case fs_lists:get_val(version, CompileInfo) of
+	undefined ->
+	    {error, {no_compiler_vsn_found, BeamPath}};
+	Vsn ->
+	    Vsn
+    end.
+
 %%====================================================================
 %% Internal functions
 %%====================================================================

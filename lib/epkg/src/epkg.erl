@@ -148,7 +148,7 @@ list_lib() ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
     {ok, TargetErtsVsn}    = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     NameVsnPairs           = epkg_manage:list_lib(InstallationPath, TargetErtsVsn),
-    io:format("~nInstalled Applications:~n"),
+    io:format("~nInstalled Applications (for ERTS ~s):~n", [TargetErtsVsn]),
     lists:foreach(fun({Name, Vsn}) -> io:format("~s   ~s~n", [Name, Vsn]) end, NameVsnPairs).
 
 %%--------------------------------------------------------------------
@@ -160,7 +160,7 @@ list_lib() ->
 list_releases() ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
     NameVsnPairs = epkg_manage:list_releases(InstallationPath),
-    io:format("~nInstalled Applications:~n"),
+    io:format("~nInstalled Releases (Erlang standalone services):~n"),
     lists:foreach(fun({Name, Vsn}) -> io:format("~s   ~s~n", [Name, Vsn]) end, NameVsnPairs).
 
 %%--------------------------------------------------------------------

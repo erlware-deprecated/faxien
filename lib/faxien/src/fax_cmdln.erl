@@ -223,10 +223,10 @@ print_error_specific_error_msg({undef, _}) ->
                      [Func, ArgStr]),
      PropList =
        fun([], Acc, _) ->
-               [" But the function with ", Acc, " arguments exists."];
+               [" But the function ", atom_to_list(Func), " with ", Acc, " arguments exists."];
           ([A], Acc, _) ->
                ArityStr = io_lib:format(" and ~p", [A]),
-               [" But the function with ",
+               [" But the function ", atom_to_list(Func), " with ",
                 lists:reverse([ArityStr | Acc]),
                 " arguments exists."];
           ([A | As], Acc, Y) ->

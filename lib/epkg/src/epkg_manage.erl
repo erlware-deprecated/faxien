@@ -105,9 +105,10 @@ remove_release(InstallationPath, RelName, RelVsn, Force) ->
     end.
 
 question_removal(UniqueSpecs, PackageName, PackageVsn) ->
+    CleansedSpecs = [{element(1, AppSpec), element(2, AppSpec)} || AppSpec <- UniqueSpecs],
     case ewl_talk:ask([lists:flatten(
 			 io_lib:fwrite("To remove ~s-~s you must delete the following apps:~n~p?~n~n Please answer [yes|no]", 
-				       [PackageName, PackageVsn, UniqueSpecs]))]) of
+				       [PackageName, PackageVsn, CleansedSpecs]))]) of
 	Yes when Yes == $y; Yes == $Y; Yes == "yes" ->
 	    true;
 	No when No == $n; No == $N; No == "no" ->
@@ -147,7 +148,6 @@ name_and_vsn(Paths) ->
 			    _                 -> Acc
 			end
 		end, [], Paths).
-
 
 
 
@@ -220,7 +220,9 @@ blast_app_and_release_packages(UniqueSpecs, InstallationPath, RelName, RelVsn) -
 	{'EXIT', Reason} -> 
 	    {error, {"could not find erts for the release specified", Reason}};
 	ErtsVsn -> 
-	    lists:foreach(fun({AppName, AppVsn}) -> 
+	    lists:foreach(fun(AppSpec) -> 
+				  AppName = element(1, AppSpec),
+				  AppVsn  = element(2, AppSpec),
 				  remove_app(InstallationPath, ErtsVsn, atom_to_list(AppName), AppVsn) 
 			  end, UniqueSpecs),
 	    RelPath = epkg_installed_paths:installed_release_dir_path(InstallationPath, RelName, RelVsn),

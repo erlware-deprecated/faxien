@@ -1,13 +1,12 @@
 #!/bin/sh
 
-#PREFIX=$(cd $(dirname $0)/%BACKUP%; pwd)
-PREFIX=$(cd $(dirname $0)/..; pwd)
+PREFIX=$(cd $(dirname $(dirname $0)); pwd)
 
 #### Fill in values for these variables ####
-REL_NAME=faxien
-REL_VSN=0.28.3.0
-ERTS_VSN=5.5.5
-INVOCATION_SUFFIX="-s epkg_cmdln epkg_apply epkg $@ -s init stop -noshell -prefix $PREFIX"
+REL_NAME=%%REL_NAME%%
+REL_VSN=%REL_VSN%
+ERTS_VSN=%TARGET_ERTS_VSN%
+INVOCATION_SUFFIX="%INVOCATION_SUFFIX% -prefix $PREFIX"
 ###########################################
 
 export ROOTDIR=$PREFIX/application_packages/$ERTS_VSN
@@ -18,4 +17,4 @@ export LD_LIBRARY_PATH=$PREFIX/erts/$ERTS_VSN/lib
 
 REL_DIR=$PREFIX/release_packages/$REL_NAME-$REL_VSN/release
 
-$BINDIR/erlexec -config $REL_DIR/sys.config -boot $REL_DIR/$REL_NAME $INVOCATION_SUFFIX
+$BINDIR/erlexec -config $REL_DIR/%%REL_NAME%%.config -boot $REL_DIR/$REL_NAME $INVOCATION_SUFFIX
