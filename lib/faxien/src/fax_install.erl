@@ -195,7 +195,7 @@ install_latest_remote_release(Repos, TargetErtsVsn, RelName, IsLocalBoot, Force,
 %% @end
 %%--------------------------------------------------------------------
 install_remote_release(Repos, TargetErtsVsn, RelName, RelVsn, IsLocalBoot, Force, Timeout) ->
-    ?INFO_MSG("(~p, ~p, ~p, ~p, ~p, ~p)~n", [Repos, TargetErtsVsn, RelName, RelVsn, IsLocalBoot]),
+    ?INFO_MSG("(~p, ~p, ~p, ~p, ~p)~n", [Repos, TargetErtsVsn, RelName, RelVsn, IsLocalBoot]),
     ReleaseDir = epkg_installed_paths:installed_release_dir_path(RelName, RelVsn),
     case epkg_validation:is_package_a_release(ReleaseDir) of
 	false -> 

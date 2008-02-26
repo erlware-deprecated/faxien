@@ -235,8 +235,12 @@ foreach_erts_vsn(TargetErtsVsn, ErtsLowerBound, Fun) ->
     [MajorErtsVsn, MinorErtsVsn, HighPatchErtsVsn] = string:tokens(TargetErtsVsn, "."),
     case catch string:tokens(ErtsLowerBound, ".") of
 	[MajorErtsVsn, MinorErtsVsn, LowPatchErtsVsn] ->
-	    ErtsVsns = [lists:flatten([MajorErtsVsn, ".", MinorErtsVsn, ".", integer_to_list(E)]) || 
-			   E <- lists:seq(list_to_integer(LowPatchErtsVsn), list_to_integer(HighPatchErtsVsn))], 
+	    ErtsVsns = lists:map(fun(PatchVsn) when PatchVsn > 0 ->
+					 lists:flatten([MajorErtsVsn, ".", MinorErtsVsn, ".", integer_to_list(PatchVsn)]);
+				    (0) ->
+					 lists:flatten([MajorErtsVsn, ".", MinorErtsVsn])
+				 end,
+				 lists:seq(list_to_integer(LowPatchErtsVsn), list_to_integer(HighPatchErtsVsn))),
 	    fs_lists:do_until(fun(ErtsVsn) -> (catch Fun(ErtsVsn)) end, ok, lists:reverse(ErtsVsns));
 	_Error ->
 	    {error, {bad_erts_lower_bound, ErtsLowerBound}}
