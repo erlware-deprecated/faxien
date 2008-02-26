@@ -226,7 +226,6 @@ set_target_erts_vsn(TargetErtsVsn, ConfigFilePath) ->
 %% @end
 %%--------------------------------------------------------------------
 outdated_releases(Repos, TargetErtsVsn, Timeout) ->
-    TargetErtsVsn = ewr_util:erts_version(),
     Releases      = epkg_installed_paths:list_releases(),
     lists:foldl(fun(ReleaseName, Acc) -> 
 			case catch is_outdated_release(Repos, TargetErtsVsn, ReleaseName, Timeout) of
@@ -247,7 +246,6 @@ outdated_releases(Repos, TargetErtsVsn, Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 upgrade_releases(Repos, TargetErtsVsn, IsLocalBoot, Force, Timeout) ->
-    TargetErtsVsn = ewr_util:erts_version(),
     Releases      = epkg_installed_paths:list_releases(),
     lists:foreach(fun(ReleaseName) -> 
 			  upgrade_release(Repos, TargetErtsVsn, ReleaseName, IsLocalBoot, Force, Timeout)
