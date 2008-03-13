@@ -30,6 +30,9 @@
 	 install_app/3,
 	 install_app/2,
 	 install_app/1,
+	 fetch_app/4,
+	 fetch_app/3,
+	 fetch_app/2,
 	 install_release/3,
 	 install_release/2,
 	 install_release/1
@@ -115,6 +118,7 @@
 	 upgrade_all_help/0,
 	 install_release_help/0,
 	 install_app_help/0,
+	 fetch_app_help/0,
 	 publish_help/0,
 	 search_help/0,
 	 installed_help/0,
@@ -445,6 +449,61 @@ install_app_help() ->
 
 %%--------------------------------------------------------------------
 %% @doc 
+%%  Fetch an application from a repository and place it into the specified directory
+%% <pre>
+%% Examples:
+%%  fetch_app(["http"//www.erlware.org/pub"], gas, "./")
+%% </pre>
+%% @spec fetch_app(Repos, AppName, AppVsn, ToDir) -> ok | {error, Reason}
+%% where
+%%     Repos = [string()] | [atom()] | atom()
+%%     AppName = string() | atom()
+%%     AppVsn = 'LATEST' | string() | atom()
+%%     ToDir = string() | atom()
+%% @end
+%%--------------------------------------------------------------------
+fetch_app(Repos, AppName, AppVsn, ToDir) when is_atom(Repos)  -> 
+    fetch_app([atom_to_list(Repos)], AppName, AppVsn, ToDir);
+fetch_app(Repos, AppName, AppVsn, ToDir)  -> 
+    % Any atoms must be turned to strings.  Atoms are accepted because it makes
+    % the invocation from the command line cleaner. 
+    [A,B,C]         = epkg_util:if_atom_or_integer_to_string([AppName, AppVsn, ToDir]),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    fax_install:fetch_remote_application(Repos, TargetErtsVsn, A, B, C, ?REQUEST_TIMEOUT).
+
+%% @spec fetch_app(AppName, AppVsn, ToDir) -> ok | {error, Reason}
+%% @equiv fetch_app(ERLWARE, AppName, AppVsn, ToDir)
+fetch_app(AppName, AppVsn, ToDir) -> 
+    {ok, Repos} = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
+    fetch_app(Repos, AppName, AppVsn, ToDir).
+
+%%--------------------------------------------------------------------
+%% @doc 
+%%  Fetch the highest version of an application from a repository and place it into the specified directory
+%% <pre>
+%% Examples:
+%%  fetch_app(gas, "./")
+%% </pre>
+%% @spec fetch_app(AppName, ToDir) -> ok | {error, Reason}
+%% where
+%%     AppName = string() | atom()
+%%     ToDir = string() | atom()
+%% @end
+%%--------------------------------------------------------------------
+fetch_app(AppName, ToDir) -> 
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    {ok, Repos}         = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
+    [A,B]               = epkg_util:if_atom_or_integer_to_string([AppName, ToDir]),
+    fax_install:fetch_latest_remote_application(Repos, TargetErtsVsn, A, B, ?REQUEST_TIMEOUT).
+
+%% @private
+fetch_app_help() ->
+    ["\nHelp for fetch-app\n",
+     "Usage: fetch-app <app-name> [app-vsn] <to-dir> [app version]: will fetch an OTP app remotely and place it into the to dir."]. 
+
+
+%%--------------------------------------------------------------------
+%% @doc 
 %%  Publishes a pre-built generic application or a release to a remote unguarded repository. A generic application 
 %%  typically consists of erlang object code and possibly other platform independent code.  
 %%  This code is then available for immediate use by any application is erlware repo compatible such as Sinan.
@@ -552,6 +611,7 @@ commands_help() ->
      "describe-app            print more information about a specific application package",
      "install-release         install a release package",
      "install-app             install an application package",
+     "fetch-app               fetch an application package into the specified directory",
      "publish                 publish a package to remote repositories",
      "remove-release          uninstall a release package",
      "remove-app              uninstall an application package",

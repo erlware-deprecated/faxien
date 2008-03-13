@@ -28,7 +28,9 @@
 	 install_remote_release/7,
 	 install_remote_erts/3,
 	 install_erts/3,
-	 install_release/6
+	 install_release/6,
+	 fetch_latest_remote_application/5,
+	 fetch_remote_application/6
 	]).
 
 %%====================================================================
@@ -83,7 +85,7 @@ install_remote_application(Repos, TargetErtsVsn, AppName, AppVsn, Force, Timeout
     case epkg_validation:is_package_an_app(AppDir) of
 	false -> 
 	    io:format("Pulling down ~s-~s -> ", [AppName, AppVsn]),
-	    {ok, AppPackageDirPath} = fetch_app(Repos, TargetErtsVsn, AppName, AppVsn, Timeout),
+	    {ok, AppPackageDirPath} = fetch_app_to_tmp(Repos, TargetErtsVsn, AppName, AppVsn, Timeout),
 	    Res                     = epkg:install_app(AppPackageDirPath, TargetErtsVsn),
 	    ok                      = ewl_file:delete_dir(AppPackageDirPath),
 	    io:format("~p~n", [Res]),
@@ -212,6 +214,44 @@ install_remote_release(Repos, TargetErtsVsn, RelName, RelVsn, IsLocalBoot, Force
 	      Force)
     end.
 
+%%--------------------------------------------------------------------
+%% @doc 
+%%  Fetch the the highest version found of an application package from a repository. 
+%%
+%% <pre>
+%% Examples:
+%%  fetch_latest_remote_application(["http"//repo.erlware.org/pub"], "5.5.5", gas)
+%% </pre>
+%%
+%% @spec fetch_latest_remote_application(Repos, TargetErtsVsn, AppName, ToDir, Timeout) -> ok | {error, Reason} | exit()
+%% where
+%%     Repos = string()
+%%     TargetErtsVsn = string()
+%%     AppName = string()
+%%     Force = force()
+%% @end
+%%--------------------------------------------------------------------
+fetch_latest_remote_application(Repos, TargetErtsVsn, AppName, ToDir, Timeout) ->
+    Fun = fun(ManagedRepos, AppVsn) ->
+		  fetch_remote_application(ManagedRepos, TargetErtsVsn, AppName, AppVsn, ToDir, Timeout)
+	  end,
+    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, AppName, Fun, lib). 
+
+%%--------------------------------------------------------------------
+%% @doc pull down an application from a repo into the ToDir
+%% @spec fetch_remote_application(Repos, TargetErtsVsn, AppName, AppVsn, ToDir, Timeout) -> ok | {error, Reason}
+%% @end
+%%--------------------------------------------------------------------
+fetch_remote_application(Repos, TargetErtsVsn, AppName, AppVsn, ToDir, Timeout) ->
+    try
+	ok = fax_util:foreach_erts_vsn(TargetErtsVsn, 
+				       fun(ErtsVsn_) -> 
+					       ewr_fetch:fetch_binary_package(Repos, ErtsVsn_, AppName, AppVsn, ToDir, Timeout)
+				       end)
+    catch
+	_Class:_Exception = {badmatch, {error, _} = Error} ->
+	    Error
+    end.
 
 %%====================================================================
 %% Internal functions Containing Business Logic
@@ -262,25 +302,21 @@ install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLoca
 %%--------------------------------------------------------------------
 %% @private
 %% @doc pull down an application from a repo and return the path to the temp directory where the package was put locally.
-%% @spec fetch_app(Repos, TargetErtsVsn, AppName, AppVsn, Timeout) -> {ok, AppPackageDirPath} | {error, Reason}
+%% @spec fetch_app_to_tmp(Repos, TargetErtsVsn, AppName, AppVsn, Timeout) -> {ok, AppPackageDirPath} | {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
-fetch_app(Repos, TargetErtsVsn, AppName, AppVsn, Timeout) ->
-    try
-	AppDir              = epkg_installed_paths:installed_app_dir_path(TargetErtsVsn, AppName, AppVsn),
-	ok                  = ewl_file:delete_dir(AppDir),
-	{ok, TmpPackageDir} = epkg_util:create_unique_tmp_dir(),
-	ok = fax_util:foreach_erts_vsn(TargetErtsVsn, 
-				       fun(ErtsVsn_) -> 
-					       ewr_fetch:fetch_binary_package(Repos, ErtsVsn_, AppName, AppVsn, 
-									      TmpPackageDir, Timeout)
-				       end),
-	AppPackageDirPath = epkg_package_paths:package_dir_path(TmpPackageDir, AppName, AppVsn),
-	{ok, AppPackageDirPath}
-    catch
-	_Class:_Exception = {badmatch, {error, _} = Error} ->
+fetch_app_to_tmp(Repos, TargetErtsVsn, AppName, AppVsn, Timeout) ->
+    AppDir              = epkg_installed_paths:installed_app_dir_path(TargetErtsVsn, AppName, AppVsn),
+    ok                  = ewl_file:delete_dir(AppDir),
+    {ok, TmpPackageDir} = epkg_util:create_unique_tmp_dir(),
+    case fetch_remote_application(Repos, TargetErtsVsn, AppName, AppVsn, TmpPackageDir, Timeout) of
+	ok ->
+	    AppPackageDirPath = epkg_package_paths:package_dir_path(TmpPackageDir, AppName, AppVsn),
+	    {ok, AppPackageDirPath};
+	Error ->
 	    Error
     end.
+
 
 %%--------------------------------------------------------------------
 %% @private
