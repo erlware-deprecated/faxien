@@ -662,6 +662,7 @@ commands_help() ->
      "installed               list the packages installed on the local system",
      "describe-app            print more information about a specific application package",
      "install-release         install a release package",
+     "fetch-release           fetch a release package into the specified directory",
      "install-app             install an application package",
      "fetch-app               fetch an application package into the specified directory",
      "publish                 publish a package to remote repositories",
