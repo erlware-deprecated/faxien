@@ -33,6 +33,9 @@
 	 fetch_app/4,
 	 fetch_app/3,
 	 fetch_app/2,
+	 fetch_release/4,
+	 fetch_release/3,
+	 fetch_release/2,
 	 install_release/3,
 	 install_release/2,
 	 install_release/1
@@ -119,6 +122,7 @@
 	 install_release_help/0,
 	 install_app_help/0,
 	 fetch_app_help/0,
+	 fetch_release_help/0,
 	 publish_help/0,
 	 search_help/0,
 	 installed_help/0,
@@ -377,8 +381,56 @@ install_release(ReleaseNameOrPath) ->
     
 %% @private
 install_release_help() ->
-    ["\nHelp for install_release\n",
-     "Usage: install_release <release name|release tarball> [release version]: will install a release remotely or from a local package depending on its argument\n"]. 
+    ["\nHelp for install-release\n",
+     "Usage: install-release <release-name|release-tarball> [release-version]: will install a release remotely or from a local package depending on its argument\n"]. 
+
+%%--------------------------------------------------------------------
+%% @doc 
+%%  Fetch a release and all its applications from a repository and place them into a specified directory. 
+%%
+%% @spec fetch_release(Repos, ReleaseName, ReleaseVsn, ToDir) -> ok | {error, Reason}
+%% where
+%%     Repos = [string()] | [atom()] | atom()
+%%     ReleaseName = string() | atom()
+%%     ReleaseVsn = 'LATEST' | string() | atom()
+%% @end
+%%--------------------------------------------------------------------
+fetch_release(Repos, ReleaseName, ReleaseVsn, ToDir) when is_atom(Repos)  -> 
+    fetch_release([atom_to_list(Repos)], ReleaseName, ReleaseVsn);
+fetch_release(Repos, ReleaseName, ReleaseVsn, ToDir)  -> 
+    ?INFO_MSG("faxien:fetch_release(~p, ~p, ~p)~n", [Repos, ReleaseName, ReleaseVsn]),
+    % Any atoms must be turned to strings.  Atoms are accepted because it makes
+    % the invocation from the command line cleaner. 
+    [A,B,C]             = epkg_util:if_atom_or_integer_to_string([ReleaseName, ReleaseVsn, ToDir]),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    fax_install:fetch_remote_release(Repos, TargetErtsVsn, A, B, C, ?REQUEST_TIMEOUT).
+
+%% @spec fetch_release(ReleaseName, ReleaseVsn, ToDir) -> ok | {error, Reason}
+%% @equiv fetch_release(ERLWARE, ReleaseName, ReleaseVsn, ToDir)
+fetch_release(ReleaseName, ReleaseVsn, ToDir) -> 
+    {ok, Repos} = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
+    fetch_release(Repos, ReleaseName, ReleaseVsn, ToDir).
+
+%%--------------------------------------------------------------------
+%% @doc 
+%%  Fetch the latest version of a release and all its applications from a repository and place them in a specified directory. 
+%%
+%% @spec fetch_release(ReleaseNameOrPath, ToDir) -> ok | {error, Reason}
+%%  where
+%%   ReleaseNameOrPath = atom() | string()
+%% @end
+%%--------------------------------------------------------------------
+fetch_release(ReleaseName, ToDir) -> 
+    {ok, Repos}         = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    [A,B]               = epkg_util:if_atom_or_integer_to_string([ReleaseName, ToDir]),
+    fax_install:fetch_latest_remote_release(Repos, TargetErtsVsn, A, B, ?REQUEST_TIMEOUT).
+	
+    
+%% @private
+fetch_release_help() ->
+    ["\nHelp for fetch-release\n",
+     "Usage: fetch_release <release-name> [release version] <to-dir>: will fetch a release package and place it in the specifie directory"]. 
 
 
 %%--------------------------------------------------------------------

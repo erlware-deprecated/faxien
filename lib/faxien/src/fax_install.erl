@@ -29,6 +29,8 @@
 	 install_remote_erts/3,
 	 install_erts/3,
 	 install_release/6,
+	 fetch_latest_remote_release/5,
+	 fetch_remote_release/6,
 	 fetch_latest_remote_application/5,
 	 fetch_remote_application/6
 	]).
@@ -253,6 +255,44 @@ fetch_remote_application(Repos, TargetErtsVsn, AppName, AppVsn, ToDir, Timeout) 
 	    Error
     end.
 
+%%--------------------------------------------------------------------
+%% @doc 
+%%  Fetch the latest version found of a release package from a repository and place it in the specified directory. 
+%% @spec fetch_latest_remote_release(Repos, TargetErtsVsn, RelName, ToDir, Timeout) -> 
+%%               ok | {error, Reason} | exit()
+%% where
+%%     Repos = string()
+%%     RelName = string()
+%%     RelVsn = string() 
+%%     ToDir = string()
+%% @end
+%%--------------------------------------------------------------------
+fetch_latest_remote_release(Repos, TargetErtsVsn, RelName, ToDir, Timeout) ->
+    Fun = fun(ManagedRepos, RelVsn) ->
+		  fetch_remote_release(ManagedRepos, TargetErtsVsn, RelName, RelVsn, ToDir, Timeout)
+	  end,
+    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, RelName, Fun, releases). 
+
+%%--------------------------------------------------------------------
+%% @doc 
+%%  Install a release package from a repository. 
+%%  IsLocalBoot indicates whether a local specific boot file is to be created or not. See the systools docs for more information.
+%% @spec fetch_remote_release(Repos, TargetErtsVsn, RelName, RelVsn, ToDir, Timeout) -> ok | {error, Reason} | exit()
+%% where
+%%     Repos = string()
+%%     RelName = string()
+%%     RelVsn = string() 
+%%     ToDir = string()
+%% @end
+%%--------------------------------------------------------------------
+fetch_remote_release(Repos, TargetErtsVsn, RelName, RelVsn, ToDir, Timeout) ->
+    ?INFO_MSG("(~p, ~p, ~p, ~p)~n", [Repos, TargetErtsVsn, RelName, RelVsn]),
+    io:format("~nFetching for Remote Release Package ~s-~s~n", [RelName, RelVsn]),
+    Res = fetch_release(Repos, TargetErtsVsn, RelName, RelVsn, ToDir, Timeout),
+    %Res = fetch_from_local_release_package(Repos, ReleasePackageDirPath, ToDir, Timeout),
+    io:format("Fetch on ~s-~s resulted in ~p~n", [RelName, RelVsn, Res]),
+    Res.
+
 %%====================================================================
 %% Internal functions Containing Business Logic
 %%====================================================================
@@ -344,17 +384,23 @@ fetch_erts(Repos, ErtsVsn, Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 fetch_release(Repos, TargetErtsVsn, RelName, RelVsn, Timeout) ->
+    ReleaseDirPath      = epkg_installed_paths:installed_release_dir_path(RelName, RelVsn),
+    ok                  = ewl_file:delete_dir(ReleaseDirPath),
+    {ok, TmpPackageDir} = epkg_util:create_unique_tmp_dir(),
+    case fetch_release(Repos, TargetErtsVsn, RelName, RelVsn, TmpPackageDir, Timeout) of
+	ok ->
+	    ReleasePackageDirPath = epkg_package_paths:package_dir_path(TmpPackageDir, RelName, RelVsn),
+	    {ok, ReleasePackageDirPath};
+	Error ->
+	    Error
+    end.
+
+fetch_release(Repos, TargetErtsVsn, RelName, RelVsn, ToDir, Timeout) ->
     try
-	ReleaseDirPath      = epkg_installed_paths:installed_release_dir_path(RelName, RelVsn),
-	ok                  = ewl_file:delete_dir(ReleaseDirPath),
-	{ok, TmpPackageDir} = epkg_util:create_unique_tmp_dir(),
 	ok = fax_util:foreach_erts_vsn(TargetErtsVsn, 
 				       fun(ErtsVsn) -> 
-					       ewr_fetch:fetch_release_package(Repos, ErtsVsn, RelName, 
-									       RelVsn, TmpPackageDir, Timeout)
-				       end),
-	ReleasePackageDirPath = epkg_package_paths:package_dir_path(TmpPackageDir, RelName, RelVsn),
-	{ok, ReleasePackageDirPath}
+					       ewr_fetch:fetch_release_package(Repos, ErtsVsn, RelName, RelVsn, ToDir, Timeout)
+				       end)
     catch
 	_Class:_Exception = {badmatch, {error, _} = Error} ->
 	    Error
