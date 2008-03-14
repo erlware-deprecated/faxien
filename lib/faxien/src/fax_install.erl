@@ -288,11 +288,28 @@ fetch_latest_remote_release(Repos, TargetErtsVsn, RelName, ToDir, Timeout) ->
 fetch_remote_release(Repos, TargetErtsVsn, RelName, RelVsn, ToDir, Timeout) ->
     ?INFO_MSG("(~p, ~p, ~p, ~p)~n", [Repos, TargetErtsVsn, RelName, RelVsn]),
     io:format("~nFetching for Remote Release Package ~s-~s~n", [RelName, RelVsn]),
-    Res = fetch_release(Repos, TargetErtsVsn, RelName, RelVsn, ToDir, Timeout),
+    Res           = fetch_release(Repos, TargetErtsVsn, RelName, RelVsn, ToDir, Timeout),
+    RelDirPath    = epkg_package_paths:package_dir_path(ToDir, RelName, RelVsn),
+    RelLibDirPath = epkg_package_paths:release_package_library_path(RelDirPath),
+    io:format("Fetching remote erts package (this may take a while) -> "),
+    case catch ewr_fetch:fetch_erts_package(Repos, TargetErtsVsn, RelDirPath, Timeout) of
+	ok    -> io:format("ok~n");
+	Error -> io:format("can't pull down erts - skipping~n")
+    end,
+    RelFilePath   = epkg_package_paths:release_package_rel_file_path(RelDirPath, RelName, RelVsn),
+    AppAndVsns    = get_app_and_vsns(RelFilePath),
+    lists:foreach(fun({AppName, AppVsn}) ->
+			  io:format("Pulling down ~s-~s -> ", [AppName, AppVsn]),
+			  Res = fetch_remote_application(Repos, TargetErtsVsn, AppName, AppVsn, RelLibDirPath, Timeout),
+			  io:format("~p~n", [Res])
+		  end, AppAndVsns),
     %Res = fetch_from_local_release_package(Repos, ReleasePackageDirPath, ToDir, Timeout),
-    io:format("Fetch on ~s-~s resulted in ~p~n", [RelName, RelVsn, Res]),
+    io:format("Fetch on ~s-~s resulted in ~p~n Note* You may install the fetched package with 'faxien install ~s/~s-~s'~n", 
+	      [RelName, RelVsn, Res, ToDir, RelName, RelVsn]),
     Res.
 
+get_app_and_vsns(RelFilePath) ->
+    [{atom_to_list(element(1, AppSpec)), element(2, AppSpec)} || AppSpec <- epkg_util:consult_rel_file(app_specs, RelFilePath)].
 %%====================================================================
 %% Internal functions Containing Business Logic
 %%====================================================================
