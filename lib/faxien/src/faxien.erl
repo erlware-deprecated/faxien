@@ -90,10 +90,10 @@
 	 outdated_apps/0,
 	 outdated_releases/1,
 	 outdated_releases/0,
-	 upgrade_all/1,
-	 upgrade_all/0,
-	 upgrade/2,
-	 upgrade/1,
+	 upgrade_all_releases/1,
+	 upgrade_all_releases/0,
+	 upgrade_release/2,
+	 upgrade_release/1,
 	 upgrade_all_apps/1,
 	 upgrade_all_apps/0,
 	 upgrade_app/2,
@@ -117,8 +117,8 @@
 	 show_repos_help/0,
 	 upgrade_app_help/0,
 	 upgrade_all_apps_help/0,
-	 upgrade_help/0,
-	 upgrade_all_help/0,
+	 upgrade_release_help/0,
+	 upgrade_all_releases_help/0,
 	 install_release_help/0,
 	 install_app_help/0,
 	 fetch_app_help/0,
@@ -269,65 +269,65 @@ outdated_apps_help() ->
 %% @doc upgrade a single release.
 %% <pre>
 %% Examples:
-%%  upgrade(["http://erlware.org/stable", "http://erlwaremirror.org/stable"], faxien, "usr/local/erlware").
+%%  upgrade_release(["http://erlware.org/stable", "http://erlwaremirror.org/stable"], faxien, "usr/local/erlware").
 %% or
-%%  upgrade('http://erlware.org/stable', faxien, "usr/local/erlware").
+%%  upgrade_release('http://erlware.org/stable', faxien, "usr/local/erlware").
 %% </pre>
-%% @spec upgrade(Repos, RelName) -> ok | {error, Reason}
+%% @spec upgrade_release(Repos, RelName) -> ok | {error, Reason}
 %%  where
 %%   Repos = [string()] | atom()
 %%   RelName = string() | atom()
 %% @end
 %%--------------------------------------------------------------------
-upgrade(Repo, RelName) when is_atom(Repo) -> 
-    upgrade([atom_to_list(Repo)], RelName);
-upgrade(Repos, RelName) -> 
+upgrade_release(Repo, RelName) when is_atom(Repo) -> 
+    upgrade_release([atom_to_list(Repo)], RelName);
+upgrade_release(Repos, RelName) -> 
     A                 = epkg_util:if_atom_or_integer_to_string(RelName),
     {ok, IsLocalBoot} = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     fax_manage:upgrade_release(Repos, TargetErtsVsn, A, IsLocalBoot, false, ?REQUEST_TIMEOUT).
 
-%% @spec upgrade(RelName) -> ok | {error, Reason}
-%% @equiv upgrade(Repos, RelName)
-upgrade(RelName) -> 
+%% @spec upgrade_release(RelName) -> ok | {error, Reason}
+%% @equiv upgrade_release(Repos, RelName)
+upgrade_release(RelName) -> 
     {ok, Repos}            = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
-    upgrade(Repos, RelName).
+    upgrade_release(Repos, RelName).
 
 %% @private
-upgrade_help() ->
-    ["\nHelp for upgrade\n",
-     "upgrade <release name>: will upgrade an installed release"]. 
+upgrade_release_help() ->
+    ["\nHelp for upgrade-release\n",
+     "upgrade_release <release name>: will upgrade an installed release"]. 
 
 %%--------------------------------------------------------------------
 %% @doc upgrade_all a all installed releases.
 %% <pre>
 %% Examples:
-%%  upgrade_all(["http://erlware.org/stable", "http://erlwaremirror.org/stable"]).
+%%  upgrade_all_releases(["http://erlware.org/stable", "http://erlwaremirror.org/stable"]).
 %% or
-%%  upgrade_all('http://erlware.org/stable').
+%%  upgrade_all_releases('http://erlware.org/stable').
 %% </pre>
-%% @spec upgrade_all(Repos) -> ok | {error, Reason}
+%% @spec upgrade_all_releases(Repos) -> ok | {error, Reason}
 %%  where
 %%   Repos = [string()] | atom()
 %% @end
 %%--------------------------------------------------------------------
-upgrade_all(Repo) when is_atom(Repo) ->
-    upgrade_all([atom_to_list(Repo)]);
-upgrade_all(Repos) ->
+upgrade_all_releases(Repo) when is_atom(Repo) ->
+    upgrade_all_releases([atom_to_list(Repo)]);
+upgrade_all_releases(Repos) ->
     {ok, IsLocalBoot} = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     fax_manage:upgrade_releases(Repos, TargetErtsVsn, IsLocalBoot, false, ?REQUEST_TIMEOUT).
 
 %% @spec upgrade_all() -> ok | {error, Reason}
 %% @equiv upgrade_all(Repos)
-upgrade_all() -> 
+upgrade_all_releases() -> 
     {ok, Repos} = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
-    upgrade_all(Repos).
+    upgrade_all_releases(Repos).
 
 %% @private
-upgrade_all_help() ->
-    ["\nHelp for upgrade-all\n",
-     "upgrade-all: will upgrade_all all installed releases"]. 
+upgrade_all_releases_help() ->
+    ["\nHelp for upgrade-all-releases\n",
+     "upgrade-all-releases: will upgrade_all all installed releases"]. 
 
 
 %%--------------------------------------------------------------------
@@ -668,8 +668,8 @@ commands_help() ->
      "publish                 publish a package to remote repositories",
      "remove-release          uninstall a release package",
      "remove-app              uninstall an application package",
-     "upgrade                 upgrade a release package installed on the local system",
-     "upgrade-all             upgrade all the release packages installed on the local system",
+     "upgrade-release         upgrade a release package installed on the local system",
+     "upgrade-all-releases    upgrade all the release packages installed on the local system",
      "upgrade-app             upgrade an application package installed on the local system",  
      "upgrade-all-apps        upgrade all the application packages installed on the local system",  
      "version                 display the current Faxien version installed on the local system",
