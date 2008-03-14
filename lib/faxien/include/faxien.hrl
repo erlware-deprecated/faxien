@@ -28,11 +28,19 @@
 
 %% Must be a list of tuples of strings. Commands can use either the _ or the - separator notation.
 -define(ALIAS_LIST, [
-		     {"install",  "install-release"},
-		     {"i",        "install-release"},
+		     {"ir",       "install-release"},
+		     {"ia",       "install-app"},
+		     {"fr",       "fetch-release"},
+		     {"fa",       "fetch-app"},
 		     {"p",        "publish"},
-		     {"outdated", "outdated-releases"},
-		     {"remove",   "remove-release"}
+		     {"ar",       "add-repo"},
+		     {"sr",       "show-repos"},
+		     {"rr",       "remove-repos"},
+		     {"apr",      "add-publish-repo"},
+		     {"spr",      "show-publish-repos"},
+		     {"rpr",      "remove-publish-repos"},
+		     {"or",       "outdated-releases"},
+		     {"rr",       "remove-release"}
 		    ]).
 
 		   
