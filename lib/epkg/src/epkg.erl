@@ -147,9 +147,25 @@ list_help() ->
 list_lib() ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
     {ok, TargetErtsVsn}    = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
-    NameVsnPairs           = epkg_manage:list_lib(InstallationPath, TargetErtsVsn),
-    io:format("~nInstalled Applications (for ERTS ~s):~n", [TargetErtsVsn]),
-    lists:foreach(fun({Name, Vsn}) -> io:format("~s   ~s~n", [Name, Vsn]) end, NameVsnPairs).
+    LowerBoundErtsVsn      = epkg_util:erts_lower_bound_from_target(TargetErtsVsn),
+    NameVsnsPairs          = collect_dups(epkg_manage:list_lib(InstallationPath, TargetErtsVsn)),
+    io:format("~nInstalled Applications (for ERTS versions between ~s and ~s):~n", [LowerBoundErtsVsn, TargetErtsVsn]),
+    lists:foreach(fun({Name, Vsns}) -> io:format("~s   ~s~n", [Name, format_vsns(Vsns)]) end, NameVsnsPairs).
+
+format_vsns(Vsns) when length(Vsns) > 5 ->
+    lists:flatten([ewr_util:join(lists:reverse(lists:nthtail(length(Vsns) - 5, lists:reverse(Vsns))), " | "), " | ..."]);
+format_vsns(Vsns) ->
+    ewr_util:join(Vsns, " | ").
+
+collect_dups([{Name, Vsn}|NameAndVsnPairs]) -> collect_dups(NameAndVsnPairs, [{Name, [Vsn]}]).
+
+collect_dups([{Name, Vsn}|T], [{Name, Vsns}|Acc]) ->
+    collect_dups(T, [{Name, [Vsn|Vsns]}|Acc]);
+collect_dups([{Name, Vsn}|T], Acc) ->
+    collect_dups(T, [{Name, [Vsn]}|Acc]);
+collect_dups([], Acc) ->
+    Acc.
+    
 
 %%--------------------------------------------------------------------
 %% @doc 

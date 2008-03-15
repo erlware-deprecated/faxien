@@ -33,10 +33,18 @@
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Returns a list of all applications currently installed.
-%% @spec list_lib(InstallationPath, ErtsVsn) -> [{Name, Vsn}]
+%% @spec list_lib(InstallationPath, TargetErtsVsn) -> [{Name, Vsn}]
 %% @end
 %%--------------------------------------------------------------------
-list_lib(InstallationPath, ErtsVsn) ->
+list_lib(InstallationPath, TargetErtsVsn) ->
+    Fun    = fun(ErtsVsn) -> list_lib_for_erts_vsn(InstallationPath, TargetErtsVsn) end,
+    Series = epkg_util:erts_series(TargetErtsVsn), 
+    ?INFO_MSG("listing lib dirs for erts vsns ~p~n", [Series]),
+    lists:sort(fun({N, _}, {N1, _}) -> N < N1 end,
+	       lists:flatten([lists:map(fun(ErtsVsn) -> list_lib_for_erts_vsn(InstallationPath, ErtsVsn) end, Series)])).
+    
+
+list_lib_for_erts_vsn(InstallationPath, ErtsVsn) ->
     LibDir       = epkg_installed_paths:application_container_path(InstallationPath, ErtsVsn),
     Paths        = filelib:wildcard(LibDir ++ "/*"),
     name_and_vsn(Paths).
