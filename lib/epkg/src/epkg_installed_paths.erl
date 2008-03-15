@@ -70,7 +70,7 @@ release_container_path(InstallationPath) ->
 %% @end
 %%--------------------------------------------------------------------
 application_container_path(InstallationPath, ErtsVsn) ->
-    lists:flatten([InstallationPath, "/application_packages/", ErtsVsn, "/lib/"]).
+    filename:join([InstallationPath, "application_packages", ErtsVsn, "lib"]).
 
 %%--------------------------------------------------------------------
 %% @doc Returns a path to the directory where executable files sit. 

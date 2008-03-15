@@ -2,7 +2,7 @@
          [{package_owner,"Martin Logan"},
           {package_owner_email,"martinjlogan@erlware.org"},
           {categories,["tool"]},
-          {description,"The package manager for Erlang OTP"},
+          {description,"The package manager for Erlang OTP. Think apt-get or ruby gem for Erlang/OTP"},
           {author,"Martin Logan"},
           {authors_email,"martinjlogan@erlware.org"},
           {keywords,["faxien",
