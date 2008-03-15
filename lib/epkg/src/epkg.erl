@@ -152,20 +152,6 @@ list_lib() ->
     io:format("~nInstalled Applications (for ERTS versions between ~s and ~s):~n", [LowerBoundErtsVsn, TargetErtsVsn]),
     lists:foreach(fun({Name, Vsns}) -> io:format("~s   ~s~n", [Name, format_vsns(Vsns)]) end, NameVsnsPairs).
 
-format_vsns(Vsns) when length(Vsns) > 5 ->
-    lists:flatten([ewr_util:join(lists:reverse(lists:nthtail(length(Vsns) - 5, lists:reverse(Vsns))), " | "), " | ..."]);
-format_vsns(Vsns) ->
-    ewr_util:join(Vsns, " | ").
-
-collect_dups([{Name, Vsn}|NameAndVsnPairs]) -> collect_dups(NameAndVsnPairs, [{Name, [Vsn]}]).
-
-collect_dups([{Name, Vsn}|T], [{Name, Vsns}|Acc]) ->
-    collect_dups(T, [{Name, [Vsn|Vsns]}|Acc]);
-collect_dups([{Name, Vsn}|T], Acc) ->
-    collect_dups(T, [{Name, [Vsn]}|Acc]);
-collect_dups([], Acc) ->
-    Acc.
-    
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -175,9 +161,9 @@ collect_dups([], Acc) ->
 %%--------------------------------------------------------------------
 list_releases() ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
-    NameVsnPairs = epkg_manage:list_releases(InstallationPath),
+    NameVsnsPairs = collect_dups(epkg_manage:list_releases(InstallationPath)),
     io:format("~nInstalled Releases (Erlang standalone services):~n"),
-    lists:foreach(fun({Name, Vsn}) -> io:format("~s   ~s~n", [Name, Vsn]) end, NameVsnPairs).
+    lists:foreach(fun({Name, Vsns}) -> io:format("~s   ~s~n", [Name, format_vsns(lists:reverse(Vsns))]) end, NameVsnsPairs).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -340,4 +326,27 @@ help_for_command(Command) ->
 
 print_help_list(HelpList) ->	   
     lists:foreach(fun(HelpString) -> io:format("~s~n", [HelpString]) end, HelpList).
+    
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc used to format the output of the list functions
+%% @end
+%%--------------------------------------------------------------------
+format_vsns(Vsns) when length(Vsns) > 5 ->
+    lists:flatten([ewr_util:join(lists:reverse(lists:nthtail(length(Vsns) - 5, lists:reverse(Vsns))), " | "), " | ..."]);
+format_vsns(Vsns) ->
+    ewr_util:join(Vsns, " | ").
+
+collect_dups([]) -> 
+    [];
+collect_dups([{Name, Vsn}|NameAndVsnPairs]) -> 
+    collect_dups(NameAndVsnPairs, [{Name, [Vsn]}]).
+
+collect_dups([{Name, Vsn}|T], [{Name, Vsns}|Acc]) ->
+    collect_dups(T, [{Name, [Vsn|Vsns]}|Acc]);
+collect_dups([{Name, Vsn}|T], Acc) ->
+    collect_dups(T, [{Name, [Vsn]}|Acc]);
+collect_dups([], Acc) ->
+    Acc.
     

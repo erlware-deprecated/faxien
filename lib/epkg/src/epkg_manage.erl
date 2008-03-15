@@ -40,7 +40,7 @@ list_lib(InstallationPath, TargetErtsVsn) ->
     Fun    = fun(ErtsVsn) -> list_lib_for_erts_vsn(InstallationPath, TargetErtsVsn) end,
     Series = epkg_util:erts_series(TargetErtsVsn), 
     ?INFO_MSG("listing lib dirs for erts vsns ~p~n", [Series]),
-    lists:sort(fun({N, _}, {N1, _}) -> N < N1 end,
+    lists:sort(fun({N, _}, {N1, _}) -> N > N1 end,
 	       lists:flatten([lists:map(fun(ErtsVsn) -> list_lib_for_erts_vsn(InstallationPath, ErtsVsn) end, Series)])).
     
 

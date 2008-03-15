@@ -299,6 +299,7 @@ remove_redundant_paths([], _, _) ->
 %%--------------------------------------------------------------------
 install_non_release_package(PackagePath, InstalledPackageDir, PackageInstallationPath) ->
     ewl_file:mkdir_p(PackageInstallationPath),
+    ?INFO_MSG("copying ~s to ~s~n", [PackagePath, InstalledPackageDir]),
     ewl_file:copy_dir(PackagePath, InstalledPackageDir),
     build_if_build_file(InstalledPackageDir).
 

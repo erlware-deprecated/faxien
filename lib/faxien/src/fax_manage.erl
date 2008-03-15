@@ -101,7 +101,7 @@ describe_release(Repos, TargetErtsVsn, RelName, RelVsn, Timeout) ->
 			    end
 		    end, ok, Repos)
 	  end,
-    ok = fax_util:foreach_erts_vsn(TargetErtsVsn, Fun).
+    ok = epkg_util:foreach_erts_vsn(TargetErtsVsn, Fun).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -146,7 +146,7 @@ describe_app(Repos, TargetErtsVsn, AppName, AppVsn, Timeout) ->
 			    end
 		    end, ok, Repos)
 	  end,
-    ok = fax_util:foreach_erts_vsn(TargetErtsVsn, Fun).
+    ok = epkg_util:foreach_erts_vsn(TargetErtsVsn, Fun).
 
 %%--------------------------------------------------------------------
 %% @doc Add a repository to fetch from. 

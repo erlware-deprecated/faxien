@@ -153,4 +153,4 @@ $(PACKAGE_DIR): $(LOCAL_TARGETS) $(PACKAGE_DIR)/bin/$(RELS) $(PACKAGE_DIR)/relea
 # ----------------------------------------------------
 
 install: $(PACKAGE_DIR)
-	$(FAXIEN) install $(PACKAGE_DIR)
+	$(FAXIEN) install-release $(PACKAGE_DIR)

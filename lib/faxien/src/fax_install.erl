@@ -246,7 +246,7 @@ fetch_latest_remote_application(Repos, TargetErtsVsn, AppName, ToDir, Timeout) -
 %%--------------------------------------------------------------------
 fetch_remote_application(Repos, TargetErtsVsn, AppName, AppVsn, ToDir, Timeout) ->
     try
-	ok = fax_util:foreach_erts_vsn(TargetErtsVsn, 
+	ok = epkg_util:foreach_erts_vsn(TargetErtsVsn, 
 				       fun(ErtsVsn_) -> 
 					       ewr_fetch:fetch_binary_package(Repos, ErtsVsn_, AppName, AppVsn, ToDir, Timeout)
 				       end)
@@ -414,7 +414,7 @@ fetch_release(Repos, TargetErtsVsn, RelName, RelVsn, Timeout) ->
 
 fetch_release(Repos, TargetErtsVsn, RelName, RelVsn, ToDir, Timeout) ->
     try
-	ok = fax_util:foreach_erts_vsn(TargetErtsVsn, 
+	ok = epkg_util:foreach_erts_vsn(TargetErtsVsn, 
 				       fun(ErtsVsn) -> 
 					       ewr_fetch:fetch_release_package(Repos, ErtsVsn, RelName, RelVsn, ToDir, Timeout)
 				       end)
