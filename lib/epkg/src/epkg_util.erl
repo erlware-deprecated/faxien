@@ -21,6 +21,11 @@
 	 set_all_executable_perms/1,
 	 unpack_to_tmp/1,
 	 unpack_to_tmp_if_archive/1,
+	 foreach_erts_vsn/3,
+	 foreach_erts_vsn/2,
+	 erts_series/2,
+	 erts_series/1,
+	 erts_lower_bound_from_target/1,
 	 find_bad_control_categories/1,
 	 if_atom_or_integer_to_string/1,
 	 consult_rel_file/2,
@@ -32,12 +37,75 @@
 %%--------------------------------------------------------------------
 -include("epkg.hrl").
 -include("ewrepo.hrl").
-%-include("eunit.hrl").
+-include("eunit.hrl").
 -include("macros.hrl").
 
 %%====================================================================
 %% API
 %%====================================================================
+%%-------------------------------------------------------------------
+%% @doc For each patch compatible erts vsn less than or equal to the TargetErtsVSn call the fun 
+%% with a single erts vsn in the series. The fun takes a single arg - ErtsVsn::string(). 
+%% @spec foreach_erts_vsn(TargetErtsVsn, ErtsLowerBound, Fun) -> ok | Error 
+%% @end
+%%-------------------------------------------------------------------
+foreach_erts_vsn(TargetErtsVsn, ErtsLowerBound, Fun) ->
+    ?INFO_MSG("erts versions from ~s to ~s~n", [TargetErtsVsn, ErtsLowerBound]),
+    ErtsVsns = erts_series(TargetErtsVsn, ErtsLowerBound),
+    fs_lists:do_until(fun(ErtsVsn) -> (catch Fun(ErtsVsn)) end, ok, lists:reverse(ErtsVsns)).
+
+%% @equiv foreach_erts_vsn(TargetErtsVsn, DEFAULT_LOWEST_VSN, Fun) 
+%% @spec foreach_erts_vsn(TargetErtsVsn, Fun) -> ok | Error
+foreach_erts_vsn(TargetErtsVsn, Fun) ->
+    ErtsLowerBound = erts_lower_bound_from_target(TargetErtsVsn),
+    foreach_erts_vsn(TargetErtsVsn, ErtsLowerBound, Fun).
+
+%%-------------------------------------------------------------------
+%% @doc Return a list of erts vsns from the target vsn to the lower bound For example if 
+%%      the target version is 5.6.2 then the series would be ["5.6.2", "5.6.1", "5.6"]
+%% @spec erts_series(TargetErtsVsn, ErtsLowerBound) -> ok | Error 
+%% @end
+%%-------------------------------------------------------------------
+erts_series(TargetErtsVsn, ErtsLowerBound) ->
+    ?INFO_MSG("erts versions from ~s to ~s~n", [TargetErtsVsn, ErtsLowerBound]),
+    [MajorErtsVsn, MinorErtsVsn, HighPatchErtsVsn] = string:tokens(TargetErtsVsn, "."),
+    case catch string:tokens(ErtsLowerBound, ".") of
+	[MajorErtsVsn, MinorErtsVsn, LowPatchErtsVsn] ->
+	    create_series(MajorErtsVsn, MinorErtsVsn, HighPatchErtsVsn, LowPatchErtsVsn);
+	[MajorErtsVsn, MinorErtsVsn] ->
+	    create_series(MajorErtsVsn, MinorErtsVsn, HighPatchErtsVsn, "0"); 
+	_Error ->
+	    {error, {bad_erts_lower_bound, ErtsLowerBound}}
+    end.
+
+create_series(MajorErtsVsn, MinorErtsVsn, HighPatchErtsVsn, LowPatchErtsVsn) ->
+    lists:map(fun(PatchVsn) when PatchVsn > 0 ->
+		      lists:flatten([MajorErtsVsn, ".", MinorErtsVsn, ".", integer_to_list(PatchVsn)]);
+		 (0) ->
+		      lists:flatten([MajorErtsVsn, ".", MinorErtsVsn])
+	      end,
+	      lists:seq(list_to_integer(LowPatchErtsVsn), list_to_integer(HighPatchErtsVsn))).
+
+%%-------------------------------------------------------------------
+%% @doc Return a list of erts vsns from the target vsn to the lowest patch compatible version. For example if 
+%%      the target version is 5.6.2 then the series would be ["5.6.2", "5.6.1", "5.6"]
+%% @equiv erts_series(TargetErtsVsn, DEFAULT_LOWEST_VSN) 
+%% @spec erts_series(TargetErtsVsn) -> ok | Error
+%% @end
+%%-------------------------------------------------------------------
+erts_series(TargetErtsVsn) ->
+    ErtsLowerBound = erts_lower_bound_from_target(TargetErtsVsn),
+    erts_series(TargetErtsVsn, ErtsLowerBound).
+
+%%--------------------------------------------------------------------
+%% @doc return the lowest erts version acceptable based on the TargetErtsVsn
+%% `example: erts_lower_bound_from_target("5.5.5") -> "5.5"'
+%% @spec erts_lower_bound_from_target(TargetErtsVsn) -> string()
+%% @end
+%%--------------------------------------------------------------------
+erts_lower_bound_from_target(TargetErtsVsn) ->
+    [MajorErtsVsn, MinorErtsVsn|_] = string:tokens(TargetErtsVsn, "."),
+    lists:flatten([MajorErtsVsn,".", MinorErtsVsn]).
 
 %%----------------------------------------------------------------------------
 %% @doc Checks to see if a list is a string.
@@ -270,11 +338,11 @@ extract_rel_value(_, _Junk) ->
 %%%===================================================================
 %%% Testing Functions
 %%%===================================================================
-%is_string_test() ->
-    %?assertMatch(false, is_string([hello])),
-    %?assertMatch(false, is_string({})),
-    %?assertMatch(true, is_string("hell]o")),
-    %?assertMatch(true, is_string("hello")).
+is_string_test() ->
+    ?assertMatch(false, is_string([hello])),
+    ?assertMatch(false, is_string({})),
+    ?assertMatch(true, is_string("hell]o")),
+    ?assertMatch(true, is_string("hello")).
 
     
 			       
