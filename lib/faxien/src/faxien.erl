@@ -318,8 +318,8 @@ upgrade_all_releases(Repos) ->
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     fax_manage:upgrade_releases(Repos, TargetErtsVsn, IsLocalBoot, false, ?REQUEST_TIMEOUT).
 
-%% @spec upgrade_all() -> ok | {error, Reason}
-%% @equiv upgrade_all(Repos)
+%% @spec upgrade_all_releases() -> ok | {error, Reason}
+%% @equiv upgrade_all_releases(Repos)
 upgrade_all_releases() -> 
     {ok, Repos} = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
     upgrade_all_releases(Repos).
