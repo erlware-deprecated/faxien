@@ -149,7 +149,7 @@ list_lib() ->
     {ok, TargetErtsVsn}    = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     LowerBoundErtsVsn      = epkg_util:erts_lower_bound_from_target(TargetErtsVsn),
     NameVsnsPairs          = collect_dups(epkg_manage:list_lib(InstallationPath, TargetErtsVsn)),
-    io:format("~nInstalled Applications (for ERTS versions between ~s and ~s):~n", [LowerBoundErtsVsn, TargetErtsVsn]),
+    io:format("~nInstalled Applications for ERTS versions between ~s and ~s:~n", [LowerBoundErtsVsn, TargetErtsVsn]),
     lists:foreach(fun({Name, Vsns}) -> io:format("~s   ~s~n", [Name, format_vsns(Vsns)]) end, NameVsnsPairs).
 
 
@@ -161,8 +161,11 @@ list_lib() ->
 %%--------------------------------------------------------------------
 list_releases() ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
-    NameVsnsPairs = collect_dups(epkg_manage:list_releases(InstallationPath)),
-    io:format("~nInstalled Releases (Erlang standalone services):~n"),
+    {ok, TargetErtsVsn}    = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    LowerBoundErtsVsn      = epkg_util:erts_lower_bound_from_target(TargetErtsVsn),
+    NameVsnsPairs = collect_dups(epkg_manage:list_releases(InstallationPath, TargetErtsVsn)),
+    io:format("~nInstalled Releases (Erlang standalone services) for ERTS versions between ~s and ~s:~n",
+	      [LowerBoundErtsVsn, TargetErtsVsn]),
     lists:foreach(fun({Name, Vsns}) -> io:format("~s   ~s~n", [Name, format_vsns(lists:reverse(Vsns))]) end, NameVsnsPairs).
 
 %%--------------------------------------------------------------------

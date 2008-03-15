@@ -450,7 +450,7 @@ remove_from_config_list(Key, ValueToRemove, ConfigFilePath) ->
 %%--------------------------------------------------------------------
 is_outdated_release(Repos, TargetErtsVsn, ReleaseName, _Timeout) ->
     {ok, {_Repo, HighestRemoteVsn}} = fax_util:find_highest_vsn(Repos, TargetErtsVsn, ReleaseName, releases),
-    case find_highest_local_release_vsn(ReleaseName) of
+    case epkg_manage:find_highest_local_release_vsn(ReleaseName, TargetErtsVsn) of
 	{ok, HighestLocalVsn} ->
 	    case ewr_util:is_version_greater(HighestLocalVsn, HighestRemoteVsn) of
 		true ->
@@ -476,7 +476,7 @@ is_outdated_release(Repos, TargetErtsVsn, ReleaseName, _Timeout) ->
 %%--------------------------------------------------------------------
 is_outdated_app(Repos, TargetErtsVsn, AppName, _Timeout) ->
     {ok, {_Repo, HighestRemoteVsn}} = fax_util:find_highest_vsn(Repos, TargetErtsVsn, AppName, lib),
-    case find_highest_local_app_vsn(TargetErtsVsn, AppName) of
+    case epkg_manage:find_highest_local_app_vsn(AppName, TargetErtsVsn) of
 	{ok, HighestLocalVsn} ->
 	    case ewr_util:is_version_greater(HighestLocalVsn, HighestRemoteVsn) of
 		true ->
@@ -490,31 +490,6 @@ is_outdated_app(Repos, TargetErtsVsn, AppName, _Timeout) ->
 	    {error, Reason}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Find the highest version of a particular release that is installed locally.
-%% @spec find_highest_local_release_vsn(ReleaseName) -> {ok, HighestVsn} | {error, Reason}
-%% @end
-%%--------------------------------------------------------------------
-find_highest_local_release_vsn(ReleaseName) ->
-    highest_vsn(epkg_installed_paths:list_release_vsns(ReleaseName)).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Find the highest version of a particular application that is installed locally.
-%% @spec find_highest_local_app_vsn(ErtsVsn, AppName) -> {ok, HighestVsn} | {error, Reason}
-%% @end
-%%--------------------------------------------------------------------
-find_highest_local_app_vsn(ErtsVsn, AppName) ->
-    highest_vsn(epkg_installed_paths:list_app_vsns(ErtsVsn, AppName)).
-
-highest_vsn(Vsns) when length(Vsns) > 0 ->
-    HighestLocalVsn = hd(lists:sort(fun(A, B) -> ewr_util:is_version_greater(A, B) end, Vsns)),
-    {ok, HighestLocalVsn};
-highest_vsn([]) ->
-    {error, app_not_installed};
-highest_vsn(Error) ->
-    {error, Error}.
 
 
 %%--------------------------------------------------------------------
