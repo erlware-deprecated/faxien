@@ -177,7 +177,7 @@ installed_config_file_path(InstallationPath, RelName, RelVsn, ConfigFileName) ->
     filename:join([release_file_container_path(InstallationPath, RelName, RelVsn), ConfigFileName]).
     
 %% @spec installed_config_file_path() -> string()
-%% @equiv installed_config_file_path(InstallationPath, "faxien", CurrentFaxienVsn, "faxien.config") -> string()
+%% @equiv installed_config_file_path(InstallationPath, "faxien", CurrentFaxienVsn, "faxien.config")
 installed_config_file_path() ->
     %% @todo this is not compatible with composable apps - this must run with faxien.  Fix this.
     {ok, InstallationPath} = get_installation_path(),
