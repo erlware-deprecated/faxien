@@ -33,6 +33,8 @@
 		     {"uaa",      "upgrade-all-apps"},
 		     {"ur",       "upgrade-release"},
 		     {"ua",       "upgrade-app"},
+		     {"ir",       "install-release"},
+		     {"ia",       "install-app"},
 		     {"fr",       "fetch-release"},
 		     {"fa",       "fetch-app"},
 		     {"p",        "publish"},
