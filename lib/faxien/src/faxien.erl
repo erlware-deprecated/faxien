@@ -748,7 +748,7 @@ search_help() ->
 
 %%--------------------------------------------------------------------
 %% @doc Diff two config files
-%% @spec diff_config(RelName, RelVsn1, RelVsn2) -> Diff
+%% @spec diff_config(RelName, RelVsn1, RelVsn2) -> {ok, Diff}
 %% @end
 %%--------------------------------------------------------------------
 diff_config(RelName, RelVsn1, RelVsn2) -> 
