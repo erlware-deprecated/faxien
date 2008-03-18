@@ -16,6 +16,7 @@
 	 remove_all_apps/3,
 	 remove_release/4,
 	 remove_all_releases/3,
+	 diff_config/3,
 	 list_lib/2,
 	 list_releases/2,
 	 find_highest_local_release_vsn/2,
@@ -58,15 +59,15 @@ list_lib_for_erts_vsn(InstallationPath, ErtsVsn) ->
 %% @end
 %%--------------------------------------------------------------------
 list_releases(InstallationPath, TargetErtsVsn) ->
-    RelDir       = epkg_installed_paths:release_container_path(InstallationPath),
-    Series       = epkg_util:erts_series(TargetErtsVsn), 
+    RelDir = epkg_installed_paths:release_container_path(InstallationPath),
+    Series = epkg_util:erts_series(TargetErtsVsn), 
     ?INFO_MSG("listing lib dirs for erts vsns ~p~n", [Series]),
     lists:sort(fun({N, _}, {N1, _}) -> N > N1 end,
 	       lists:flatten([lists:map(fun(ErtsVsn) -> list_releases_for_erts_vsn(InstallationPath, ErtsVsn) end, Series)])).
 
 list_releases_for_erts_vsn(InstallationPath, ErtsVsn) ->
-    RelDir       = epkg_installed_paths:release_container_path(InstallationPath),
-    Paths        = filelib:wildcard(RelDir ++ "/*"),
+    RelDir = epkg_installed_paths:release_container_path(InstallationPath),
+    Paths  = filelib:wildcard(RelDir ++ "/*"),
     lists:filter(fun({RelName, RelVsn}) ->
 			 RelFilePath = epkg_installed_paths:installed_release_rel_file_path(InstallationPath, RelName, RelVsn),
 			 ErtsVsn_    = epkg_util:consult_rel_file(erts_vsn, RelFilePath),
@@ -184,6 +185,19 @@ highest_vsn([]) ->
 highest_vsn(Error) ->
     {error, Error}.
 
+%%--------------------------------------------------------------------
+%% @doc Diff two config files
+%% @spec diff_config(RelName, RelVsn1, RelVsn2) -> Diff
+%% @end
+%%--------------------------------------------------------------------
+diff_config(RelName, RelVsn1, RelVsn2) -> 
+    {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
+    Rel1DirPath = epkg_installed_paths:release_file_container_path(InstallationPath, RelName, RelVsn1),
+    Rel2DirPath = epkg_installed_paths:release_file_container_path(InstallationPath, RelName, RelVsn2),
+    [Rel1ConfigFilePath] = ewl_file:find(Rel1DirPath, ".*config"),
+    [Rel2ConfigFilePath] = ewl_file:find(Rel2DirPath, ".*config"),
+    ewl_config_diff:config_files(Rel1ConfigFilePath, Rel2ConfigFilePath). 
+    
 %%====================================================================
 %% Internal functions
 %%====================================================================

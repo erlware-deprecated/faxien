@@ -47,6 +47,8 @@
 	 search/1,
 	 search/0,
 
+	 diff_config/3,
+
 	 describe_release/2,
 	 describe_release/1,
 	 describe_app/2,
@@ -128,6 +130,7 @@
 	 installed_help/0,
 	 describe_release_help/0,
 	 describe_app_help/0,
+	 diff_config_help/0,
 	 remove_release_help/0,
 	 remove_app_help/0
 	]).
@@ -673,6 +676,7 @@ commands_help() ->
      "upgrade-app             upgrade an application package installed on the local system",  
      "upgrade-all-apps        upgrade all the application packages installed on the local system",  
      "version                 display the current Faxien version installed on the local system",
+     "diff-config             diff the configuration between two installed versions of a release",
 
      "\nConfiguration Management Commands:",
      "environment             display information about the current Faxien environment seetings.",
@@ -741,6 +745,20 @@ search_help() ->
      "Example: search regexp std.* - this example will list all libraries and releases that match the regexp std.*" ,
      "Example: search yaw - this example will list all libraries and releases that contain the string 'yaw'" ,
      "Example: search - this example will list all libraries and releases"].
+
+%%--------------------------------------------------------------------
+%% @doc Diff two config files
+%% @spec diff_config(RelName, RelVsn1, RelVsn2) -> Diff
+%% @end
+%%--------------------------------------------------------------------
+diff_config(RelName, RelVsn1, RelVsn2) -> 
+    epkg:diff_config(RelName, RelVsn1, RelVsn2).
+
+%% @private
+diff_config_help() ->
+    ["\nHelp for diff_config\n",
+     "Usage: diff-config <release-name> <rel-vsn1> <rel-vsn2>: diff config files for two versions of a release\n",
+     "Example: diff-config sinan 0.8.8 0.8.10 - Diff config file for installed versions of sinan 0.8.8 and 0.8.10."].
 
 
 %%--------------------------------------------------------------------

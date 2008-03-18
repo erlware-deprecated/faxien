@@ -19,6 +19,7 @@
 	 list/0,
 	 list_lib/0,
 	 list_releases/0,
+	 diff_config/3,
 	 remove_all_apps/1,
 	 remove_app/2,
 	 remove_all/1,
@@ -38,6 +39,7 @@
 	 remove_all_apps_help/0,
 	 remove_help/0,
 	 remove_all_help/0,
+	 diff_config_help/0,
 	 examples_help/0,
 	 commands_help/0
 	]).
@@ -246,6 +248,20 @@ remove_all_help() ->
      "Example: remove-all sinan - removes all versions of the sinan release that are currently installed."].
 
 %%--------------------------------------------------------------------
+%% @doc Diff two config files
+%% @spec diff_config(RelName, RelVsn1, RelVsn2) -> {ok, Diff}
+%% @end
+%%--------------------------------------------------------------------
+diff_config(RelName, RelVsn1, RelVsn2) -> 
+    {ok, epkg_manage:diff_config(RelName, RelVsn1, RelVsn2)}.
+
+%% @private
+diff_config_help() ->
+    ["\nHelp for diff_config\n",
+     "Usage: diff-config <release-name> <rel-vsn1> <rel-vsn2>: diff config files for two versions of a release\n",
+     "Example: diff-config sinan 0.8.8 0.8.10 - Diff config file for installed versions of sinan 0.8.8 and 0.8.10."].
+
+%%--------------------------------------------------------------------
 %% @doc 
 %%  Return the version of the current Epkg release.
 %% @spec version() -> string()
@@ -337,9 +353,11 @@ print_help_list(HelpList) ->
 %% @end
 %%--------------------------------------------------------------------
 format_vsns(Vsns) when length(Vsns) > 5 ->
-    lists:flatten([ewr_util:join(lists:reverse(lists:nthtail(length(Vsns) - 5, lists:reverse(Vsns))), " | "), " | ..."]);
+    SortedVsns = lists:sort(fun(V1, V2) -> ewr_util:is_version_greater(V1, V2) end, Vsns),
+    lists:flatten([ewr_util:join(lists:reverse(lists:nthtail(length(Vsns) - 5, lists:reverse(SortedVsns))), " | "), " | ..."]);
 format_vsns(Vsns) ->
-    ewr_util:join(Vsns, " | ").
+    SortedVsns = lists:sort(fun(V1, V2) -> ewr_util:is_version_greater(V1, V2) end, Vsns),
+    ewr_util:join(SortedVsns, " | ").
 
 collect_dups([]) -> 
     [];
