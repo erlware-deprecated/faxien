@@ -50,6 +50,7 @@
 	 list_app_vsns/3,
 	 package_dir_to_name_and_vsn/1,
 	 get_installation_path/0,
+	 find_config_file_path/2,
 	 installed_config_file_path/0,
 	 installed_config_file_path/4,
 	 installed_release_rel_file_path/3
@@ -312,6 +313,17 @@ get_installation_path() ->
 	    ?INFO_MSG("epkg:get_installation_path init:get_argument(prefix) returned error~n", []),
 	    {error, no_prefix_supplied_with_startup}
     end.
+
+%%--------------------------------------------------------------------
+%% @doc Return the path to a config file within an installed release.
+%% @spec config_file_path(RelName, RelVsn) -> ConfigFilePath
+%% @end
+%%--------------------------------------------------------------------
+find_config_file_path(RelName, RelVsn) -> 
+    {ok, InstallationPath} = get_installation_path(),
+    RelDirPath             = release_file_container_path(InstallationPath, RelName, RelVsn),
+    [RelConfigFilePath]    = ewl_file:find(RelDirPath, ".*config"),
+    RelConfigFilePath.
 
 %%%===================================================================
 %%% Internal Functions

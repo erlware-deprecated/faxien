@@ -191,11 +191,8 @@ highest_vsn(Error) ->
 %% @end
 %%--------------------------------------------------------------------
 diff_config(RelName, RelVsn1, RelVsn2) -> 
-    {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
-    Rel1DirPath = epkg_installed_paths:release_file_container_path(InstallationPath, RelName, RelVsn1),
-    Rel2DirPath = epkg_installed_paths:release_file_container_path(InstallationPath, RelName, RelVsn2),
-    [Rel1ConfigFilePath] = ewl_file:find(Rel1DirPath, ".*config"),
-    [Rel2ConfigFilePath] = ewl_file:find(Rel2DirPath, ".*config"),
+    Rel1ConfigFilePath = epkg_installed_paths:find_config_file_path(RelName, RelVsn1),
+    Rel2ConfigFilePath = epkg_installed_paths:find_config_file_path(RelName, RelVsn2),
     ewl_config_diff:config_files(Rel1ConfigFilePath, Rel2ConfigFilePath). 
     
 %%====================================================================
