@@ -246,7 +246,7 @@ outdated_releases(Repos, TargetErtsVsn, Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 upgrade_releases(Repos, TargetErtsVsn, IsLocalBoot, Force, Timeout) ->
-    Releases      = epkg_installed_paths:list_releases(),
+    Releases = epkg_installed_paths:list_releases(),
     lists:foreach(fun(ReleaseName) -> 
 			  upgrade_release(Repos, TargetErtsVsn, ReleaseName, IsLocalBoot, Force, Timeout)
 		  end, Releases).
@@ -267,12 +267,40 @@ upgrade_release(Repos, TargetErtsVsn, ReleaseName, IsLocalBoot, Force, Timeout) 
     case is_outdated_release(Repos, TargetErtsVsn, ReleaseName, Timeout) of
 	{ok, {lower, HighestLocalVsn, HighestRemoteVsn}} ->
 	    io:format("Upgrading from version ~s of ~s to version ~s~n", [HighestLocalVsn, ReleaseName, HighestRemoteVsn]),
-	    fax_install:install_remote_release(Repos, TargetErtsVsn, ReleaseName, HighestRemoteVsn, IsLocalBoot, Force, Timeout); 
+	    fax_install:install_remote_release(Repos,TargetErtsVsn,ReleaseName,HighestRemoteVsn,IsLocalBoot,Force,Timeout), 
+	    handle_config_on_upgrade(ReleaseName, HighestRemoteVsn, HighestLocalVsn);
 	{ok, {_, HighestLocalVsn}} ->
 	    io:format("~s at version ~s is up to date~n", [ReleaseName, HighestLocalVsn]);
 	Error ->
 	    io:format("~p~n", [Error]),
 	    Error
+    end.
+
+handle_config_on_upgrade(ReleaseName, HighestRemoteVsn, HighestLocalVsn) ->
+    case epkg:diff_config(ReleaseName, HighestRemoteVsn, HighestLocalVsn) of
+	{ok, []} ->
+	    ok;
+	{ok, Diff} ->
+	    io:format("Faxien has found the following differences in config " ++
+		      "files when upgrading from ~s to ~s:~n~n~p~n",
+		      [HighestLocalVsn, HighestRemoteVsn, Diff]),
+	    prompt_for_config_policy(ReleaseName, HighestRemoteVsn, HighestLocalVsn)
+    end.
+	    
+prompt_for_config_policy(RelName, HighestRemoteVsn, HighestLocalVsn) ->
+    case ewl_talk:ask(["Would you like to (k)eep the latest config or (o)verwrite it with the past config? [k|o]"]) of
+	"o" ->
+	    Rel1ConfigFilePath = epkg_installed_paths:find_config_file_path(RelName, HighestRemoteVsn),
+	    Rel2ConfigFilePath = epkg_installed_paths:find_config_file_path(RelName, HighestLocalVsn),
+	    ?INFO_MSG("replacing ~p with ~p~n", [Rel2ConfigFilePath, Rel1ConfigFilePath]),
+	    file:copy(Rel2ConfigFilePath, Rel1ConfigFilePath),
+	    ok;
+	"k" ->
+	    ok;
+	Error ->
+	    ?INFO_MSG("user entered \"~p\"~n", [Error]),
+	    io:format("Please enter \"k\" or \"o\"~n"),
+	    prompt_for_config_policy(RelName, HighestRemoteVsn, HighestLocalVsn)
     end.
 
 %%--------------------------------------------------------------------
