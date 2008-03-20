@@ -6,6 +6,8 @@
 %%% ok | {ok, Value} in the correct case and {error, Reason} or an exception in the error case.  The exception to these rules 
 %%% are exported functions that are not to be called from the commandline. 
 %%%
+%%% NOTE*  The max line length for this file and all erlware projects is 132 not 80 columns. 
+%%%
 %%% Types:
 %%%  @type repo() = string(). Contains domain and repo root. 
 %%%   Example: http://www.erlware.org/stable   
@@ -285,15 +287,15 @@ outdated_apps_help() ->
 upgrade_release(Repo, RelName) when is_atom(Repo) -> 
     upgrade_release([atom_to_list(Repo)], RelName);
 upgrade_release(Repos, RelName) -> 
-    A                 = epkg_util:if_atom_or_integer_to_string(RelName),
-    {ok, IsLocalBoot} = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
+    A                   = epkg_util:if_atom_or_integer_to_string(RelName),
+    {ok, IsLocalBoot}   = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     fax_manage:upgrade_release(Repos, TargetErtsVsn, A, IsLocalBoot, false, ?REQUEST_TIMEOUT).
 
 %% @spec upgrade_release(RelName) -> ok | {error, Reason}
 %% @equiv upgrade_release(Repos, RelName)
 upgrade_release(RelName) -> 
-    {ok, Repos}            = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
+    {ok, Repos} = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
     upgrade_release(Repos, RelName).
 
 %% @private
@@ -317,7 +319,7 @@ upgrade_release_help() ->
 upgrade_all_releases(Repo) when is_atom(Repo) ->
     upgrade_all_releases([atom_to_list(Repo)]);
 upgrade_all_releases(Repos) ->
-    {ok, IsLocalBoot} = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
+    {ok, IsLocalBoot}   = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     fax_manage:upgrade_releases(Repos, TargetErtsVsn, IsLocalBoot, false, ?REQUEST_TIMEOUT).
 
@@ -351,8 +353,8 @@ install_release(Repos, ReleaseName, ReleaseVsn)  ->
     ?INFO_MSG("faxien:install_release(~p, ~p, ~p)~n", [Repos, ReleaseName, ReleaseVsn]),
     % Any atoms must be turned to strings.  Atoms are accepted because it makes
     % the invocation from the command line cleaner. 
-    [A,B]                  = epkg_util:if_atom_or_integer_to_string([ReleaseName, ReleaseVsn]),
-    {ok, IsLocalBoot}      = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
+    [A,B]               = epkg_util:if_atom_or_integer_to_string([ReleaseName, ReleaseVsn]),
+    {ok, IsLocalBoot}   = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     fax_install:install_remote_release(Repos, TargetErtsVsn, A, B, IsLocalBoot, false, ?REQUEST_TIMEOUT).
 
@@ -571,14 +573,14 @@ fetch_app_help() ->
 %% @end
 %%--------------------------------------------------------------------
 publish(Repo, PackageDir, Timeout) -> 
-    [A,B]         = epkg_util:if_atom_or_integer_to_string([Repo, PackageDir]),
+    [A,B] = epkg_util:if_atom_or_integer_to_string([Repo, PackageDir]),
     fax_publish:publish([A], B, Timeout, ?REQUEST_TIMEOUT).
 
 %% @spec publish(PackageDir, Timeout) -> ok | {error, Reason}
 %% @equiv publish(Repos, PackageDir, Timeout)
 publish(PackageDir, Timeout) when is_integer(Timeout); Timeout == infinity -> 
-    {ok, Repos}   = gas:get_env(faxien, repos_to_publish_to, ?ERLWARE_URL),
-    [A]           = epkg_util:if_atom_or_integer_to_string([PackageDir]),
+    {ok, Repos} = gas:get_env(faxien, repos_to_publish_to, ?ERLWARE_URL),
+    [A]         = epkg_util:if_atom_or_integer_to_string([PackageDir]),
     fax_publish:publish(Repos, A, Timeout);
 
 %% @spec publish(Repos PackageDir) -> ok | {error, Reason}

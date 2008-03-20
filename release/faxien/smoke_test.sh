@@ -21,7 +21,7 @@ faxien outdated_apps
 echo "upgrade the sinan app"
 faxien upgrade_app sinan
 
-faxien outdated
+faxien outdated-releases
 echo "upgrade all installed releases"
 faxien upgrade-all-releases
 
