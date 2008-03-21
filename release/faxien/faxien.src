@@ -1,6 +1,8 @@
 #!/bin/sh
 
-PREFIX=$(cd $(dirname $(dirname $0)); pwd)
+PROG=$0
+test -h $0 && PROG=$(readlink $0)
+PREFIX=$(cd $(dirname $(dirname $PROG)); pwd)
 
 #### Fill in values for these variables ####
 REL_NAME=faxien

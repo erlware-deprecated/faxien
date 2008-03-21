@@ -21,6 +21,7 @@
    {err_log_tty, false} % Log to the screen
    ]},
 
+ %% Epkg provides package management on the local file system
  {epkg, 
   [
 	{target_erts_vsn, "5.5.5"},
@@ -31,7 +32,10 @@
  {faxien, 
   [
 	{repos_to_fetch_from, ["http://repo.erlware.org/pub", "http://repo.martinjlogan.com/pub"]},
-	{repos_to_publish_to, ["http://repo.erlware.org/writable", "http://repo.martinjlogan.com/writable"]},
+	
+	%% Add repos like "http://repo.erlware.org/writable" and "http://repo.martinjlogan.com/writable" with 
+ 	%% faxien add-publish-repo
+	{repos_to_publish_to, []},
 	{request_timeout, 120000},
 	{is_local_boot, false}
   ]

@@ -19,6 +19,7 @@
 	 list/0,
 	 list_lib/0,
 	 list_releases/0,
+	 diff_config/3,
 	 remove_all_apps/1,
 	 remove_app/2,
 	 remove_all/1,
@@ -38,6 +39,7 @@
 	 remove_all_apps_help/0,
 	 remove_help/0,
 	 remove_all_help/0,
+	 diff_config_help/0,
 	 examples_help/0,
 	 commands_help/0
 	]).
@@ -147,9 +149,11 @@ list_help() ->
 list_lib() ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
     {ok, TargetErtsVsn}    = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
-    NameVsnPairs           = epkg_manage:list_lib(InstallationPath, TargetErtsVsn),
-    io:format("~nInstalled Applications (for ERTS ~s):~n", [TargetErtsVsn]),
-    lists:foreach(fun({Name, Vsn}) -> io:format("~s   ~s~n", [Name, Vsn]) end, NameVsnPairs).
+    LowerBoundErtsVsn      = epkg_util:erts_lower_bound_from_target(TargetErtsVsn),
+    NameVsnsPairs          = collect_dups(epkg_manage:list_lib(InstallationPath, TargetErtsVsn)),
+    io:format("~nInstalled Applications for ERTS versions between ~s and ~s:~n", [LowerBoundErtsVsn, TargetErtsVsn]),
+    lists:foreach(fun({Name, Vsns}) -> io:format("~s   ~s~n", [Name, format_vsns(Vsns)]) end, NameVsnsPairs).
+
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -159,9 +163,12 @@ list_lib() ->
 %%--------------------------------------------------------------------
 list_releases() ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
-    NameVsnPairs = epkg_manage:list_releases(InstallationPath),
-    io:format("~nInstalled Releases (Erlang standalone services):~n"),
-    lists:foreach(fun({Name, Vsn}) -> io:format("~s   ~s~n", [Name, Vsn]) end, NameVsnPairs).
+    {ok, TargetErtsVsn}    = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    LowerBoundErtsVsn      = epkg_util:erts_lower_bound_from_target(TargetErtsVsn),
+    NameVsnsPairs = collect_dups(epkg_manage:list_releases(InstallationPath, TargetErtsVsn)),
+    io:format("~nInstalled Releases (Erlang standalone services) for ERTS versions between ~s and ~s:~n",
+	      [LowerBoundErtsVsn, TargetErtsVsn]),
+    lists:foreach(fun({Name, Vsns}) -> io:format("~s   ~s~n", [Name, format_vsns(lists:reverse(Vsns))]) end, NameVsnsPairs).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -239,6 +246,20 @@ remove_all_help() ->
     ["\nHelp for remove_all\n",
      "Usage: remove-all <release-name>: remove a particular rlease for all versions installed.\n",
      "Example: remove-all sinan - removes all versions of the sinan release that are currently installed."].
+
+%%--------------------------------------------------------------------
+%% @doc Diff two config files
+%% @spec diff_config(RelName, RelVsn1, RelVsn2) -> {ok, Diff}
+%% @end
+%%--------------------------------------------------------------------
+diff_config(RelName, RelVsn1, RelVsn2) -> 
+    {ok, epkg_manage:diff_config(RelName, RelVsn1, RelVsn2)}.
+
+%% @private
+diff_config_help() ->
+    ["\nHelp for diff_config\n",
+     "Usage: diff-config <release-name> <rel-vsn1> <rel-vsn2>: diff config files for two versions of a release\n",
+     "Example: diff-config sinan 0.8.8 0.8.10 - Diff config file for installed versions of sinan 0.8.8 and 0.8.10."].
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -324,4 +345,29 @@ help_for_command(Command) ->
 
 print_help_list(HelpList) ->	   
     lists:foreach(fun(HelpString) -> io:format("~s~n", [HelpString]) end, HelpList).
+    
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc used to format the output of the list functions
+%% @end
+%%--------------------------------------------------------------------
+format_vsns(Vsns) when length(Vsns) > 5 ->
+    SortedVsns = lists:sort(fun(V1, V2) -> ewr_util:is_version_greater(V1, V2) end, Vsns),
+    lists:flatten([ewr_util:join(lists:reverse(lists:nthtail(length(Vsns) - 5, lists:reverse(SortedVsns))), " | "), " | ..."]);
+format_vsns(Vsns) ->
+    SortedVsns = lists:sort(fun(V1, V2) -> ewr_util:is_version_greater(V1, V2) end, Vsns),
+    ewr_util:join(SortedVsns, " | ").
+
+collect_dups([]) -> 
+    [];
+collect_dups([{Name, Vsn}|NameAndVsnPairs]) -> 
+    collect_dups(NameAndVsnPairs, [{Name, [Vsn]}]).
+
+collect_dups([{Name, Vsn}|T], [{Name, Vsns}|Acc]) ->
+    collect_dups(T, [{Name, [Vsn|Vsns]}|Acc]);
+collect_dups([{Name, Vsn}|T], Acc) ->
+    collect_dups(T, [{Name, [Vsn]}|Acc]);
+collect_dups([], Acc) ->
+    Acc.
     

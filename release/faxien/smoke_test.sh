@@ -14,16 +14,16 @@ faxien installed #| head -n 5
 echo "describe the sinan application at its latest version"
 faxien describe_app sinan #| head -n 5
 
-(sleep 1; echo "yes") | faxien remove sinan
-faxien install sinan 0.8.6
+(sleep 1; echo "yes") | faxien rr sinan
+faxien install-release sinan 0.8.6
 
 faxien outdated_apps
 echo "upgrade the sinan app"
 faxien upgrade_app sinan
 
-faxien outdated
+faxien outdated-releases
 echo "upgrade all installed releases"
-faxien upgrade_all
+faxien upgrade-all-releases
 
 echo "add and remove publish repos"
 faxien add_publish_repo http://test_publish_repo.com

@@ -16,10 +16,8 @@
 %% External exports
 %%--------------------------------------------------------------------
 -export([
-	 execute_on_latest_package_version/7,
+	 execute_on_latest_package_version/6,
 	 execute_on_latest_package_version/5,
-	 foreach_erts_vsn/3,
-	 foreach_erts_vsn/2,
 	 find_highest_vsn/4,
 	 find_highest_vsn/5,
 	 copy_dir_to_tmp_dir/1,
@@ -41,39 +39,41 @@
 %% <pre>
 %% Variables:
 %%  TargetErtsVsn - the erts version to start with
-%%  ErtsLowerBound - supply erts vsns from the target to the lowerbound. For example 5.5.5 down to 5.5.3.
 %%  Fun - This fun takes two arguments Repos and PackageVsn. This function terminates when the fun returns ok.
 %%  VsnThreshold - is used to indicate that the highest version possible is to be installed but no higher than VsnThreshold.
 %% </pre>
 %%
-%% @spec execute_on_latest_package_version(Repos, TargetErtsVsn, ErtsLowerBound, PackageName, 
-%%                                                              Fun, Side, VsnThreshold) -> ok | exit
+%% @spec execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, VsnThreshold) -> ok | exit
 %% where
 %%  Side = lib | releases
 %%  VsnThreshold = string() | infinity
 %% @end
 %%-------------------------------------------------------------------
-execute_on_latest_package_version([], _TargetErtsVsn, _ErtsLowerBound, _PackageName, _Fun, _Side, _VsnThreshold) ->
+execute_on_latest_package_version([], _TargetErtsVsn, _PackageName, _Fun, _Side, _VsnThreshold) ->
     {error, package_not_found};
-execute_on_latest_package_version(Repos, TargetErtsVsn, ErtsLowerBound, PackageName, Fun, Side, VsnThreshold) 
+execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, VsnThreshold) 
   when Side == lib; Side == releases ->
-    {ok, {Repo, HighVsn}} = find_highest_vsn(Repos, TargetErtsVsn, PackageName, Side, VsnThreshold),
-    ShortenedRepos        = lists:delete(Repo, Repos),
-    case catch Fun([Repo|ShortenedRepos], HighVsn) of
-	ok -> 
-	    ok;
-	Error -> 
-	    ?ERROR_MSG("failed with ~p for vsn ~p in repo ~p moving on to next repo and setting vsn threshold to ~p~n", 
-		       [Error, HighVsn, Repo, HighVsn]), 
-	    io:format("Failed operation on ~s at vsn ~s.  Trying for a lower version~n", [PackageName, HighVsn]),
-	    execute_on_latest_package_version(ShortenedRepos, TargetErtsVsn, ErtsLowerBound, PackageName, Fun, Side, HighVsn)
+    case find_highest_vsn(Repos, TargetErtsVsn, PackageName, Side, VsnThreshold) of
+	{ok, {Repo, HighVsn}} -> 
+	    ShortenedRepos        = lists:delete(Repo, Repos),
+	    case catch Fun([Repo|ShortenedRepos], HighVsn) of
+		ok -> 
+		    ok;
+		Error -> 
+		    ?ERROR_MSG("failed with ~p for vsn ~p in repo ~p moving on to next repo and setting vsn threshold to ~p~n", 
+			       [Error, HighVsn, Repo, HighVsn]), 
+		    io:format("Failed operation on ~s at vsn ~s.  Trying for a lower version~n", [PackageName, HighVsn]),
+		    execute_on_latest_package_version(ShortenedRepos, TargetErtsVsn, PackageName, Fun, Side, HighVsn)
+	    end;
+	{error, Reason} ->
+	    ?ERROR_MSG("failed to pull package: ~p~n", [Reason]),
+	    exit("Did not succeed in downloading any version of the package")
     end.
 
 %% @spec execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side) -> ok | exit()
-%% @equiv execute_on_latest_package_version(Repos, TargetErtsVsn, DefaultErtsLowerBound, PackageName, Fun, Side, infinity) 
+%% @equiv execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, infinity) 
 execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side) ->
-    ErtsLowerBound = erts_lower_bound_from_target(TargetErtsVsn),
-    execute_on_latest_package_version(Repos, TargetErtsVsn, ErtsLowerBound, PackageName, Fun, Side, infinity).
+    execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, infinity).
 
 %%-------------------------------------------------------------------
 %% @doc
@@ -97,41 +97,49 @@ find_highest_vsn(Repos, TargetErtsVsn, PackageName, Side, VsnThreshold) ->
     end.
 				 
 find_highest_vsn2(Repos, TargetErtsVsn, PackageName, Side, VsnThreshold) ->
-    VsnLists = lists:flatten(lists:foldl(fun(Repo, Acc) -> 
-						 SysInfo  = ewr_util:system_info(),
-						 Suffixes = ewr_util:gen_multi_erts_repo_stub_suffix(TargetErtsVsn, 
-												     PackageName,
-												     [SysInfo, "Generic"], 
-												     Side),
-				   lists:foldl(fun(Suf, Acc2) -> 
-						       ?INFO_MSG("Checking for highest version of ~p in ~s/~s~n", 
-									     [PackageName, Repo, Suf]),
-						       case repo_list(Repo ++ "/" ++ Suf) of
-							   {ok, Vsns} -> 
-							       ?INFO_MSG("found vsns ~p~n", [Vsns]),
-							       [[{Repo, Vsn} || Vsn <- lists:reverse(Vsns)]|Acc2]; 
-							   {error, _Reason} -> 
-							       Acc2
-						       end
-					       end, Acc, Suffixes)
-			   end, [], Repos)),
+    VsnLists = lists:flatten(
+		 lists:foldl(fun(Repo, Acc) -> 
+				     SysInfo  = ewr_util:system_info(),
+				     Suffixes = ewr_util:gen_multi_erts_repo_stub_suffix(TargetErtsVsn, 
+											 PackageName,
+											 [SysInfo, "Generic"], 
+											 Side),
+				     lists:foldl(fun(Suf, Acc2) -> 
+							 ?INFO_MSG("Checking for highest version of ~p in ~s/~s~n", 
+								   [PackageName, Repo, Suf]),
+							 case repo_list(Repo ++ "/" ++ Suf) of
+							     {ok, Vsns} -> 
+								 ?INFO_MSG("found vsns ~p~n", [Vsns]),
+								 [[{Repo, Vsn} || Vsn <- lists:reverse(Vsns)]|Acc2]; 
+							     {error, _Reason} -> 
+								 Acc2
+							 end
+						 end, Acc, Suffixes)
+			     end, [], Repos)),
     ?INFO_MSG("find_highest_vsn list of remote versions ~p~n", [VsnLists]),
-    {Repo, HighVsn} =
-	case VsnThreshold of
-	    infinity ->
-		hd(lists:sort(fun({_, V1}, {_, V2}) -> ewr_util:is_version_greater(V1, V2) end, VsnLists));
-	    VsnThreshold ->
-		lop_off_top(VsnLists, VsnThreshold)
-	end,
-    ?INFO_MSG("find_highest_vsn list of remote versions ~p with threshold of ~p found highest in ~p~n", 
-	      [VsnLists, VsnThreshold, {Repo, HighVsn}]),
-    {ok, {Repo, HighVsn}}.
-
+    find_highest_remote_vsn_under_threshold(VsnThreshold, VsnLists).
 
 %% @equiv find_highest_vsn(Repos, TargetErtsVsn, PackageName, Side, infinity)
 %% @spec find_highest_vsn(Repos, TargetErtsVsn, PackageName, Side) -> {ok, {Repo, Vsn}} | {error, Reason}
 find_highest_vsn(Repos, TargetErtsVsn, PackageName, Side) ->
     find_highest_vsn(Repos, TargetErtsVsn, PackageName, Side, infinity).
+
+
+find_highest_remote_vsn_under_threshold(VsnThreshold, VsnLists) ->
+    case VsnThreshold of
+	infinity ->
+	    {ok, hd(lists:sort(fun({_, V1}, {_, V2}) -> ewr_util:is_version_greater(V1, V2) end, VsnLists))};
+	VsnThreshold ->
+	    case lop_off_top(VsnLists, VsnThreshold) of
+		{ok, {Repo, HighVsn}} = Res ->
+		    ?INFO_MSG("find_highest_vsn list of remote versions ~p with threshold of ~p found highest ~p at vsn ~s~n", 
+			      [VsnLists, VsnThreshold, Repo, HighVsn]),
+		    Res;
+		{error, Reason} = Error ->
+		    ?INFO_MSG("Failed to find a version lower than ~p~n", [VsnThreshold]),
+		    Error
+	    end
+    end.
 
 lop_off_top(VsnLists, VsnThreshold) ->
     SortedVsnLists = lists:sort(fun({_, V1}, {_, V2}) -> ewr_util:is_version_greater(V1, V2) end, VsnLists),
@@ -139,7 +147,7 @@ lop_off_top(VsnLists, VsnThreshold) ->
 
 lop_off_top2([{Repo, Vsn}|T], VsnThreshold) ->
     case ewr_util:is_version_greater(VsnThreshold, Vsn) of
-	true  -> {Repo, Vsn};
+	true  -> {ok, {Repo, Vsn}};
 	false -> lop_off_top2(T, VsnThreshold) 
     end;
 lop_off_top2([], VsnThreshold) ->
@@ -169,7 +177,6 @@ add_pzs(LibDirs) ->
     lists:foreach(fun(LibDir) -> 
 			  code:add_pathz(LibDir ++ "/ebin") 
 		  end, to_app_dirs(LibDirs)).
-
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -221,34 +228,6 @@ parse_out_package_versions(Body) ->
     {Elem, _} = xmerl_scan:string(Body),
     [filename:basename(E) || E <- tl(lists:sort(xmerl_xs:value_of(xmerl_xs:select("//D:href", Elem))))].
 
-
-
-	    
-%%-------------------------------------------------------------------
-%% @doc For each patch compatible erts vsn less than or equal to the TargetErtsVSn call the fun 
-%% with a single erts vsn in the series. The fun takes a single arg - ErtsVsn::string(). 
-%% @spec foreach_erts_vsn(TargetErtsVsn, ErtsLowerBound, Fun) -> ok | Error 
-%% @end
-%%-------------------------------------------------------------------
-foreach_erts_vsn(TargetErtsVsn, ErtsLowerBound, Fun) ->
-    ?INFO_MSG("erts versions from ~s to ~s~n", [TargetErtsVsn, ErtsLowerBound]),
-    [MajorErtsVsn, MinorErtsVsn, HighPatchErtsVsn] = string:tokens(TargetErtsVsn, "."),
-    case catch string:tokens(ErtsLowerBound, ".") of
-	[MajorErtsVsn, MinorErtsVsn, LowPatchErtsVsn] ->
-	    ErtsVsns = [lists:flatten([MajorErtsVsn, ".", MinorErtsVsn, ".", integer_to_list(E)]) || 
-			   E <- lists:seq(list_to_integer(LowPatchErtsVsn), list_to_integer(HighPatchErtsVsn))], 
-	    fs_lists:do_until(fun(ErtsVsn) -> (catch Fun(ErtsVsn)) end, ok, lists:reverse(ErtsVsns));
-	_Error ->
-	    {error, {bad_erts_lower_bound, ErtsLowerBound}}
-    end.
-
-%% @equiv foreach_erts_vsn(TargetErtsVsn, DEFAULT_LOWEST_VSN, Fun) 
-%% @spec foreach_erts_vsn(TargetErtsVsn, Fun) -> ok | Error
-foreach_erts_vsn(TargetErtsVsn, Fun) ->
-    ErtsLowerBound = erts_lower_bound_from_target(TargetErtsVsn),
-    foreach_erts_vsn(TargetErtsVsn, ErtsLowerBound, Fun).
-
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Fetch the erts version that matches the compiler version of the modules in the application supplied. 
@@ -276,7 +255,6 @@ search_dynamic_vsns(CompilerVsn) ->
     %% @todo this function will find the version being looked for in a repo and then return the erts vsn it is found for.
     {error, {no_erts_vsn_found, {compiler_vsn, CompilerVsn}}}.
 				 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Fetch the compiler version that all modules in the application were compiled with.
@@ -378,15 +356,6 @@ flattening(Terms) when list(Terms) ->
 acc_check(Term, [])  -> flattening(Term);
 acc_check(Term, Acc) -> Acc ++ [", "] ++ flattening(Term).
 
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc return the lowest erts version acceptable based on the TargetErtsVsn
-%%--------------------------------------------------------------------
-erts_lower_bound_from_target(TargetErtsVsn) ->
-    [MajorErtsVsn, MinorErtsVsn, _HighPatchErtsVsn] = string:tokens(TargetErtsVsn, "."),
-    lists:flatten([MajorErtsVsn,".", MinorErtsVsn,".0"]).
-    
 
 
 %%%===================================================================

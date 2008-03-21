@@ -6,6 +6,8 @@
 %%% ok | {ok, Value} in the correct case and {error, Reason} or an exception in the error case.  The exception to these rules 
 %%% are exported functions that are not to be called from the commandline. 
 %%%
+%%% NOTE*  The max line length for this file and all erlware projects is 132 not 80 columns. 
+%%%
 %%% Types:
 %%%  @type repo() = string(). Contains domain and repo root. 
 %%%   Example: http://www.erlware.org/stable   
@@ -30,6 +32,12 @@
 	 install_app/3,
 	 install_app/2,
 	 install_app/1,
+	 fetch_app/4,
+	 fetch_app/3,
+	 fetch_app/2,
+	 fetch_release/4,
+	 fetch_release/3,
+	 fetch_release/2,
 	 install_release/3,
 	 install_release/2,
 	 install_release/1
@@ -40,6 +48,8 @@
 	 search/2,
 	 search/1,
 	 search/0,
+
+	 diff_config/3,
 
 	 describe_release/2,
 	 describe_release/1,
@@ -84,10 +94,10 @@
 	 outdated_apps/0,
 	 outdated_releases/1,
 	 outdated_releases/0,
-	 upgrade_all/1,
-	 upgrade_all/0,
-	 upgrade/2,
-	 upgrade/1,
+	 upgrade_all_releases/1,
+	 upgrade_all_releases/0,
+	 upgrade_release/2,
+	 upgrade_release/1,
 	 upgrade_all_apps/1,
 	 upgrade_all_apps/0,
 	 upgrade_app/2,
@@ -111,15 +121,18 @@
 	 show_repos_help/0,
 	 upgrade_app_help/0,
 	 upgrade_all_apps_help/0,
-	 upgrade_help/0,
-	 upgrade_all_help/0,
+	 upgrade_release_help/0,
+	 upgrade_all_releases_help/0,
 	 install_release_help/0,
 	 install_app_help/0,
+	 fetch_app_help/0,
+	 fetch_release_help/0,
 	 publish_help/0,
 	 search_help/0,
 	 installed_help/0,
 	 describe_release_help/0,
 	 describe_app_help/0,
+	 diff_config_help/0,
 	 remove_release_help/0,
 	 remove_app_help/0
 	]).
@@ -261,65 +274,65 @@ outdated_apps_help() ->
 %% @doc upgrade a single release.
 %% <pre>
 %% Examples:
-%%  upgrade(["http://erlware.org/stable", "http://erlwaremirror.org/stable"], faxien, "usr/local/erlware").
+%%  upgrade_release(["http://erlware.org/stable", "http://erlwaremirror.org/stable"], faxien, "usr/local/erlware").
 %% or
-%%  upgrade('http://erlware.org/stable', faxien, "usr/local/erlware").
+%%  upgrade_release('http://erlware.org/stable', faxien, "usr/local/erlware").
 %% </pre>
-%% @spec upgrade(Repos, RelName) -> ok | {error, Reason}
+%% @spec upgrade_release(Repos, RelName) -> ok | {error, Reason}
 %%  where
 %%   Repos = [string()] | atom()
 %%   RelName = string() | atom()
 %% @end
 %%--------------------------------------------------------------------
-upgrade(Repo, RelName) when is_atom(Repo) -> 
-    upgrade([atom_to_list(Repo)], RelName);
-upgrade(Repos, RelName) -> 
-    A                 = epkg_util:if_atom_or_integer_to_string(RelName),
-    {ok, IsLocalBoot} = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
+upgrade_release(Repo, RelName) when is_atom(Repo) -> 
+    upgrade_release([atom_to_list(Repo)], RelName);
+upgrade_release(Repos, RelName) -> 
+    A                   = epkg_util:if_atom_or_integer_to_string(RelName),
+    {ok, IsLocalBoot}   = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     fax_manage:upgrade_release(Repos, TargetErtsVsn, A, IsLocalBoot, false, ?REQUEST_TIMEOUT).
 
-%% @spec upgrade(RelName) -> ok | {error, Reason}
-%% @equiv upgrade(Repos, RelName)
-upgrade(RelName) -> 
-    {ok, Repos}            = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
-    upgrade(Repos, RelName).
+%% @spec upgrade_release(RelName) -> ok | {error, Reason}
+%% @equiv upgrade_release(Repos, RelName)
+upgrade_release(RelName) -> 
+    {ok, Repos} = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
+    upgrade_release(Repos, RelName).
 
 %% @private
-upgrade_help() ->
-    ["\nHelp for upgrade\n",
-     "upgrade <release name>: will upgrade an installed release"]. 
+upgrade_release_help() ->
+    ["\nHelp for upgrade-release\n",
+     "upgrade_release <release name>: will upgrade an installed release"]. 
 
 %%--------------------------------------------------------------------
 %% @doc upgrade_all a all installed releases.
 %% <pre>
 %% Examples:
-%%  upgrade_all(["http://erlware.org/stable", "http://erlwaremirror.org/stable"]).
+%%  upgrade_all_releases(["http://erlware.org/stable", "http://erlwaremirror.org/stable"]).
 %% or
-%%  upgrade_all('http://erlware.org/stable').
+%%  upgrade_all_releases('http://erlware.org/stable').
 %% </pre>
-%% @spec upgrade_all(Repos) -> ok | {error, Reason}
+%% @spec upgrade_all_releases(Repos) -> ok | {error, Reason}
 %%  where
 %%   Repos = [string()] | atom()
 %% @end
 %%--------------------------------------------------------------------
-upgrade_all(Repo) when is_atom(Repo) ->
-    upgrade_all([atom_to_list(Repo)]);
-upgrade_all(Repos) ->
-    {ok, IsLocalBoot} = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
+upgrade_all_releases(Repo) when is_atom(Repo) ->
+    upgrade_all_releases([atom_to_list(Repo)]);
+upgrade_all_releases(Repos) ->
+    {ok, IsLocalBoot}   = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     fax_manage:upgrade_releases(Repos, TargetErtsVsn, IsLocalBoot, false, ?REQUEST_TIMEOUT).
 
-%% @spec upgrade_all() -> ok | {error, Reason}
-%% @equiv upgrade_all(Repos)
-upgrade_all() -> 
+%% @spec upgrade_all_releases() -> ok | {error, Reason}
+%% @equiv upgrade_all_releases(Repos)
+upgrade_all_releases() -> 
     {ok, Repos} = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
-    upgrade_all(Repos).
+    upgrade_all_releases(Repos).
 
 %% @private
-upgrade_all_help() ->
-    ["\nHelp for upgrade-all\n",
-     "upgrade-all: will upgrade_all all installed releases"]. 
+upgrade_all_releases_help() ->
+    ["\nHelp for upgrade-all-releases\n",
+     "upgrade-all-releases: will upgrade_all all installed releases"]. 
 
 
 %%--------------------------------------------------------------------
@@ -340,8 +353,8 @@ install_release(Repos, ReleaseName, ReleaseVsn)  ->
     ?INFO_MSG("faxien:install_release(~p, ~p, ~p)~n", [Repos, ReleaseName, ReleaseVsn]),
     % Any atoms must be turned to strings.  Atoms are accepted because it makes
     % the invocation from the command line cleaner. 
-    [A,B]                  = epkg_util:if_atom_or_integer_to_string([ReleaseName, ReleaseVsn]),
-    {ok, IsLocalBoot}      = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
+    [A,B]               = epkg_util:if_atom_or_integer_to_string([ReleaseName, ReleaseVsn]),
+    {ok, IsLocalBoot}   = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     fax_install:install_remote_release(Repos, TargetErtsVsn, A, B, IsLocalBoot, false, ?REQUEST_TIMEOUT).
 
@@ -373,8 +386,56 @@ install_release(ReleaseNameOrPath) ->
     
 %% @private
 install_release_help() ->
-    ["\nHelp for install_release\n",
-     "Usage: install_release <release name|release tarball> [release version]: will install a release remotely or from a local package depending on its argument\n"]. 
+    ["\nHelp for install-release\n",
+     "Usage: install-release <release-name|release-tarball> [release-version]: will install a release remotely or from a local package depending on its argument\n"]. 
+
+%%--------------------------------------------------------------------
+%% @doc 
+%%  Fetch a release and all its applications from a repository and place them into a specified directory. 
+%%
+%% @spec fetch_release(Repos, ReleaseName, ReleaseVsn, ToDir) -> ok | {error, Reason}
+%% where
+%%     Repos = [string()] | [atom()] | atom()
+%%     ReleaseName = string() | atom()
+%%     ReleaseVsn = 'LATEST' | string() | atom()
+%% @end
+%%--------------------------------------------------------------------
+fetch_release(Repos, ReleaseName, ReleaseVsn, ToDir) when is_atom(Repos)  -> 
+    fetch_release([atom_to_list(Repos)], ReleaseName, ReleaseVsn);
+fetch_release(Repos, ReleaseName, ReleaseVsn, ToDir)  -> 
+    ?INFO_MSG("faxien:fetch_release(~p, ~p, ~p)~n", [Repos, ReleaseName, ReleaseVsn]),
+    % Any atoms must be turned to strings.  Atoms are accepted because it makes
+    % the invocation from the command line cleaner. 
+    [A,B,C]             = epkg_util:if_atom_or_integer_to_string([ReleaseName, ReleaseVsn, ToDir]),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    fax_install:fetch_remote_release(Repos, TargetErtsVsn, A, B, C, ?REQUEST_TIMEOUT).
+
+%% @spec fetch_release(ReleaseName, ReleaseVsn, ToDir) -> ok | {error, Reason}
+%% @equiv fetch_release(ERLWARE, ReleaseName, ReleaseVsn, ToDir)
+fetch_release(ReleaseName, ReleaseVsn, ToDir) -> 
+    {ok, Repos} = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
+    fetch_release(Repos, ReleaseName, ReleaseVsn, ToDir).
+
+%%--------------------------------------------------------------------
+%% @doc 
+%%  Fetch the latest version of a release and all its applications from a repository and place them in a specified directory. 
+%%
+%% @spec fetch_release(ReleaseNameOrPath, ToDir) -> ok | {error, Reason}
+%%  where
+%%   ReleaseNameOrPath = atom() | string()
+%% @end
+%%--------------------------------------------------------------------
+fetch_release(ReleaseName, ToDir) -> 
+    {ok, Repos}         = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    [A,B]               = epkg_util:if_atom_or_integer_to_string([ReleaseName, ToDir]),
+    fax_install:fetch_latest_remote_release(Repos, TargetErtsVsn, A, B, ?REQUEST_TIMEOUT).
+	
+    
+%% @private
+fetch_release_help() ->
+    ["\nHelp for fetch-release\n",
+     "Usage: fetch_release <release-name> [release version] <to-dir>: will fetch a release package and place it in the specifie directory"]. 
 
 
 %%--------------------------------------------------------------------
@@ -445,6 +506,61 @@ install_app_help() ->
 
 %%--------------------------------------------------------------------
 %% @doc 
+%%  Fetch an application from a repository and place it into the specified directory
+%% <pre>
+%% Examples:
+%%  fetch_app(["http"//www.erlware.org/pub"], gas, "./")
+%% </pre>
+%% @spec fetch_app(Repos, AppName, AppVsn, ToDir) -> ok | {error, Reason}
+%% where
+%%     Repos = [string()] | [atom()] | atom()
+%%     AppName = string() | atom()
+%%     AppVsn = 'LATEST' | string() | atom()
+%%     ToDir = string() | atom()
+%% @end
+%%--------------------------------------------------------------------
+fetch_app(Repos, AppName, AppVsn, ToDir) when is_atom(Repos)  -> 
+    fetch_app([atom_to_list(Repos)], AppName, AppVsn, ToDir);
+fetch_app(Repos, AppName, AppVsn, ToDir)  -> 
+    % Any atoms must be turned to strings.  Atoms are accepted because it makes
+    % the invocation from the command line cleaner. 
+    [A,B,C]         = epkg_util:if_atom_or_integer_to_string([AppName, AppVsn, ToDir]),
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    fax_install:fetch_remote_application(Repos, TargetErtsVsn, A, B, C, ?REQUEST_TIMEOUT).
+
+%% @spec fetch_app(AppName, AppVsn, ToDir) -> ok | {error, Reason}
+%% @equiv fetch_app(ERLWARE, AppName, AppVsn, ToDir)
+fetch_app(AppName, AppVsn, ToDir) -> 
+    {ok, Repos} = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
+    fetch_app(Repos, AppName, AppVsn, ToDir).
+
+%%--------------------------------------------------------------------
+%% @doc 
+%%  Fetch the highest version of an application from a repository and place it into the specified directory
+%% <pre>
+%% Examples:
+%%  fetch_app(gas, "./")
+%% </pre>
+%% @spec fetch_app(AppName, ToDir) -> ok | {error, Reason}
+%% where
+%%     AppName = string() | atom()
+%%     ToDir = string() | atom()
+%% @end
+%%--------------------------------------------------------------------
+fetch_app(AppName, ToDir) -> 
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    {ok, Repos}         = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
+    [A,B]               = epkg_util:if_atom_or_integer_to_string([AppName, ToDir]),
+    fax_install:fetch_latest_remote_application(Repos, TargetErtsVsn, A, B, ?REQUEST_TIMEOUT).
+
+%% @private
+fetch_app_help() ->
+    ["\nHelp for fetch-app\n",
+     "Usage: fetch-app <app-name> [app-vsn] <to-dir> [app version]: will fetch an OTP app remotely and place it into the to dir."]. 
+
+
+%%--------------------------------------------------------------------
+%% @doc 
 %%  Publishes a pre-built generic application or a release to a remote unguarded repository. A generic application 
 %%  typically consists of erlang object code and possibly other platform independent code.  
 %%  This code is then available for immediate use by any application is erlware repo compatible such as Sinan.
@@ -457,14 +573,14 @@ install_app_help() ->
 %% @end
 %%--------------------------------------------------------------------
 publish(Repo, PackageDir, Timeout) -> 
-    [A,B]         = epkg_util:if_atom_or_integer_to_string([Repo, PackageDir]),
+    [A,B] = epkg_util:if_atom_or_integer_to_string([Repo, PackageDir]),
     fax_publish:publish([A], B, Timeout, ?REQUEST_TIMEOUT).
 
 %% @spec publish(PackageDir, Timeout) -> ok | {error, Reason}
 %% @equiv publish(Repos, PackageDir, Timeout)
 publish(PackageDir, Timeout) when is_integer(Timeout); Timeout == infinity -> 
-    {ok, Repos}   = gas:get_env(faxien, repos_to_publish_to, ?ERLWARE_URL),
-    [A]           = epkg_util:if_atom_or_integer_to_string([PackageDir]),
+    {ok, Repos} = gas:get_env(faxien, repos_to_publish_to, ?ERLWARE_URL),
+    [A]         = epkg_util:if_atom_or_integer_to_string([PackageDir]),
     fax_publish:publish(Repos, A, Timeout);
 
 %% @spec publish(Repos PackageDir) -> ok | {error, Reason}
@@ -551,15 +667,18 @@ commands_help() ->
      "installed               list the packages installed on the local system",
      "describe-app            print more information about a specific application package",
      "install-release         install a release package",
+     "fetch-release           fetch a release package into the specified directory",
      "install-app             install an application package",
+     "fetch-app               fetch an application package into the specified directory",
      "publish                 publish a package to remote repositories",
      "remove-release          uninstall a release package",
      "remove-app              uninstall an application package",
-     "upgrade                 upgrade a release package installed on the local system",
-     "upgrade-all             upgrade all the release packages installed on the local system",
+     "upgrade-release         upgrade a release package installed on the local system",
+     "upgrade-all-releases    upgrade all the release packages installed on the local system",
      "upgrade-app             upgrade an application package installed on the local system",  
      "upgrade-all-apps        upgrade all the application packages installed on the local system",  
      "version                 display the current Faxien version installed on the local system",
+     "diff-config             diff the configuration between two installed versions of a release",
 
      "\nConfiguration Management Commands:",
      "environment             display information about the current Faxien environment seetings.",
@@ -628,6 +747,20 @@ search_help() ->
      "Example: search regexp std.* - this example will list all libraries and releases that match the regexp std.*" ,
      "Example: search yaw - this example will list all libraries and releases that contain the string 'yaw'" ,
      "Example: search - this example will list all libraries and releases"].
+
+%%--------------------------------------------------------------------
+%% @doc Diff two config files
+%% @spec diff_config(RelName, RelVsn1, RelVsn2) -> {ok, Diff}
+%% @end
+%%--------------------------------------------------------------------
+diff_config(RelName, RelVsn1, RelVsn2) -> 
+    epkg:diff_config(RelName, RelVsn1, RelVsn2).
+
+%% @private
+diff_config_help() ->
+    ["\nHelp for diff_config\n",
+     "Usage: diff-config <release-name> <rel-vsn1> <rel-vsn2>: diff config files for two versions of a release\n",
+     "Example: diff-config sinan 0.8.8 0.8.10 - Diff config file for installed versions of sinan 0.8.8 and 0.8.10."].
 
 
 %%--------------------------------------------------------------------

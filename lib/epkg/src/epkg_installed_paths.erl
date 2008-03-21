@@ -24,6 +24,7 @@
 	 application_container_path/2,
 	 erts_container_path/1,
 	 executable_container_path/1,
+	 release_file_container_path/3,
 	 release_container_path/1
 	]).
 
@@ -49,7 +50,9 @@
 	 list_app_vsns/3,
 	 package_dir_to_name_and_vsn/1,
 	 get_installation_path/0,
+	 find_config_file_path/2,
 	 installed_config_file_path/0,
+	 installed_config_file_path/4,
 	 installed_release_rel_file_path/3
 	]).
 
@@ -70,7 +73,7 @@ release_container_path(InstallationPath) ->
 %% @end
 %%--------------------------------------------------------------------
 application_container_path(InstallationPath, ErtsVsn) ->
-    lists:flatten([InstallationPath, "/application_packages/", ErtsVsn, "/lib/"]).
+    filename:join([InstallationPath, "application_packages", ErtsVsn, "lib"]).
 
 %%--------------------------------------------------------------------
 %% @doc Returns a path to the directory where executable files sit. 
@@ -87,6 +90,14 @@ executable_container_path(InstallationPath) when is_list(InstallationPath) ->
 %%--------------------------------------------------------------------
 erts_container_path(InstallationPath) -> 
     lists:flatten([InstallationPath, "/erts_packages/"]).
+
+%%--------------------------------------------------------------------
+%% @doc Returns a path to the directory under which the release file sits.
+%% @spec release_file_container_path(InstallationPath, RelName, RelVsn) -> string()
+%% @end
+%%--------------------------------------------------------------------
+release_file_container_path(InstallationPath, RelName, RelVsn) ->
+    lists:flatten([installed_release_dir_path(InstallationPath, RelName, RelVsn), "/release/"]).
 
 %%====================================================================
 %% Package Paths
@@ -140,7 +151,7 @@ installed_release_dir_path(RelName, RelVsn) ->
 %% @end
 %%--------------------------------------------------------------------
 installed_release_rel_file_path(InstallationPath, RelName, RelVsn) -> 
-    lists:flatten([installed_release_file_dir(InstallationPath, RelName, RelVsn), RelName, ".rel"]).
+    filename:join([release_file_container_path(InstallationPath, RelName, RelVsn), RelName ++ ".rel"]).
 
 %%--------------------------------------------------------------------
 %% @doc Returns the path to the cmds directory in an installed release.
@@ -156,7 +167,23 @@ installed_release_cmds_dir_path(InstallationPath, RelName, RelVsn) ->
 %% @end
 %%--------------------------------------------------------------------
 installed_release_bin_dir_path(InstallationPath, RelName, RelVsn) -> 
-    ewl_file:join_paths(installed_release_dir_path(InstallationPath, RelName, RelVsn), "bin").
+    filename:join([installed_release_dir_path(InstallationPath, RelName, RelVsn), "bin"]).
+
+%%--------------------------------------------------------------------
+%% @doc return the path to config.
+%% @spec installed_config_file_path(InstallationPath, RelName, RelVsn, ConfigFileName) -> string()
+%% @end
+%%--------------------------------------------------------------------
+installed_config_file_path(InstallationPath, RelName, RelVsn, ConfigFileName) ->
+    filename:join([release_file_container_path(InstallationPath, RelName, RelVsn), ConfigFileName]).
+    
+%% @spec installed_config_file_path() -> string()
+%% @equiv installed_config_file_path(InstallationPath, "faxien", CurrentFaxienVsn, "faxien.config")
+installed_config_file_path() ->
+    %% @todo this is not compatible with composable apps - this must run with faxien.  Fix this.
+    {ok, InstallationPath} = get_installation_path(),
+    {ok, Version}          = faxien:version(),
+    installed_config_file_path(InstallationPath, "faxien", Version, "faxien.config").
 
 %%====================================================================
 %% Other External Functions 
@@ -288,34 +315,25 @@ get_installation_path() ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc return the path to config.
-%% @spec installed_config_file_path() -> string()
+%% @doc Return the path to a config file within an installed release.
+%% @spec config_file_path(RelName, RelVsn) -> ConfigFilePath
 %% @end
 %%--------------------------------------------------------------------
-installed_config_file_path() ->
+find_config_file_path(RelName, RelVsn) -> 
     {ok, InstallationPath} = get_installation_path(),
-    config_file_path(InstallationPath).
+    RelDirPath             = release_file_container_path(InstallationPath, RelName, RelVsn),
+    [RelConfigFilePath]    = ewl_file:find(RelDirPath, ".*config"),
+    RelConfigFilePath.
 
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc based on the installation path return the path to config
-%% @end
-%%--------------------------------------------------------------------
-config_file_path(InstallationPath) ->
-    %% @todo this is not compatible with composable apps - this must run with faxien.  Fix this.
-    {ok, Version} = faxien:version(),
-    lists:flatten([installed_release_file_dir(InstallationPath, "faxien", Version), "faxien.config"]).
 
 
-installed_release_file_dir(InstallationPath, RelName, RelVsn) ->
-    lists:flatten([epkg_installed_paths:installed_release_dir_path(InstallationPath, RelName, RelVsn), "/release/"]).
     
 %%====================================================================
-%% Test Functions
+%% Test% Functions
 %%====================================================================
 
 %package_dir_to_name_and_vsn_test() ->

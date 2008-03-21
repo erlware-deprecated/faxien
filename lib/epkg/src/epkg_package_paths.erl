@@ -11,6 +11,7 @@
 %% API
 -export([
 	 package_dir_path/3,
+	 release_package_library_path/1,
 	 release_package_control_file_path/1,
 	 release_package_rel_file_path/3,
 	 release_package_app_package_path/3,
@@ -44,7 +45,15 @@ release_package_rel_file_path(ReleasePackagePath, RelName, RelVsn) ->
 %% @end 
 %%--------------------------------------------------------------------
 release_package_app_package_path(ReleasePackagePath, AppName, AppVsn) ->
-    ReleasePackagePath ++ "/lib/" ++ AppName ++ "-" ++ AppVsn.
+    filename:join([ReleasePackagePath, "lib", AppName ++ "-" ++ AppVsn]).
+
+%%--------------------------------------------------------------------
+%% @doc Return the path to the directory that contains the releases libraries.
+%% @spec release_package_library_path(ReleasePackagePath) -> string()
+%% @end 
+%%--------------------------------------------------------------------
+release_package_library_path(ReleasePackagePath) ->
+    filename:join([ReleasePackagePath, "lib"]).
 
 %%--------------------------------------------------------------------
 %% @doc Return the path to an app package within a release package.
@@ -65,11 +74,12 @@ release_package_control_file_path(ReleasePackagePath) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Return the directory that contains the .rel, .boot, and .script files. 
 %% @end 
 %%--------------------------------------------------------------------
 rel_file_base_dir(ReleasePackagePath, RelVsn) ->
-    lists:flatten([ReleasePackagePath, "/releases/", RelVsn]).
+    filename:join([ReleasePackagePath, "releases", RelVsn]).
     

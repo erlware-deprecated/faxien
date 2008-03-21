@@ -132,8 +132,7 @@ handle_apply_result({error, PrintableError}) ->
     io:format("~nSuggestions:~n"),
     print_error_specific_error_msg(PrintableError),
     print_logfile_info(),
-    io:format(" - Remember that if you are trying to install a package that 'faxien install <args...>'~n"),
-    io:format("   is for releases, while 'faxien install-app <args...>' is for applications~n").
+    ok.
 
 %%----------------------------------------------------------------------------
 %% @private
