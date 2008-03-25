@@ -544,6 +544,8 @@ format_app_val(registered, Val) ->
     format_atom_list(Val);
 format_app_val(vsn, Val) ->
     format_app_string(Val);
+format_app_val(versioned_dependencies, Val) ->
+    join([format_versioned_dependency(Dep) || Dep <- Val], "\n");
 format_app_val(_Key, Val) ->
     io_lib:format("    ~p", [Val]).
 
@@ -554,6 +556,13 @@ format_app_string(Str) ->
 format_atom_list(Atoms) ->
     Words = join([erlang:atom_to_list(A) || A <- Atoms], ","),
     wrap(Words, 60, "    ").
+
+format_versioned_dependency({Pkg, Ver}) ->
+    io_lib:format("    ~p == ~s", [Pkg, Ver]);
+format_versioned_dependency({Pkg, Ver, gte}) ->
+    io_lib:format("    ~p >= ~s", [Pkg, Ver]);
+format_versioned_dependency(Dep) ->
+    io_lib:format("    ~p", [Dep]).
 
 %%--------------------------------------------------------------------
 %% @private
