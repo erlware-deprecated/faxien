@@ -574,7 +574,7 @@ fetch_app_help() ->
 %%--------------------------------------------------------------------
 publish(Repo, PackageDir, Timeout) -> 
     [A,B] = epkg_util:if_atom_or_integer_to_string([Repo, PackageDir]),
-    fax_publish:publish([A], B, Timeout, ?REQUEST_TIMEOUT).
+    fax_publish:publish([A], B, Timeout).
 
 %% @spec publish(PackageDir, Timeout) -> ok | {error, Reason}
 %% @equiv publish(Repos, PackageDir, Timeout)
@@ -586,8 +586,9 @@ publish(PackageDir, Timeout) when is_integer(Timeout); Timeout == infinity ->
 %% @spec publish(Repos PackageDir) -> ok | {error, Reason}
 %% @equiv publish(Repos AppDir, Timeout)
 publish(Repo, PackageDir) -> 
+    A = epkg_util:if_atom_or_integer_to_string(Repo),
     {ok, Timeout} = gas:get_env(faxien, request_timeout, ?REQUEST_TIMEOUT),
-    publish([Repo], PackageDir, Timeout).
+    publish([A], PackageDir, Timeout).
 
 %% @spec publish(AppDir) -> ok | {error, Reason}
 %% @equiv publish(DefaultRepos, AppDir)
