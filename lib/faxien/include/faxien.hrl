@@ -42,7 +42,7 @@
 		     {"sr",       "show-repos"},
 		     {"apr",      "add-publish-repo"},
 		     {"spr",      "show-publish-repos"},
-		     {"rpr",      "remove-publish-repos"},
+		     {"rpr",      "remove-publish-repo"},
 		     {"stev",     "set-target-erts-vsn"},
 		     {"or",       "outdated-releases"},
 		     {"rr",       "remove-release"},
