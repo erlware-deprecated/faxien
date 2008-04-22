@@ -610,8 +610,7 @@ publish_help() ->
 %% @end
 %%--------------------------------------------------------------------
 version() -> 
-    {value, {faxien, _, Vsn}} = lists:keysearch(faxien, 1, application:which_applications()),
-    {ok, Vsn}.
+    {ok, epkg_util:get_current_release_version(faxien)}.
 
 %%--------------------------------------------------------------------
 %% @doc 

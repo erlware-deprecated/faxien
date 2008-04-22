@@ -12,6 +12,7 @@
 %% API
 %%--------------------------------------------------------------------
 -export([
+	 get_current_release_version/1,
 	 is_string/1,
 	 overwrite_yes_no/4,
 	 overwrite_yes_no/3,
@@ -43,6 +44,16 @@
 %%====================================================================
 %% API
 %%====================================================================
+%%--------------------------------------------------------------------
+%% @doc 
+%%  Return the version of the current specified release.
+%% @spec version(RelName) -> string()
+%% @end
+%%--------------------------------------------------------------------
+get_current_release_version(RelName) -> 
+    {value, {RelName, _, Vsn}} = lists:keysearch(RelName, 1, application:which_applications()),
+    Vsn.
+
 %%-------------------------------------------------------------------
 %% @doc For each patch compatible erts vsn less than or equal to the TargetErtsVSn call the fun 
 %% with a single erts vsn in the series. The fun takes a single arg - ErtsVsn::string(). 
