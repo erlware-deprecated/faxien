@@ -47,7 +47,7 @@
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Return the version of the current specified release.
-%% @spec version(RelName) -> string()
+%% @spec get_current_release_version(RelName) -> string()
 %% @end
 %%--------------------------------------------------------------------
 get_current_release_version(RelName) -> 
