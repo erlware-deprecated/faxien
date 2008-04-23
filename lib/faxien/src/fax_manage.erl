@@ -402,7 +402,7 @@ print_list(_Side, []) ->
 print_list(lib, List) ->
     print_list2("Applications (install with: faxien install-app)", List);
 print_list(releases, List) ->
-    print_list2("Releases (install with: faxien install)", List).
+    print_list2("Releases (install with: faxien install-release)", List).
 
 print_list2(Header, List) ->
     io:format("~s~n", [Header]),
