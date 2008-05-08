@@ -100,6 +100,29 @@ put_dot_app_file(Repos, ErtsVsn, AppName, AppVsn, Payload, Timeout) when is_bina
     Suffix = ewr_repo_paths:dot_app_file_suffix(ErtsVsn, AppName, AppVsn),
     repos_put(Repos, Suffix, Payload, Timeout).
 
+%%--------------------------------------------------------------------
+%% @doc put a signature file onto a remote repository.
+%% @spec put_signature_file(Repos, ErtsVsn, Side, PackageName, PackageVsn, Payload, Timeout) -> {ok, Urls} | {error, Reason}
+%% where
+%%  Timeout = Milliseonds::integer()
+%% @end 
+%%--------------------------------------------------------------------
+put_signature_file(Repos, ErtsVsn, Side, PackageName, PackageVsn, Payload, Timeout) when is_binary(Payload) -> 
+    Suffix = ewr_repo_paths:signature_file_suffix(ErtsVsn, Side, PackageName, PackageVsn),
+    repos_put(Repos, Suffix, Payload, Timeout).
+
+%%--------------------------------------------------------------------
+%% @doc put a signature file for an erts package onto a remote repository.
+%% @spec put_erts_signature_file(Repos, ErtsVsn, Payload, Timeout) -> {ok, Urls} | {error, Reason}
+%% where
+%%  Timeout = Milliseonds::integer()
+%% @end 
+%%--------------------------------------------------------------------
+put_erts_signature_file(Repos, ErtsVsn, Payload, Timeout) when is_binary(Payload) -> 
+    Area   = ewr_util:system_info(),
+    Suffix = ewr_repo_paths:erts_signature_file_suffix(ErtsVsn, Area),
+    repos_put(Repos, Suffix, Payload, Timeout).
+
 %%====================================================================
 %% Internal functions
 %%====================================================================

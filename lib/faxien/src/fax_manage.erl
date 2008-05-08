@@ -33,6 +33,7 @@
 	 outdated_releases/3,
 	 upgrade_releases/5,
 	 upgrade_release/6,
+	 get_signature/1,
 	 add_repo_to_publish_to/2,
 	 remove_repo_to_publish_to/2,
 	 add_repo_to_fetch_from/2,
@@ -158,6 +159,24 @@ describe_app(Repos, TargetErtsVsn, AppName, AppVsn, Timeout) ->
 %%--------------------------------------------------------------------
 add_repo_to_fetch_from(Repo, ConfigFilePath) ->
     add_to_config_list(repos_to_fetch_from, Repo, ConfigFilePath).
+
+%%--------------------------------------------------------------------
+%% @doc fetch and or create a signature for this instance of Faxien.
+%% @spec get_signature(ConfigFilePath) -> {ok, Sig}
+%%  where
+%%   ConfigFilePath = string()
+%%   Sig = {{public_key, {Mod, ExpPub}}, {private_key, {Mod, ExpPriv}} 
+%% @end
+%%--------------------------------------------------------------------
+get_signature(ConfigFilePath) ->
+    case gas:get_env(faxien, signature) of
+	undefined -> 
+	    {ok, {{public_key, {N, E}}, {private_key, {N, D}} = Sig, {max_message_size, Bytes}}} = cg_rsa:keygen(), 
+	    gas:modify_config_file(ConfigFilePath, faxien, signature, Sig),
+	    {ok, Sig};
+	{ok, Sig} ->
+	    {ok, Sig}
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc Remove a repository to fetch from. 

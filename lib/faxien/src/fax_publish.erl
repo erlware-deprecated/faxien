@@ -102,6 +102,7 @@ publish(Type, Repos, RawPackageDirPath, Timeout) when Type == generic; Type == b
 
 publish2(erts, Repos, ErtsDirPath, Timeout) -> 
     {ok, {"erts", ErtsVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ErtsDirPath),
+    fax_put:put_erts_signature_file(Repos, ErtsVsn, create_signature(ErtsVsn), Timeout),
     fax_put:put_erts_package(Repos, ErtsVsn, pack(ErtsDirPath), Timeout); 
 
 publish2(Type, Repos, AppDirPath, Timeout) when Type == binary; Type == generic -> 
@@ -111,6 +112,7 @@ publish2(Type, Repos, AppDirPath, Timeout) when Type == binary; Type == generic 
 	{ok, ErtsVsn} ->
 	    %% @todo make this transactional - if .app file put fails run a delete.
 	    fax_put:put_dot_app_file(Repos, ErtsVsn, AppName, AppVsn, AppFileBinary, Timeout), 
+	    fax_put:put_signature_file(Repos, ErtsVsn, "lib", AppName, AppVsn, create_signature(AppVsn), Timeout),
 	    case Type of
 		generic -> fax_put:put_generic_app_package(Repos, ErtsVsn, AppName, AppVsn, pack(AppDirPath), Timeout); 
 		binary  -> fax_put:put_binary_app_package(Repos, ErtsVsn, AppName, AppVsn, pack(AppDirPath), Timeout)
@@ -128,6 +130,7 @@ publish2(release, Repos, RelDirPath, Timeout) ->
     {ok, RelFileBinary}     = file:read_file(RelFilePath),
     fax_put:put_release_control_file(Repos, ErtsVsn, RelName, RelVsn, ControlFileBinary, Timeout),
     fax_put:put_dot_rel_file(Repos, ErtsVsn, RelName, RelVsn, RelFileBinary, Timeout),
+    fax_put:put_signature_file(Repos, ErtsVsn, "releases", RelName, RelVsn, create_signature(RelVsn), Timeout),
     FilesToBeIgnored        = ["erts-" ++ ErtsVsn, "lib", "install.sh"],
     fax_put:put_release_package(Repos, ErtsVsn, RelName, RelVsn, 
 				pack(ignore_files_in_release(RelDirPath, FilesToBeIgnored)), Timeout).
@@ -186,10 +189,26 @@ handle_control(RelDirPath) ->
 	    write_out(ControlFilePath, ControlTerm)
     end.
 
-write_out(ControlFilePath, ControlTerm) ->
-    case file:open(ControlFilePath, [write]) of
+%%--------------------------------------------------------------------
+%% @private
+%% @doc create a signature to send over with a package. 
+%% @end
+%%--------------------------------------------------------------------
+create_signature(PackageVsn) ->
+    ConfigFilePath = epkg_installed_paths:find_config_file_path(faxien, faxien:version()),
+    {ok, {{public_key, {Mod, ExpPub}}, {private_key, {Mod, ExpPriv}}}} = fax_manage:get_signature(ConfigFilePath),
+    Signature = cg_rsa:encrypt(lists:foldl(fun(D, A) -> D + A end, 0, PackageVsn), Mod, ExpPriv),
+    term_to_binary({signature, Signature, Mod, ExpPub}).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc write a term file out
+%% @end
+%%--------------------------------------------------------------------
+write_out(FilePath, Term) ->
+    case file:open(FilePath, [write]) of
 	{ok, IOD} ->
-	    io:fwrite(IOD, "~p.", [ControlTerm]);
+	    io:fwrite(IOD, "~p.", [Term]);
 	Error ->
 	    Error
     end.

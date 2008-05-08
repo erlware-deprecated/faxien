@@ -14,7 +14,8 @@
 	 is_package_an_app/1,
 	 is_package_a_binary_app/1,
 	 is_package_a_release/1,
-	 is_valid_control_file/1
+	 is_valid_control_file/1,
+	 is_valid_signature_file/1
 	]).
 
 %%--------------------------------------------------------------------
@@ -160,6 +161,26 @@ is_package_a_release(PackageDir) ->
 		       end
 	       end
 	      ]).
+
+%%--------------------------------------------------------------------
+%% @doc determine if a signature file supplied is a valid one.
+%% @spec is_valid_signature_file(SignatureFilePath) -> bool()
+%% @end
+%%--------------------------------------------------------------------
+is_valid_signature_file(SignatureFilePath) ->
+    ?INFO_MSG("~p~n", [SignatureFilePath]),
+    case file:consult(SignatureFilePath) of
+	{ok, [Signature]} ->
+	    is_valid_signature_term(Signature);
+	Error ->
+	    false
+    end.
+
+is_valid_signature_term({signature, Signature, Modulus, Exponent}) ->
+    true;
+is_valid_signature_term(BadSigature) ->
+    false.
+
 
 %%--------------------------------------------------------------------
 %% @doc determine if a control file supplied is a valid one.
