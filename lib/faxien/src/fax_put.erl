@@ -14,7 +14,9 @@
 	 put_release_package/6,
 	 put_dot_app_file/6,
 	 put_release_control_file/6,
-	 put_dot_rel_file/6
+	 put_dot_rel_file/6,
+	 put_signature_file/7,
+	 put_erts_signature_file/4
 	]).
 
 %%====================================================================
