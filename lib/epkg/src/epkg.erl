@@ -184,8 +184,9 @@ list_releases() ->
 %%--------------------------------------------------------------------
 remove_app(AppName, AppVsn) ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
+    {ok, TargetErtsVsn}    = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     [A, B]                 = epkg_util:if_atom_or_integer_to_string([AppName, AppVsn]),
-    epkg_manage:remove_app(InstallationPath, A, B).
+    epkg_manage:remove_app(InstallationPath, TargetErtsVsn, A, B).
 
 %% @private
 remove_app_help() ->
@@ -203,7 +204,8 @@ remove_app_help() ->
 %%--------------------------------------------------------------------
 remove_all_apps(AppName) ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
-    epkg_manage:remove_all_apps(InstallationPath, epkg_util:if_atom_or_integer_to_string(AppName)).
+    {ok, TargetErtsVsn}    = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    epkg_manage:remove_all_apps(InstallationPath, TargetErtsVsn, epkg_util:if_atom_or_integer_to_string(AppName)).
 			  
 %% @private
 remove_all_apps_help() ->
