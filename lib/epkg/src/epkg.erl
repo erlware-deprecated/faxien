@@ -20,6 +20,8 @@
 	 list_lib/0,
 	 list_releases/0,
 	 diff_config/3,
+	 config_file_path/2,
+	 config_file_path/1,
 	 remove_all_apps/1,
 	 remove_app/2,
 	 remove_all/1,
@@ -40,6 +42,7 @@
 	 remove_help/0,
 	 remove_all_help/0,
 	 diff_config_help/0,
+	 config_file_path_help/0,
 	 examples_help/0,
 	 commands_help/0
 	]).
@@ -257,10 +260,35 @@ diff_config(RelName, RelVsn1, RelVsn2) ->
 
 %% @private
 diff_config_help() ->
-    ["\nHelp for diff_config\n",
+    ["\nHelp for diff-config\n",
      "Usage: diff-config <release-name> <rel-vsn1> <rel-vsn2>: diff config files for two versions of a release\n",
      "Example: diff-config sinan 0.8.8 0.8.10 - Diff config file for installed versions of sinan 0.8.8 and 0.8.10."].
 
+%%--------------------------------------------------------------------
+%% @doc Returns the path to a release config file for a particular version.
+%% @spec config_file_path(RelName, RelVsn) -> string()
+%% @end
+%%--------------------------------------------------------------------
+config_file_path(RelName, RelVsn) ->
+    {ok, epkg_installed_paths:find_config_file_path(RelName, RelVsn)}.
+
+%%--------------------------------------------------------------------
+%% @doc Returns the path to a release config file for a particular version.
+%% @spec config_file_path(RelName) -> string()
+%% @end
+%%--------------------------------------------------------------------
+config_file_path(RelName) ->
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    {ok, RelVsn} = epkg_manage:find_highest_local_release_vsn(RelName, TargetErtsVsn),
+    config_file_path(RelName, RelVsn).
+
+%% @private
+config_file_path_help() ->
+    ["\nHelp for config-file-path\n",
+     "Usage: config-file-path <release-name> [rel-vsn]: return the path to a release config file for a particular version or the highest version if no version is specified\n",
+     "Example: config-file-path sinan 0.8.8",
+     "Example: config-file-path sinan"].
+    
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Return the version of the current Epkg release.
@@ -309,14 +337,17 @@ examples_help() ->
 commands_help() ->
     [
      "\nCommands:",
-     "help                    print help information",
-     "list                    list the packages installed on the local system",
-     "install                 install a package",
-     "remove-app              uninstall a particular version of an application package",
-     "remove-all-apps         uninstall all versions of an application package",
-     "remove                  uninstall a particular version of a release package",
-     "remove-all              uninstall all versions of a release package",
-     "version                 display the current Faxien version installed on the local system"
+     "help                    print help information.",
+     "list                    list the packages installed on the local system.",
+     "install                 install a package.",
+     "remove-app              uninstall a particular version of an application",
+     "                        package.",
+     "remove-all-apps         uninstall all versions of an application package.",
+     "remove                  uninstall a particular version of a release package.",
+     "remove-all              uninstall all versions of a release package.",
+     "version                 display the current Faxien version installed",
+     "                        on the local system.",
+     "config-file-path        display the path to a release config file."
     ].
 
 

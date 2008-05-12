@@ -134,8 +134,16 @@ $(PACKAGE_DIR)/bin/$(RELS): $(RELS).src
 	    -e "s;%INVOCATION_SUFFIX%;-detached;" \
              $< > $@
 
+# Create the executable script
+$(PACKAGE_DIR)/bin/epkg: epkg.src
+	mkdir -p $(PACKAGE_DIR)/bin
+	sed -e 's;%REL_VSN%;$(REL_VSN);g' \
+	    -e "s;%TARGET_ERTS_VSN%;$(TARGET_ERTS_VSN);" \
+	    -e "s;%INVOCATION_SUFFIX%;-detached;" \
+             $< > $@
 
-$(PACKAGE_DIR): $(LOCAL_TARGETS) $(PACKAGE_DIR)/bin/$(RELS) $(PACKAGE_DIR)/releases/$(REL_VSN)/$(RELS).config 
+
+$(PACKAGE_DIR): $(LOCAL_TARGETS) $(PACKAGE_DIR)/bin/epkg $(PACKAGE_DIR)/bin/$(RELS) $(PACKAGE_DIR)/releases/$(REL_VSN)/$(RELS).config 
 	cp $(USER_DEFINED_PACKAGE_FILES) $(PACKAGE_DIR)/
 	cp $(LOCAL_DIR)/$(RELS).rel $@/releases/$(REL_VSN)
 	@echo "FSLIB_DIR: $(FSLIB_DIR)"

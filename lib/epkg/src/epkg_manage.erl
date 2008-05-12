@@ -160,6 +160,8 @@ remove_all_releases(InstallationPath, RelName, Force) ->
 %% @spec find_highest_local_release_vsn(ReleaseName, TargetErtsVsn) -> {ok, HighestVsn} | {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
+find_highest_local_release_vsn(ReleaseName, TargetErtsVsn) when is_atom(ReleaseName) ->
+    find_highest_local_release_vsn(atom_to_list(ReleaseName), TargetErtsVsn);
 find_highest_local_release_vsn(ReleaseName, TargetErtsVsn) ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
     NameAndVsns = lists:filter(fun({Name, _}) -> ReleaseName == Name end,
@@ -171,6 +173,8 @@ find_highest_local_release_vsn(ReleaseName, TargetErtsVsn) ->
 %% @spec find_highest_local_app_vsn(AppName, TargetErtsVsn) -> {ok, HighestVsn} | {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
+find_highest_local_app_vsn(AppName, TargetErtsVsn) when is_atom(AppName) ->
+    find_highest_local_app_vsn(atom_to_list(AppName), TargetErtsVsn);
 find_highest_local_app_vsn(AppName, TargetErtsVsn) ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
     NameAndVsns = lists:filter(fun({Name, _}) -> AppName == Name end,
