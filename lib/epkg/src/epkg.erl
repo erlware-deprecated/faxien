@@ -273,7 +273,7 @@ config_file_path(RelName, RelVsn) ->
     {ok, epkg_installed_paths:find_config_file_path(RelName, RelVsn)}.
 
 %%--------------------------------------------------------------------
-%% @doc Returns the path to a release config file for a particular version.
+%% @doc Returns the path to a release config file for the highest version of the release found for the current erts vsn.
 %% @spec config_file_path(RelName) -> string()
 %% @end
 %%--------------------------------------------------------------------
