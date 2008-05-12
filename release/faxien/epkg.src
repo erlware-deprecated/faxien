@@ -1,0 +1,22 @@
+#!/bin/sh
+
+PROG=$0
+test -h $0 && PROG=$(readlink $0)
+PREFIX=$(cd $(dirname $(dirname $PROG)); pwd)
+
+#### Fill in values for these variables ####
+REL_NAME=faxien
+REL_VSN=%REL_VSN%
+ERTS_VSN=%TARGET_ERTS_VSN%
+INVOCATION_SUFFIX="-s epkg_cmdln epkg_apply epkg $@ -s init stop -noshell -prefix $PREFIX"
+###########################################
+
+export ROOTDIR=$PREFIX/application_packages/$ERTS_VSN
+export BINDIR=$PREFIX/erts_packages/erts-$ERTS_VSN/bin
+export EMU=beam
+export PROGNAME=erl
+export LD_LIBRARY_PATH=$PREFIX/erts/$ERTS_VSN/lib
+
+REL_DIR=$PREFIX/release_packages/$REL_NAME-$REL_VSN/release
+
+$BINDIR/erlexec -config $REL_DIR/faxien.config -boot $REL_DIR/$REL_NAME $INVOCATION_SUFFIX
