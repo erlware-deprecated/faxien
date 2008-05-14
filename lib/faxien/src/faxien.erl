@@ -692,7 +692,7 @@ commands_help() ->
 
      "\nConfiguration Management Commands:",
      "environment             display information about the current Faxien",
-     "                        environment seetings.",
+     "                        environment settings.",
      "add-repo                add a repo to search for packages in",
      "remove-repo             remove one of the repos Faxien is set to search",
      "                        for packages in",
@@ -948,7 +948,7 @@ describe_release_help() ->
 %% Config Management External Functions
 %%====================================================================
 %%--------------------------------------------------------------------
-%% @doc Display information about the current Faxien environment seetings.
+%% @doc Display information about the current Faxien environment settings.
 %% @spec environment() -> {ok, list()} 
 %% @end
 %%--------------------------------------------------------------------
@@ -970,7 +970,7 @@ environment() ->
 %% @private
 environment_help() ->
     ["\nHelp for environment\n",
-     "Usage: environment - Display information about the current Faxien environment seetings.\n"].
+     "Usage: environment - Display information about the current Faxien environment settings.\n"].
 
 
 %%--------------------------------------------------------------------
