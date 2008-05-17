@@ -283,7 +283,7 @@ upgrade_releases(Repos, TargetErtsVsn, IsLocalBoot, Force, Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 upgrade_release(Repos, TargetErtsVsn, ReleaseName, IsLocalBoot, Force, Timeout) -> 
-    ?INFO_MSG("fax_manage:upgrade_release(~p, ~p, ~p)~n", [Repos, ReleaseName]),
+    ?INFO_MSG("fax_manage:upgrade_release(~p, ~p)~n", [Repos, ReleaseName]),
     case is_outdated_release(Repos, TargetErtsVsn, ReleaseName, Timeout) of
 	{ok, {lower, HighestLocalVsn, HighestRemoteVsn}} ->
 	    io:format("Upgrading from version ~s of ~s to version ~s~n", [HighestLocalVsn, ReleaseName, HighestRemoteVsn]),
@@ -498,7 +498,7 @@ remove_from_config_list(Key, ValueToRemove, ConfigFilePath) ->
 %%--------------------------------------------------------------------
 is_outdated_release(Repos, TargetErtsVsn, ReleaseName, _Timeout) ->
     {ok, {_Repo, HighestRemoteVsn}} = fax_util:find_highest_vsn(Repos, TargetErtsVsn, ReleaseName, releases),
-    case epkg_manage:find_highest_local_release_vsn(ReleaseName, TargetErtsVsn) of
+    case epkg_manage:find_highest_local_release_vsn(ReleaseName) of
 	{ok, HighestLocalVsn} ->
 	    case ewr_util:is_version_greater(HighestLocalVsn, HighestRemoteVsn) of
 		true ->

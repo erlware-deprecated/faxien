@@ -19,7 +19,9 @@
 	 diff_config/3,
 	 list_lib/2,
 	 list_releases/2,
+	 list_all_releases/1,
 	 find_highest_local_release_vsn/2,
+	 find_highest_local_release_vsn/1,
 	 find_highest_local_app_vsn/2
 	]).
 
@@ -51,6 +53,19 @@ list_lib_for_erts_vsn(InstallationPath, ErtsVsn) ->
     LibDir       = epkg_installed_paths:application_container_path(InstallationPath, ErtsVsn),
     Paths        = filelib:wildcard(LibDir ++ "/*"),
     name_and_vsn(Paths).
+
+%%--------------------------------------------------------------------
+%% @doc 
+%%  Returns a list of all releases currently installed.
+%% @spec list_all_releases(InstallationPath) -> [{Name, Vsn}]
+%% @end
+%%--------------------------------------------------------------------
+list_all_releases(InstallationPath) ->
+    RelDir = epkg_installed_paths:release_container_path(InstallationPath),
+    Series = epkg_installed_paths:list_erts_vsns(InstallationPath),
+    ?INFO_MSG("listing lib dirs for erts vsns ~p~n", [Series]),
+    lists:sort(fun({N, _}, {N1, _}) -> N > N1 end,
+	       lists:flatten([lists:map(fun(ErtsVsn) -> list_releases_for_erts_vsn(InstallationPath, ErtsVsn) end, Series)])).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -121,7 +136,7 @@ remove_release(InstallationPath, RelName, RelVsn, Force) ->
 	    case question_removal(UniqueSpecs, RelName, RelVsn) of
 		true ->
 		    %blast_executable_files(InstallationPath, RelName, RelVsn),
-		    io:format("removing ~s-~s~n"),
+		    io:format("removing ~s-~s~n", [RelName, RelVsn]),
 		    blast_app_and_release_packages(UniqueSpecs, InstallationPath, RelName, RelVsn);
 		false ->
 		    ok
@@ -158,7 +173,7 @@ remove_all_releases(InstallationPath, RelName, Force) ->
     lists:foreach(fun(RelVsn) -> remove_release(InstallationPath, RelName, RelVsn, Force) end, RelVsns).
 
 %%--------------------------------------------------------------------
-%% @doc Find the highest version of a particular release that is installed locally.
+%% @doc Find the highest version of a particular release for a particular erts vsn that is installed locally.
 %% @spec find_highest_local_release_vsn(ReleaseName, TargetErtsVsn) -> {ok, HighestVsn} | {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
@@ -168,6 +183,19 @@ find_highest_local_release_vsn(ReleaseName, TargetErtsVsn) ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
     NameAndVsns = lists:filter(fun({Name, _}) -> ReleaseName == Name end,
 			      list_releases(InstallationPath, TargetErtsVsn)),
+    highest_vsn([Vsn || {Name, Vsn} <- NameAndVsns]).
+
+%%--------------------------------------------------------------------
+%% @doc Find the highest version of a particular release that is installed locally.
+%% @spec find_highest_local_release_vsn(ReleaseName) -> {ok, HighestVsn} | {error, Reason}
+%% @end
+%%--------------------------------------------------------------------
+find_highest_local_release_vsn(ReleaseName) when is_atom(ReleaseName) ->
+    find_highest_local_release_vsn(atom_to_list(ReleaseName));
+find_highest_local_release_vsn(ReleaseName) ->
+    {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
+    NameAndVsns = lists:filter(fun({Name, _}) -> ReleaseName == Name end,
+			      list_all_releases(InstallationPath)),
     highest_vsn([Vsn || {Name, Vsn} <- NameAndVsns]).
 
 %%--------------------------------------------------------------------
@@ -193,13 +221,19 @@ highest_vsn(Error) ->
 
 %%--------------------------------------------------------------------
 %% @doc Diff two config files
-%% @spec diff_config(RelName, RelVsn1, RelVsn2) -> Diff
+%% @spec diff_config(RelName, RelVsn1, RelVsn2) -> {ok, Diff}
 %% @end
 %%--------------------------------------------------------------------
 diff_config(RelName, RelVsn1, RelVsn2) -> 
-    Rel1ConfigFilePath = epkg_installed_paths:find_config_file_path(RelName, RelVsn1),
-    Rel2ConfigFilePath = epkg_installed_paths:find_config_file_path(RelName, RelVsn2),
-    ewl_config_diff:config_files(Rel1ConfigFilePath, Rel2ConfigFilePath). 
+    try
+	Rel1ConfigFilePath = epkg_installed_paths:find_config_file_path(RelName, RelVsn1),
+	Rel2ConfigFilePath = epkg_installed_paths:find_config_file_path(RelName, RelVsn2),
+	ewl_config_diff:config_files(Rel1ConfigFilePath, Rel2ConfigFilePath)
+    catch
+	_Type:Exception ->
+	    []
+    end.
+    
     
 %%====================================================================
 %% Internal functions

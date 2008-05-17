@@ -48,6 +48,8 @@
 	 list_apps/2,
 	 list_app_vsns/2,
 	 list_app_vsns/3,
+	 list_erts_vsns/1,
+	 list_erts_vsns_lower_than/2,
 	 package_dir_to_name_and_vsn/1,
 	 get_installation_path/0,
 	 find_config_file_path/2,
@@ -247,6 +249,41 @@ list_app_vsns(ErtsVsn, AppName) ->
     list_app_vsns(InstallationPath, ErtsVsn, AppName) .
 
 %%--------------------------------------------------------------------
+%% @doc return a list of erts versions currently installed. 
+%% @spec list_erts_vsns(InstallationPath) -> [string()]
+%% @end
+%%--------------------------------------------------------------------
+list_erts_vsns(InstallationPath) ->
+    ErtsContainerPath = erts_container_path(InstallationPath),
+    lists:map(
+      fun(Path) ->
+	      {ok, {_Name, Vsn}} = package_dir_to_name_and_vsn(Path),
+	      Vsn
+      end,
+      filelib:wildcard(ErtsContainerPath ++ "/*")).
+
+%%--------------------------------------------------------------------
+%% @doc return a list of erts versions currently installed that are lower than the supplied version. 
+%% @spec list_erts_vsns_lower_than(InstallationPath, TargetErtsVsn) -> [string()]
+%% @end
+%%--------------------------------------------------------------------
+list_erts_vsns_lower_than(InstallationPath, TargetErtsVsn) ->
+    AllErtsVsns = list_erts_vsns(InstallationPath),
+    lists:foldl(fun(Vsn, Acc) ->
+			case ewr_util:is_version_greater(Vsn, TargetErtsVsn) of
+			    true -> Acc;
+			    false -> [Vsn|Acc]
+			end
+		end,
+		AllErtsVsns).
+
+%% @spec list_erts_vsns_lower_than(TargetErtsVsn) -> [string()]
+%% @equiv list_erts_vsns_lower_than(InstallationPath, TargetErtsVsn) 
+list_erts_vsns_lower_than(TargetErtsVsn) ->
+    {ok, InstallationPath} = get_installation_path(),
+    list_erts_vsns_lower_than(InstallationPath, TargetErtsVsn).
+    
+%%--------------------------------------------------------------------
 %% @doc return a list of versions installed for a particular release.
 %% @spec list_release_vsns(InstallationPath, RelName) -> [string()]
 %% @end
@@ -322,8 +359,10 @@ get_installation_path() ->
 find_config_file_path(RelName, RelVsn) -> 
     {ok, InstallationPath} = get_installation_path(),
     RelDirPath             = release_file_container_path(InstallationPath, RelName, RelVsn),
-    [RelConfigFilePath]    = ewl_file:find(RelDirPath, ".*config"),
-    RelConfigFilePath.
+    case ewl_file:find(RelDirPath, ".*config") of
+	[]                -> throw({error, no_erlang_config_file_found});
+	RelConfigFilePath -> RelConfigFilePath
+    end.
 
 %%%===================================================================
 %%% Internal Functions
