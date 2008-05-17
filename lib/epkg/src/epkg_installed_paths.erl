@@ -316,7 +316,7 @@ get_installation_path() ->
 
 %%--------------------------------------------------------------------
 %% @doc Return the path to a config file within an installed release.
-%% @spec config_file_path(RelName, RelVsn) -> ConfigFilePath
+%% @spec find_config_file_path(RelName, RelVsn) -> ConfigFilePath
 %% @end
 %%--------------------------------------------------------------------
 find_config_file_path(RelName, RelVsn) -> 

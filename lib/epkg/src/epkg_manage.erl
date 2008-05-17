@@ -121,17 +121,19 @@ remove_release(InstallationPath, RelName, RelVsn, Force) ->
 	    case question_removal(UniqueSpecs, RelName, RelVsn) of
 		true ->
 		    %blast_executable_files(InstallationPath, RelName, RelVsn),
+		    io:format("removing ~s-~s~n"),
 		    blast_app_and_release_packages(UniqueSpecs, InstallationPath, RelName, RelVsn);
 		false ->
 		    ok
 	    end
     end.
 
+question_removal([], PackageName, PackageVsn) ->
+    true;
 question_removal(UniqueSpecs, PackageName, PackageVsn) ->
-    CleansedSpecs = [{element(1, AppSpec), element(2, AppSpec)} || AppSpec <- UniqueSpecs],
     case ewl_talk:ask([lists:flatten(
 			 io_lib:fwrite("To remove ~s-~s you must delete the following apps:~n~p?~n~n Please answer [yes|no]", 
-				       [PackageName, PackageVsn, CleansedSpecs]))]) of
+				       [PackageName, PackageVsn, UniqueSpecs]))]) of
 	Yes when Yes == $y; Yes == $Y; Yes == "yes" ->
 	    true;
 	No when No == $n; No == $N; No == "no" ->
@@ -225,16 +227,16 @@ name_and_vsn(Paths) ->
 %%--------------------------------------------------------------------
 find_non_shared_app_specs(InstallationPath, RelName, RelVsn) ->
     {ok, TargetSpecs} = fetch_app_specs(InstallationPath, RelName, RelVsn),
-    RelVsns           = lists:delete(RelVsn, epkg_installed_paths:list_release_vsns(InstallationPath, RelName)),
-    ReleaseNames      = epkg_installed_paths:list_releases(InstallationPath),
-    ReleaseTuples = 
-	[{RelName, RelVsns}|
-	 lists:keydelete(RelName, 1, 
-			 lists:map(fun(ReleaseName) ->
-					   ReleaseVersions = epkg_installed_paths:list_release_vsns(InstallationPath, ReleaseName),
-					   {ReleaseName, ReleaseVersions}
-				   end, ReleaseNames))],
+    ReleaseNames  = epkg_installed_paths:list_releases(InstallationPath),
+    ReleaseTuples = lists:map(fun(ReleaseName) when ReleaseName == RelName ->
+				      ReleaseVersions = epkg_installed_paths:list_release_vsns(InstallationPath, ReleaseName),
+				      {ReleaseName, lists:delete(RelVsn, ReleaseVersions)};
+				 (ReleaseName) ->
+				      ReleaseVersions = epkg_installed_paths:list_release_vsns(InstallationPath, ReleaseName),
+				      {ReleaseName, ReleaseVersions}
+			      end, ReleaseNames),
     FlatSpecs = fetch_flat_list_app_specs(InstallationPath, ReleaseTuples),
+    ?INFO_MSG("flat app ~p target ~p~n", [FlatSpecs, TargetSpecs]),
     TargetSpecs -- FlatSpecs.
     
 fetch_flat_list_app_specs(InstallationPath, ReleaseTuples) ->
@@ -256,7 +258,7 @@ fetch_app_specs(InstallationPath, RelName, RelVsn) ->
     RelFilePath = epkg_installed_paths:installed_release_rel_file_path(InstallationPath, RelName, RelVsn),
     case catch epkg_util:consult_rel_file(app_specs, RelFilePath) of
 	{'EXIT', Reason} -> {error, {"could not find app specs for the release specified", Reason}};
-	AppSpecs         -> {ok, AppSpecs}
+	AppSpecs         -> {ok, [{element(1, AS), element(2, AS)} || AS <- AppSpecs]}
     end.
 
 %%--------------------------------------------------------------------

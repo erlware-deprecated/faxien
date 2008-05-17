@@ -165,7 +165,7 @@ add_repo_to_fetch_from(Repo, ConfigFilePath) ->
 %% @spec get_signature(ConfigFilePath) -> {ok, Sig}
 %%  where
 %%   ConfigFilePath = string()
-%%   Sig = {{public_key, {Mod, ExpPub}}, {private_key, {Mod, ExpPriv}} 
+%%   Sig = {{public_key, {Mod, ExpPub}}, {private_key, {Mod, ExpPriv}}}
 %% @end
 %%--------------------------------------------------------------------
 get_signature(ConfigFilePath) ->
