@@ -57,8 +57,8 @@
 %% @end
 %%--------------------------------------------------------------------
 install_latest_remote_application(Repos, TargetErtsVsn, AppName, Force, Timeout) ->
-    Fun = fun(ManagedRepos, AppVsn) ->
-		  install_remote_application(ManagedRepos, TargetErtsVsn, AppName, AppVsn, Force, Timeout)
+    Fun = fun(ManagedRepos, AppVsn, ErtsVsn) ->
+		  install_remote_application(ManagedRepos, ErtsVsn, AppName, AppVsn, Force, Timeout)
 	  end,
     fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, AppName, Fun, lib). 
 
@@ -180,8 +180,8 @@ install_release(Repos, TargetErtsVsn, ReleasePackageArchiveOrDirPath, IsLocalBoo
 %% @end
 %%--------------------------------------------------------------------
 install_latest_remote_release(Repos, TargetErtsVsn, RelName, IsLocalBoot, Force, Timeout) ->
-    Fun = fun(ManagedRepos, RelVsn) ->
-		  install_remote_release(ManagedRepos, TargetErtsVsn, RelName, RelVsn, IsLocalBoot, Force, Timeout)
+    Fun = fun(ManagedRepos, RelVsn, ErtsVsn) ->
+		  install_remote_release(ManagedRepos, ErtsVsn, RelName, RelVsn, IsLocalBoot, Force, Timeout)
 	  end,
     fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, RelName, Fun, releases). 
 
@@ -234,8 +234,8 @@ install_remote_release(Repos, TargetErtsVsn, RelName, RelVsn, IsLocalBoot, Force
 %% @end
 %%--------------------------------------------------------------------
 fetch_latest_remote_application(Repos, TargetErtsVsn, AppName, ToDir, Timeout) ->
-    Fun = fun(ManagedRepos, AppVsn) ->
-		  fetch_remote_application(ManagedRepos, TargetErtsVsn, AppName, AppVsn, ToDir, Timeout)
+    Fun = fun(ManagedRepos, AppVsn, ErtsVsn) ->
+		  fetch_remote_application(ManagedRepos, ErtsVsn, AppName, AppVsn, ToDir, Timeout)
 	  end,
     fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, AppName, Fun, lib). 
 
@@ -268,8 +268,8 @@ fetch_remote_application(Repos, TargetErtsVsn, AppName, AppVsn, ToDir, Timeout) 
 %% @end
 %%--------------------------------------------------------------------
 fetch_latest_remote_release(Repos, TargetErtsVsn, RelName, ToDir, Timeout) ->
-    Fun = fun(ManagedRepos, RelVsn) ->
-		  fetch_remote_release(ManagedRepos, TargetErtsVsn, RelName, RelVsn, ToDir, Timeout)
+    Fun = fun(ManagedRepos, RelVsn, ErtsVsn) ->
+		  fetch_remote_release(ManagedRepos, ErtsVsn, RelName, RelVsn, ToDir, Timeout)
 	  end,
     fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, RelName, Fun, releases). 
 

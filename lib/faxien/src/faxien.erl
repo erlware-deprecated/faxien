@@ -1,4 +1,4 @@
-%%-------------------------------------------------------------------
+%%%-------------------------------------------------------------------
 %%% @doc This is the UI for Faxien. Application programmers should use the lower level API's provided by other faxien modules
 %%% in most cases.  This module encapsulates many of the side effects and configuration that makes the faxien commandline 
 %%% application behave in the way it should.  Most functions within are intended to be called from the command line. This means 
@@ -75,6 +75,7 @@
 	 help/0,
 	 help/1,
 	 version/0,
+	 translate_version/3,
 
 	 remove_release/1, 
 	 remove_release/2,
@@ -109,6 +110,7 @@
 	 outdated_apps_help/0,
 	 examples_help/0,
 	 commands_help/0,
+	 translate_version_help/0,
 	 set_request_timeout_help/0,
 	 show_request_timeout_help/0,
 	 set_target_erts_vsn_help/0,
@@ -685,6 +687,8 @@ commands_help() ->
      "                        local system",  
      "upgrade-all-apps        upgrade all the application packages installed",
      "                        on the local system",  
+     "translate-version       translate one version type to another such as",
+     "                        an erts version to an erlang release version",
      "version                 display the current Faxien version installed on",
      "                        the local system",
      "diff-config             diff the configuration between two installed",
@@ -765,6 +769,42 @@ search_help() ->
      "Example: search regexp std.* - this example will list all libraries and releases that match the regexp std.*" ,
      "Example: search yaw - this example will list all libraries and releases that contain the string 'yaw'" ,
      "Example: search - this example will list all libraries and releases"].
+
+%%--------------------------------------------------------------------
+%% @doc translate_version
+%% @spec translate_version(Type, ToType, Version) -> {ok, TranslatedVsn} | error
+%% where
+%%  Type = compiler | erts | erlang
+%%  ToType = compiler | erts | erlang
+%%  Version = string()
+%% @end
+%%--------------------------------------------------------------------
+translate_version(Type, ToType, Version) ->
+    translate_version(Type, ToType, Version, ?COMPILER_VSN_TO_ERTS_VSN_TO_ERLANG_VSN).
+
+translate_version(compiler, erts, CompilerVsn, [{CompilerVsn, ErtsVsn, _ErlangVsn}|_]) ->
+    {ok, ErtsVsn};
+translate_version(compiler, erlang, CompilerVsn, [{CompilerVsn, _ErtsVsn, ErlangVsn}|_]) ->
+    {ok, ErlangVsn};
+translate_version(erts, compiler, ErtsVsn, [{CompilerVsn, ErtsVsn, _ErlangVsn}|_]) ->
+    {ok, CompilerVsn};
+translate_version(erts, erlang, ErtsVsn, [{_CompilerVsn, ErtsVsn, ErlangVsn}|_]) ->
+    {ok, ErlangVsn};
+translate_version(erlang, compiler, ErlangVsn, [{CompilerVsn, _ErtsVsn, ErlangVsn}|_]) ->
+    {ok, CompilerVsn};
+translate_version(erlang, erts, ErlangVsn, [{_CompilerVsn, ErtsVsn, ErlangVsn}|_]) ->
+    {ok, ErtsVsn};
+translate_version(Type, ToType, Version, [_|T]) ->
+    translate_version(Type, ToType, Version, T);
+translate_version(_Type, _ToType, _Version, []) ->
+    error.
+    
+%% @private
+translate_version_help() ->
+    ["\nHelp for translate-version\n",
+     "Usage: translate-version <compiler|erts|erlang> <compiler|erts|erlang> <version-string>",
+     "Example: translate-version erts erlang 5.5.5 - will return the erlang verison for erts vsn 5.5.5 which is R11B-5."].
+    
 
 %%--------------------------------------------------------------------
 %% @doc Diff two config files

@@ -71,8 +71,8 @@
 %% @end
 %%--------------------------------------------------------------------
 describe_latest_release(Repos, TargetErtsVsn, RelName, Timeout) ->
-    Fun = fun(ManagedRepos, RelVsn) ->
-		  describe_release(ManagedRepos, TargetErtsVsn, RelName, RelVsn, Timeout)
+    Fun = fun(ManagedRepos, RelVsn, ErtsVsn) ->
+		  describe_release(ManagedRepos, ErtsVsn, RelName, RelVsn, Timeout)
 	  end,
     fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, RelName, Fun, lib). 
 
@@ -116,8 +116,8 @@ describe_release(Repos, TargetErtsVsn, RelName, RelVsn, Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 describe_latest_app(Repos, TargetErtsVsn, AppName, Timeout) ->
-    Fun = fun(ManagedRepos, AppVsn) ->
-		  describe_app(ManagedRepos, TargetErtsVsn, AppName, AppVsn, Timeout)
+    Fun = fun(ManagedRepos, AppVsn, ErtsVsn) ->
+		  describe_app(ManagedRepos, ErtsVsn, AppName, AppVsn, Timeout)
 	  end,
     fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, AppName, Fun, lib). 
 
@@ -249,7 +249,7 @@ outdated_releases(Repos, TargetErtsVsn, Timeout) ->
     Releases      = epkg_installed_paths:list_releases(),
     lists:foldl(fun(ReleaseName, Acc) -> 
 			case catch is_outdated_release(Repos, TargetErtsVsn, ReleaseName, Timeout) of
-			    {ok, {lower, HighestLocalVsn, HighestRemoteVsn}} -> 
+			    {ok, {lower, HighestLocalVsn, HighestRemoteVsn, RemoteErtsVsn}} -> 
 				[{ReleaseName, HighestLocalVsn, HighestRemoteVsn}|Acc];
 			    _Other -> 
 				Acc
@@ -285,16 +285,30 @@ upgrade_releases(Repos, TargetErtsVsn, IsLocalBoot, Force, Timeout) ->
 upgrade_release(Repos, TargetErtsVsn, ReleaseName, IsLocalBoot, Force, Timeout) -> 
     ?INFO_MSG("fax_manage:upgrade_release(~p, ~p)~n", [Repos, ReleaseName]),
     case is_outdated_release(Repos, TargetErtsVsn, ReleaseName, Timeout) of
-	{ok, {lower, HighestLocalVsn, HighestRemoteVsn}} ->
-	    io:format("Upgrading from version ~s of ~s to version ~s~n", [HighestLocalVsn, ReleaseName, HighestRemoteVsn]),
-	    fax_install:install_remote_release(Repos,TargetErtsVsn,ReleaseName,HighestRemoteVsn,IsLocalBoot,Force,Timeout), 
-	    handle_config_on_upgrade(ReleaseName, HighestRemoteVsn, HighestLocalVsn);
+	{ok, {lower, HighestLocalVsn, HighestRemoteVsn, TargetErtsVsn}} ->
+	    handle_upgrade_release(Repos, TargetErtsVsn, ReleaseName, HighestLocalVsn,
+				   HighestRemoteVsn, IsLocalBoot, Force,Timeout);
+	{ok, {lower, HighestLocalVsn, HighestRemoteVsn, RemoteErtsVsn}} ->
+	    case fax_util:ask_about_switching_target_ertsVsns(TargetErtsVsn, RemoteErtsVsn) of
+		true  ->
+		    handle_upgrade_release(Repos, RemoteErtsVsn, ReleaseName, HighestLocalVsn,
+					   HighestRemoteVsn, IsLocalBoot, Force, Timeout);
+		false -> 
+		    ok
+	    end;
 	{ok, {_, HighestLocalVsn}} ->
 	    io:format("~s at version ~s is up to date~n", [ReleaseName, HighestLocalVsn]);
 	Error ->
 	    io:format("~p~n", [Error]),
 	    Error
     end.
+
+
+handle_upgrade_release(Repos, TargetErtsVsn, ReleaseName, HighestLocalVsn, HighestRemoteVsn, IsLocalBoot, Force, Timeout) ->
+    io:format("Upgrading from version ~s of ~s to version ~s~n", [HighestLocalVsn, ReleaseName, HighestRemoteVsn]),
+    fax_install:install_remote_release(Repos,TargetErtsVsn,ReleaseName,HighestRemoteVsn,IsLocalBoot,Force,Timeout), 
+    handle_config_on_upgrade(ReleaseName, HighestRemoteVsn, HighestLocalVsn).
+    
 
 handle_config_on_upgrade(ReleaseName, HighestRemoteVsn, HighestLocalVsn) ->
     case epkg:diff_config(ReleaseName, HighestRemoteVsn, HighestLocalVsn) of
@@ -308,18 +322,18 @@ handle_config_on_upgrade(ReleaseName, HighestRemoteVsn, HighestLocalVsn) ->
     end.
 	    
 prompt_for_config_policy(RelName, HighestRemoteVsn, HighestLocalVsn) ->
-    case ewl_talk:ask(["Would you like to (k)eep the latest config or (o)verwrite it with the past config? [k|o]"]) of
+    case ewl_talk:ask(["Would you like to (o)verwrite this releases config a with past config or (p)reserve it? [o|p]"]) of
 	"o" ->
 	    Rel1ConfigFilePath = epkg_installed_paths:find_config_file_path(RelName, HighestRemoteVsn),
 	    Rel2ConfigFilePath = epkg_installed_paths:find_config_file_path(RelName, HighestLocalVsn),
 	    ?INFO_MSG("replacing ~p with ~p~n", [Rel2ConfigFilePath, Rel1ConfigFilePath]),
 	    file:copy(Rel2ConfigFilePath, Rel1ConfigFilePath),
 	    ok;
-	"k" ->
+	"p" ->
 	    ok;
 	Error ->
 	    ?INFO_MSG("user entered \"~p\"~n", [Error]),
-	    io:format("Please enter \"k\" or \"o\"~n"),
+	    io:format("Please enter \"o\" or \"p\"~n"),
 	    prompt_for_config_policy(RelName, HighestRemoteVsn, HighestLocalVsn)
     end.
 
@@ -336,7 +350,7 @@ outdated_applications(Repos, TargetErtsVsn, Timeout) ->
     Apps          = epkg_installed_paths:list_apps(TargetErtsVsn),
     lists:foldl(fun(AppName, Acc) -> 
 			case catch is_outdated_app(Repos, TargetErtsVsn, AppName, Timeout) of
-			    {ok, {lower, HighestLocalVsn, HighestRemoteVsn}} -> 
+			    {ok, {lower, HighestLocalVsn, HighestRemoteVsn, _RemoteErtsVsn}} -> 
 				[{AppName, HighestLocalVsn, HighestRemoteVsn}|Acc];
 			    _Other -> 
 				Acc
@@ -354,7 +368,7 @@ outdated_applications(Repos, TargetErtsVsn, Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 upgrade_applications(Repos, TargetErtsVsn, Force, Timeout) -> 
-    AppNames      = epkg_installed_paths:list_apps(TargetErtsVsn),
+    AppNames = epkg_installed_paths:list_apps(TargetErtsVsn),
     lists:foreach(fun(AppName) -> upgrade_application(Repos, TargetErtsVsn, AppName, Force, Timeout) end, AppNames).
 
 %%--------------------------------------------------------------------
@@ -370,9 +384,17 @@ upgrade_applications(Repos, TargetErtsVsn, Force, Timeout) ->
 upgrade_application(Repos, TargetErtsVsn, AppName, Force, Timeout) -> 
     ?INFO_MSG("fax_manage:upgrade_application(~p, ~p, ~p)~n", [Repos, AppName]),
     case is_outdated_app(Repos, TargetErtsVsn, AppName, Timeout) of
-	{ok, {lower, HighestLocalVsn, HighestRemoteVsn}} ->
+	{ok, {lower, HighestLocalVsn, HighestRemoteVsn, TargetErtsVsn}} ->
 	    io:format("Upgrading from version ~s of ~s to version ~s~n", [HighestLocalVsn, AppName, HighestRemoteVsn]),
 	    fax_install:install_remote_application(Repos, TargetErtsVsn, AppName, HighestRemoteVsn, Force, Timeout); 
+	{ok, {lower, HighestLocalVsn, HighestRemoteVsn, RemoteErtsVsn}} ->
+	    io:format("Upgrading from version ~s of ~s to version ~s~n", [HighestLocalVsn, AppName, HighestRemoteVsn]),
+	    case fax_util:ask_about_switching_target_ertsVsns(TargetErtsVsn, RemoteErtsVsn) of
+		true  ->
+		    fax_install:install_remote_application(Repos, TargetErtsVsn, AppName, HighestRemoteVsn, Force, Timeout); 
+		false -> 
+		    ok
+	    end;
 	{ok, {_, HighestLocalVsn}} ->
 	    io:format("~s at version ~s is up to date~n", [AppName, HighestLocalVsn]);
 	Error ->
@@ -493,11 +515,12 @@ remove_from_config_list(Key, ValueToRemove, ConfigFilePath) ->
 %%  where
 %%   Repos = [string()]
 %%   TargetErtsVsn = string()
-%%   Compare = {higher, HighestLocalVsn} | {same, HighestLocalVsn} | {lower, {HighestLocalVsn, HigherRemoteVsn}}
+%%   Compare = {higher, HighestLocalVsn} | {same, HighestLocalVsn} | {lower, {HighestLocalVsn, HigherRemoteVsn, RemoteErtsVsn}}
 %% @end
 %%--------------------------------------------------------------------
 is_outdated_release(Repos, TargetErtsVsn, ReleaseName, _Timeout) ->
-    {ok, {_Repo, HighestRemoteVsn}} = fax_util:find_highest_vsn(Repos, TargetErtsVsn, ReleaseName, releases),
+    TargetErtsVsns = fax_util:get_erts_vsns_gte_than(TargetErtsVsn),
+    {ok, {_Repo, HighestRemoteVsn, ErtsVsn}} = fax_util:find_highest_vsn(Repos, TargetErtsVsns, ReleaseName, releases),
     case epkg_manage:find_highest_local_release_vsn(ReleaseName) of
 	{ok, HighestLocalVsn} ->
 	    case ewr_util:is_version_greater(HighestLocalVsn, HighestRemoteVsn) of
@@ -506,7 +529,7 @@ is_outdated_release(Repos, TargetErtsVsn, ReleaseName, _Timeout) ->
 		false when HighestRemoteVsn == HighestLocalVsn ->
 		    {ok, {same, HighestLocalVsn}};
 		false ->
-		    {ok, {lower, HighestLocalVsn, HighestRemoteVsn}}
+		    {ok, {lower, HighestLocalVsn, HighestRemoteVsn, ErtsVsn}}
 	    end;
 	{error, Reason} ->
 	    {error, Reason}
@@ -519,11 +542,12 @@ is_outdated_release(Repos, TargetErtsVsn, ReleaseName, _Timeout) ->
 %%  where
 %%   Repos = [string()]
 %%   TargetErtsVsn = string()
-%%   Compare = {higher, HighestLocalVsn} | {same, HighestLocalVsn} | {lower, {HighestLocalVsn, HigherRemoteVsn}}
+%%   Compare = {higher, HighestLocalVsn} | {same, HighestLocalVsn} | {lower, {HighestLocalVsn, HigherRemoteVsn, RemoteErtsVsn}}
 %% @end
 %%--------------------------------------------------------------------
 is_outdated_app(Repos, TargetErtsVsn, AppName, _Timeout) ->
-    {ok, {_Repo, HighestRemoteVsn}} = fax_util:find_highest_vsn(Repos, TargetErtsVsn, AppName, lib),
+    TargetErtsVsns = fax_util:get_erts_vsns_gte_than(TargetErtsVsn),
+    {ok, {_Repo, HighestRemoteVsn, RemoteErtsVsn}} = fax_util:find_highest_vsn(Repos, TargetErtsVsns, AppName, lib),
     case epkg_manage:find_highest_local_app_vsn(AppName, TargetErtsVsn) of
 	{ok, HighestLocalVsn} ->
 	    case ewr_util:is_version_greater(HighestLocalVsn, HighestRemoteVsn) of
@@ -532,7 +556,7 @@ is_outdated_app(Repos, TargetErtsVsn, AppName, _Timeout) ->
 		false when HighestRemoteVsn == HighestLocalVsn ->
 		    {ok, {same, HighestLocalVsn}};
 		false ->
-		    {ok, {lower, HighestLocalVsn, HighestRemoteVsn}}
+		    {ok, {lower, HighestLocalVsn, HighestRemoteVsn, RemoteErtsVsn}}
 	    end;
 	{error, Reason} ->
 	    {error, Reason}
@@ -625,3 +649,4 @@ wrap([Word | Words], Width, Indent, [Line | Lines]) ->
       true -> wrap(Words, Width, Indent, [[Word, " " | Line] | Lines]);
       false -> wrap([Word | Words], Width, Indent, [[], Line | Lines])
   end.
+

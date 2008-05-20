@@ -25,6 +25,8 @@
 	 flatten_term/1,
 	 repo_list/1,
 	 add_pzs/1,
+	 ask_about_switching_target_ertsVsns/2,
+	 get_erts_vsns_gte_than/1,
 	 get_erts_vsn/1
         ]).
 
@@ -53,10 +55,10 @@ execute_on_latest_package_version([], _TargetErtsVsn, _PackageName, _Fun, _Side,
     {error, package_not_found};
 execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, VsnThreshold) 
   when Side == lib; Side == releases ->
-    case find_highest_vsn(Repos, TargetErtsVsn, PackageName, Side, VsnThreshold) of
-	{ok, {Repo, HighVsn}} -> 
-	    ShortenedRepos        = lists:delete(Repo, Repos),
-	    case catch Fun([Repo|ShortenedRepos], HighVsn) of
+    case find_highest_vsn(Repos, get_erts_vsns_gte_than(TargetErtsVsn), PackageName, Side, VsnThreshold) of
+	{ok, {Repo, HighVsn, RemoteErtsVsn}} -> 
+	    ShortenedRepos = lists:delete(Repo, Repos),
+	    case catch execute_fun(Fun, [Repo|ShortenedRepos], HighVsn, TargetErtsVsn, RemoteErtsVsn) of
 		ok -> 
 		    ok;
 		Error -> 
@@ -70,10 +72,30 @@ execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, 
 	    exit("Did not succeed in downloading any version of the package")
     end.
 
+execute_fun(Fun, Repos, HighVsn, ErtsVsn, ErtsVsn) ->
+    Fun(Repos, HighVsn, ErtsVsn);
+execute_fun(Fun, Repos, HighVsn, TargetErtsVsn, RemoteErtsVsn) ->
+    case ask_about_switching_target_ertsVsns(TargetErtsVsn, RemoteErtsVsn) of
+	true  -> Fun(Repos, HighVsn, RemoteErtsVsn);
+	false -> ok
+    end.
+	     
+	    
+    
+
 %% @spec execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side) -> ok | exit()
 %% @equiv execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, infinity) 
 execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side) ->
     execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, infinity).
+
+%%-------------------------------------------------------------------
+%% @doc return all the erts vsns that are greater than or equal to the target erts versions.
+%% @spec get_erts_vsns_gte_than(TargetErtsVsn) -> ErtsVsns::list()
+%% @end
+%%-------------------------------------------------------------------
+get_erts_vsns_gte_than(TargetErtsVsn) ->
+    ErtsVsns = [E || {_, E, _} <- ?COMPILER_VSN_TO_ERTS_VSN_TO_ERLANG_VSN, ewr_util:is_version_greater(E, TargetErtsVsn)],
+    [TargetErtsVsn|ErtsVsns].
 
 %%-------------------------------------------------------------------
 %% @doc
@@ -84,54 +106,61 @@ execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side) 
 %%  VsnThreshold - is used to indicate that the highest version possible is to be found but no higher than VsnThreshold.
 %% </pre>
 %%
-%% @spec find_highest_vsn(Repos, TargetErtsVsn, PackageName, Side, VsnThreshold) -> {ok, {Repo, Vsn}} | {error, Reason}
+%% @spec find_highest_vsn(Repos, TargetErtsVsns, PackageName, Side, VsnThreshold) ->
+%%       {ok, {Repo, Vsn, ErtsVsn}} | {error, Reason}
 %%  where 
 %%   Side = lib | releases
 %%   VsnThreshold = string() | infinity
 %% @end
 %%-------------------------------------------------------------------
-find_highest_vsn(Repos, TargetErtsVsn, PackageName, Side, VsnThreshold) ->
-    case catch find_highest_vsn2(Repos, TargetErtsVsn,  PackageName, Side, VsnThreshold) of
-	{ok, {_Repo, _HighVsn}} = Reply -> Reply;
-	Exp                             -> {error, {package_not_found, PackageName, Exp}}
+find_highest_vsn(Repos, TargetErtsVsns, PackageName, Side, VsnThreshold) ->
+    case catch find_highest_vsn2(Repos, TargetErtsVsns,  PackageName, Side, VsnThreshold) of
+	{ok, {_Repo, _HighVsn, _ErtsVsn}} = Reply -> Reply;
+	Exp                                       -> {error, {package_not_found, PackageName, Exp}}
     end.
 				 
-find_highest_vsn2(Repos, TargetErtsVsn, PackageName, Side, VsnThreshold) ->
-    VsnLists = lists:flatten(
-		 lists:foldl(fun(Repo, Acc) -> 
-				     SysInfo  = ewr_util:system_info(),
-				     Suffixes = ewr_util:gen_multi_erts_repo_stub_suffix(TargetErtsVsn, 
-											 PackageName,
-											 [SysInfo, "Generic"], 
-											 Side),
-				     lists:foldl(fun(Suf, Acc2) -> 
-							 ?INFO_MSG("Checking for highest version of ~p in ~s/~s~n", 
-								   [PackageName, Repo, Suf]),
-							 case repo_list(Repo ++ "/" ++ Suf) of
-							     {ok, Vsns} -> 
-								 ?INFO_MSG("found vsns ~p~n", [Vsns]),
-								 [[{Repo, Vsn} || Vsn <- lists:reverse(Vsns)]|Acc2]; 
-							     {error, _Reason} -> 
-								 Acc2
-							 end
-						 end, Acc, Suffixes)
-			     end, [], Repos)),
-    ?INFO_MSG("find_highest_vsn list of remote versions ~p~n", [VsnLists]),
+find_highest_vsn2(Repos, TargetErtsVsns, PackageName, Side, VsnThreshold) ->
+    ?INFO_MSG("Target erts versions to search are ~p~n", [TargetErtsVsns]),
+    VsnLists =
+	lists:flatten(
+	  lists:foldl(fun(Repo, Acc) -> 
+			      SysInfo  = ewr_util:system_info(),
+			      Suffixes = suffixes(TargetErtsVsns, PackageName, [SysInfo, "Generic"], Side),
+			      ?INFO_MSG("suffixes to check are ~p~n", [Suffixes]),
+			      lists:foldl(fun(Suf, Acc2) -> 
+						  ?INFO_MSG("Checking for highest version of ~p in ~s/~s~n", 
+							    [PackageName, Repo, Suf]),
+						  case repo_list(Repo ++ "/" ++ Suf) of
+						      {ok, Vsns} -> 
+							  ?INFO_MSG("found vsns ~p~n", [Vsns]),
+							  Elements = ewr_repo_paths:decompose_suffix(Suf),
+							  ErtsVsn  = fs_lists:get_val(erts_vsn, Elements),
+							  [[{Repo, Vsn, ErtsVsn} || Vsn <- lists:reverse(Vsns)]|Acc2]; 
+						      {error, _Reason} -> 
+							  Acc2
+						  end
+					  end, Acc, Suffixes)
+		      end, [], Repos)),
     find_highest_remote_vsn_under_threshold(VsnThreshold, VsnLists).
 
-%% @equiv find_highest_vsn(Repos, TargetErtsVsn, PackageName, Side, infinity)
-%% @spec find_highest_vsn(Repos, TargetErtsVsn, PackageName, Side) -> {ok, {Repo, Vsn}} | {error, Reason}
-find_highest_vsn(Repos, TargetErtsVsn, PackageName, Side) ->
-    find_highest_vsn(Repos, TargetErtsVsn, PackageName, Side, infinity).
+%% @equiv find_highest_vsn(Repos, TargetErtsVsns, PackageName, Side, infinity)
+%% @spec find_highest_vsn(Repos, TargetErtsVsns, PackageName, Side) -> {ok, {Repo, Vsn, ErtsVsn}} | {error, Reason}
+find_highest_vsn(Repos, TargetErtsVsns, PackageName, Side) ->
+    find_highest_vsn(Repos, TargetErtsVsns, PackageName, Side, infinity).
 
+suffixes(ErtsVsns, PackageName, Areas, Side) ->
+    lists:foldr(fun(ErtsVsn, Acc) ->
+			Acc ++ ewr_util:gen_repo_stub_suffix(ErtsVsn, PackageName, Areas, Side)
+		end, [], ErtsVsns).
 
 find_highest_remote_vsn_under_threshold(VsnThreshold, VsnLists) ->
+    ?INFO_MSG("find_highest_vsn list of remote versions ~p with threshold of ~p~n", [VsnLists, VsnThreshold]),
     case VsnThreshold of
 	infinity ->
-	    {ok, hd(lists:sort(fun({_, V1}, {_, V2}) -> ewr_util:is_version_greater(V1, V2) end, VsnLists))};
+	    {ok, hd(lists:sort(fun({_, V1, _}, {_, V2, _}) -> ewr_util:is_version_greater(V1, V2) end, VsnLists))};
 	VsnThreshold ->
 	    case lop_off_top(VsnLists, VsnThreshold) of
-		{ok, {Repo, HighVsn}} = Res ->
+		{ok, {Repo, HighVsn, _HighErtsVsn}} = Res ->
 		    ?INFO_MSG("find_highest_vsn list of remote versions ~p with threshold of ~p found highest ~p at vsn ~s~n", 
 			      [VsnLists, VsnThreshold, Repo, HighVsn]),
 		    Res;
@@ -142,12 +171,12 @@ find_highest_remote_vsn_under_threshold(VsnThreshold, VsnLists) ->
     end.
 
 lop_off_top(VsnLists, VsnThreshold) ->
-    SortedVsnLists = lists:sort(fun({_, V1}, {_, V2}) -> ewr_util:is_version_greater(V1, V2) end, VsnLists),
+    SortedVsnLists = lists:sort(fun({_, V1, _}, {_, V2, _}) -> ewr_util:is_version_greater(V1, V2) end, VsnLists),
     lop_off_top2(SortedVsnLists, VsnThreshold).
 
-lop_off_top2([{Repo, Vsn}|T], VsnThreshold) ->
+lop_off_top2([{Repo, Vsn, ErtsVsn}|T], VsnThreshold) ->
     case ewr_util:is_version_greater(VsnThreshold, Vsn) of
-	true  -> {ok, {Repo, Vsn}};
+	true  -> {ok, {Repo, Vsn, ErtsVsn}};
 	false -> lop_off_top2(T, VsnThreshold) 
     end;
 lop_off_top2([], VsnThreshold) ->
@@ -241,9 +270,9 @@ get_erts_vsn(AppDirPath) ->
     end.
 
 search_static_vsns(CompilerVsn) ->
-    search_static_vsns(CompilerVsn, ?COMPILER_VSN_TO_ERTS_VSN).
+    search_static_vsns(CompilerVsn, ?COMPILER_VSN_TO_ERTS_VSN_TO_ERLANG_VSN).
 
-search_static_vsns(CompilerVsn, [{CompilerVsn, ErtsVsn}|_]) ->
+search_static_vsns(CompilerVsn, [{CompilerVsn, ErtsVsn, _ErlangVsn}|_]) ->
     {ok, ErtsVsn};
 search_static_vsns(CompilerVsn, [_|T]) ->
     search_static_vsns(CompilerVsn, T);
@@ -256,7 +285,6 @@ search_dynamic_vsns(CompilerVsn) ->
     {error, {no_erts_vsn_found, {compiler_vsn, CompilerVsn}}}.
 				 
 %%--------------------------------------------------------------------
-%% @private
 %% @doc Fetch the compiler version that all modules in the application were compiled with.
 %% @spec get_compiler_vsn(AppDirPath) -> {ok, CompilerVsn} | {error, Reason}
 %% @end
@@ -300,6 +328,48 @@ fetch_vsn(AppDirPath, Module) ->
 	    Vsn
     end.
 
+%%--------------------------------------------------------------------
+%% @doc Prompt the user when he is switching erts vsns due to an install. 
+%% @spec ask_about_switching_target_ertsVsns(TargetErtsVsn, RemoteErtsVsn) -> bool()
+%% @end
+%%--------------------------------------------------------------------
+ask_about_switching_target_ertsVsns(TargetErtsVsn, RemoteErtsVsn) ->
+    {ok, TargetErlangVsn} = faxien:translate_version(erts, erlang, TargetErtsVsn),
+    {ok, RemoteErlangVsn} = faxien:translate_version(erts, erlang, RemoteErtsVsn),
+    Prompt = lists:flatten(["The package you are installing is for ", RemoteErlangVsn, " (erts: ", RemoteErtsVsn,
+			    ") which is different from your target version of ", TargetErlangVsn, " (erts: ", TargetErtsVsn,
+			    ") would you like to continue [yes|no]"]),
+			    
+    case ewl_talk:ask(Prompt) of
+	Yes when Yes == "y"; Yes == "yes" ->
+	    ask_about_setting_target_erts_vsn(RemoteErtsVsn),
+	    true;
+	No when No == "n"; No == "no" ->
+	    false;
+	Error ->
+	    ?INFO_MSG("user entered \"~p\"~n", [Error]),
+	    io:format("Please enter \"yes\" or \"no\"~n"),
+	    ask_about_switching_target_ertsVsns(TargetErtsVsn, RemoteErtsVsn) 
+    end.
+
+ask_about_setting_target_erts_vsn(RemoteErtsVsn) ->
+    {ok, RemoteErlangVsn} = faxien:translate_version(erts, erlang, RemoteErtsVsn),
+    Prompt = lists:flatten(["Would you like to set the target vsn to ",
+			    RemoteErlangVsn, " (erts: ", RemoteErtsVsn, ") [yes|no]"]),
+
+    case ewl_talk:ask(Prompt) of
+	Yes when Yes == "y"; Yes == "yes" ->
+	    {ok, FaxienVsn} = faxien:version(),
+	    ConfigFilePath  = epkg_installed_paths:find_config_file_path(faxien, FaxienVsn),
+	    fax_manage:set_target_erts_vsn(RemoteErtsVsn, ConfigFilePath),
+	    true;
+	No when No == "n"; No == "no" ->
+	    false;
+	Error ->
+	    ?INFO_MSG("user entered \"~p\"~n", [Error]),
+	    io:format("Please enter \"yes\" or \"no\"~n"),
+	    ask_about_setting_target_erts_vsn(RemoteErtsVsn) 
+    end.
 %%====================================================================
 %% Internal functions
 %%====================================================================
