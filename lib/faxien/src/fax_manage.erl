@@ -322,14 +322,16 @@ handle_config_on_upgrade(ReleaseName, HighestRemoteVsn, HighestLocalVsn) ->
     end.
 	    
 prompt_for_config_policy(RelName, HighestRemoteVsn, HighestLocalVsn) ->
-    case ewl_talk:ask(["Would you like to (o)verwrite this releases config a with past config or (p)reserve it? [o|p]"]) of
+    Prompt = "Differences between the latest config and the past faxien config file have been found. " ++
+	     "Do you want to use the (o)ld or (n)ew file [o|n]",
+    case ewl_talk:ask([Prompt]) of 
 	"o" ->
 	    Rel1ConfigFilePath = epkg_installed_paths:find_config_file_path(RelName, HighestRemoteVsn),
 	    Rel2ConfigFilePath = epkg_installed_paths:find_config_file_path(RelName, HighestLocalVsn),
 	    ?INFO_MSG("replacing ~p with ~p~n", [Rel2ConfigFilePath, Rel1ConfigFilePath]),
 	    file:copy(Rel2ConfigFilePath, Rel1ConfigFilePath),
 	    ok;
-	"p" ->
+	"n" ->
 	    ok;
 	Error ->
 	    ?INFO_MSG("user entered \"~p\"~n", [Error]),
