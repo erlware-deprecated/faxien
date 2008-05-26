@@ -307,6 +307,7 @@ convert_string_to_terms(ArgString) ->
 	    ArgString;
 	_  ->
 	    ScanableArg       = ArgString ++ ". ", 
+	    ?INFO_MSG("scanning and parsing ~p~n", [ScanableArg]),
 	    {ok, Toks, _Line} = erl_scan:string(ScanableArg, 1),
 	    case catch erl_parse:parse_term(Toks) of
 		{ok, Term} -> 

@@ -80,9 +80,6 @@ execute_fun(Fun, Repos, HighVsn, TargetErtsVsn, RemoteErtsVsn) ->
 	false -> ok
     end.
 	     
-	    
-    
-
 %% @spec execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side) -> ok | exit()
 %% @equiv execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, infinity) 
 execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side) ->

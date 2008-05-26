@@ -14,8 +14,8 @@ faxien installed #| head -n 5
 echo "describe the sinan application at its latest version"
 faxien describe_app sinan #| head -n 5
 
-(sleep 1; echo "yes") | faxien rr sinan
-faxien install-release sinan 0.8.6
+#(sleep 1; echo "yes") | faxien rr sinan
+faxien install-release sinan 0.10.0.0
 
 faxien outdated_apps
 echo "upgrade the sinan app"

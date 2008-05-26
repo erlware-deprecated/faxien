@@ -2,7 +2,7 @@ EBIN=../ebin
 EMULATOR=beam
 
 ERLC_WFLAGS = -W
-ERLC_EX=$(shell ERLC=$(which erlc); if [ "$${ERLC}" = "" ];then ERLC=$(ERLWARE_HOME)/bin/erlc; fi; echo $${ERLC})
+ERLC_EX=$(shell ERLC=$(which erlc); if [ "$${ERLC}" = "" ];then ERLC=$(ERLWARE_HOME)/bin/erlc; fi; echo "erlc vsn $${ERLC}")
 ERLC = $(ERLC_EX) $(ERLC_WFLAGS) $(ERLC_FLAGS)
 
 ERL_EX=$(shell ERL=$(which erl); if [ "$${ERL}" = "" ];then ERL=$(ERLWARE_HOME)/bin/erl; fi; echo $${ERL})
