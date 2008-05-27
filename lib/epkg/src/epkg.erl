@@ -155,8 +155,7 @@ list_lib() ->
     LowerBoundErtsVsn      = epkg_util:erts_lower_bound_from_target(TargetErtsVsn),
     NameVsnsPairs          = collect_dups(epkg_manage:list_lib(InstallationPath, TargetErtsVsn)),
     io:format("~nInstalled Applications for ERTS versions between ~s and ~s:~n", [LowerBoundErtsVsn, TargetErtsVsn]),
-    lists:foreach(fun({Name, Vsns}) -> io:format("~s   ~s~n", [Name, format_vsns(Vsns)]) end, NameVsnsPairs).
-
+    print_installed(NameVsnsPairs).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -171,7 +170,7 @@ list_releases() ->
     NameVsnsPairs = collect_dups(epkg_manage:list_releases(InstallationPath, TargetErtsVsn)),
     io:format("~nInstalled Releases (Erlang standalone services) for ERTS versions between ~s and ~s:~n",
 	      [LowerBoundErtsVsn, TargetErtsVsn]),
-    lists:foreach(fun({Name, Vsns}) -> io:format("~s   ~s~n", [Name, format_vsns(lists:reverse(Vsns))]) end, NameVsnsPairs).
+    print_installed(NameVsnsPairs).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -385,6 +384,18 @@ print_help_list(HelpList) ->
 %% @doc used to format the output of the list functions
 %% @end
 %%--------------------------------------------------------------------
+print_installed(NameVsnsPairs) ->
+    L1 = [{Name,format_vsns(lists:reverse(Vsns))} || {Name, Vsns} <- NameVsnsPairs],
+    Col = lists:foldr(fun ({A,_B},Max) when length(A)>Max ->
+			      length(A);
+			  (_, Max) ->
+			      Max
+		      end, 0, L1),
+    Fmt = lists:flatten(io_lib:format("~s-~ps~s~n",["~",Col+3,"~s"])),
+    lists:foreach(fun(T) ->
+			  io:format(Fmt, tuple_to_list(T))
+		  end, L1).
+
 format_vsns(Vsns) when length(Vsns) > 5 ->
     SortedVsns = lists:sort(fun(V1, V2) -> ewr_util:is_version_greater(V1, V2) end, Vsns),
     lists:flatten([ewr_util:join(lists:reverse(lists:nthtail(length(Vsns) - 5, lists:reverse(SortedVsns))), " | "), " | ..."]);
