@@ -1,16 +1,23 @@
 %%% -*- mode:erlang -*-
-{application, '%APP_NAME%',
+{application, epkg,
  [
   % A quick description of the application.
   {description, "Manages local erlang/OTP packages. Faxien depends on this for local operations."},
 
   % The version of the applicaton
-  {vsn, "%VSN%"},
+  {vsn, "0.3.10.0"},
 
   % All modules used by the application.
   {modules,
    [
-    %MODULES%
+    epkg_cmdln,
+    epkg,
+    epkg_installed_paths,
+    epkg_install,
+    epkg_manage,
+    epkg_package_paths,
+    epkg_util,
+    epkg_validation
    ]},
 
   % A list of the registered processes in your application.  Used to prevent collisions. 

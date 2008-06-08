@@ -1,16 +1,23 @@
 %%% -*- mode:erlang -*-
-{application, '%APP_NAME%',
+{application, faxien,
  [
   % A quick description of the application.
   {description, "The erlang package management tool."},
 
   % The version of the applicaton
-  {vsn, "%VSN%"},
+  {vsn, "0.29.7.0"},
 
   % All modules used by the application. 
   {modules,
    [
-    %MODULES%
+    fax_cmdln,
+    fax_control,
+    faxien,
+    fax_install,
+    fax_manage,
+    fax_publish,
+    fax_put,
+    fax_util
    ]},
   
   % A list of the registered processes in your application.  Used to prevent collisions. 
