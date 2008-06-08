@@ -1,4 +1,6 @@
 %% Contains shared macros
+-include("macros.hrl").
+
 %% A static list of compiler versions associate with the erts vsns they are packaged with.  This list should be in descending
 %% order of erts version. 
 -define(COMPILER_VSN_TO_ERTS_VSN_TO_ERLANG_VSN, [

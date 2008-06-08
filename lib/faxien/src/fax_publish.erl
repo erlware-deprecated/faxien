@@ -54,7 +54,7 @@
 %%     PackageDirPath = string() 
 %% @end
 %%--------------------------------------------------------------------
-publish([], RawPackageDirPath, Timeout) -> 
+publish([], _RawPackageDirPath, _Timeout) -> 
     {error, no_publish_repos};
 publish(Repos, RawPackageDirPath, Timeout) -> 
     PackageDirPath = epkg_util:unpack_to_tmp_if_archive(RawPackageDirPath),
