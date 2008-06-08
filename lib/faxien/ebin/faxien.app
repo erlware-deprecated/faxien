@@ -11,7 +11,6 @@
   {modules,
    [
     fax_cmdln,
-    fax_control,
     faxien,
     fax_install,
     fax_manage,

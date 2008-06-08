@@ -175,13 +175,13 @@ handle_control(RelDirPath) ->
 	    ?ERROR_MSG("Bad control file. Validation failed with ~p~n", [Reason]),
 	    io:format("~nOne of more of the categories in the control file are invalid please re-enter them.~n"),
 	    {ok, [{control, PackageName, ControlList}]} = file:consult(ControlFilePath),
-	    ControlTerm = {control, PackageName, lists:keyreplace(categories, 1, ControlList, fax_control:get_categories())},
+	    ControlTerm = {control, PackageName, lists:keyreplace(categories, 1, ControlList, epkg_control:get_categories())},
 	    write_out(ControlFilePath, ControlTerm);
 	{error, Reason} ->
 	    ?ERROR_MSG("Bad control file. Validation failed with ~p~n", [Reason]),
 	    io:format("~nIt appears the package does not contain a valid control file. Lets create a basic one.~n"),
 	    {ok, {PackageName, _PackageVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(RelDirPath),
-	    ControlTerm                      = fax_control:collect_control_info(PackageName),
+	    ControlTerm                      = epkg_control:collect_control_info(PackageName),
 	    io:format("~n~p.~n~nAbove is the control information collected about this package. This information~n", [ControlTerm]),
 	    io:format("will be placed under the root directory of the package in a file named \"control\".~n"),
 	    io:format("**If done manually for the next publish be sure to include the period after the term**~n~n"),

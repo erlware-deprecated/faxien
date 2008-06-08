@@ -6,13 +6,16 @@
 %%% @end
 %%% Created :  7 Jun 2008 by Martin Logan <martinjlogan@Macintosh.local>
 %%%-------------------------------------------------------------------
--module(fax_control).
+-module(epkg_control).
 
 %% API
 -export([
 	 collect_control_info/1,
 	 get_categories/0
 	]).
+
+-include("macros.hrl").
+-include("epkg.hrl").
 
 %%%===================================================================
 %%% API

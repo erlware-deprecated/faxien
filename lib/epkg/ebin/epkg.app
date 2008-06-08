@@ -13,6 +13,7 @@
     epkg_cmdln,
     epkg,
     epkg_installed_paths,
+    epkg_control,
     epkg_install,
     epkg_manage,
     epkg_package_paths,
