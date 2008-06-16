@@ -161,7 +161,7 @@ find_highest_remote_vsn_under_threshold(VsnThreshold, VsnLists) ->
 		    ?INFO_MSG("find_highest_vsn list of remote versions ~p with threshold of ~p found highest ~p at vsn ~s~n", 
 			      [VsnLists, VsnThreshold, Repo, HighVsn]),
 		    Res;
-		{error, Reason} = Error ->
+		{error, _Reason} = Error ->
 		    ?INFO_MSG("Failed to find a version lower than ~p~n", [VsnThreshold]),
 		    Error
 	    end

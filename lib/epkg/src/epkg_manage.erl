@@ -42,7 +42,6 @@
 %% @end
 %%--------------------------------------------------------------------
 list_lib(InstallationPath, TargetErtsVsn) ->
-    Fun    = fun(ErtsVsn) -> list_lib_for_erts_vsn(InstallationPath, TargetErtsVsn) end,
     Series = epkg_util:erts_series(TargetErtsVsn), 
     ?INFO_MSG("listing lib dirs for erts vsns ~p~n", [Series]),
     lists:sort(fun({N, _}, {N1, _}) -> N > N1 end,
@@ -61,7 +60,6 @@ list_lib_for_erts_vsn(InstallationPath, ErtsVsn) ->
 %% @end
 %%--------------------------------------------------------------------
 list_all_releases(InstallationPath) ->
-    RelDir = epkg_installed_paths:release_container_path(InstallationPath),
     Series = epkg_installed_paths:list_erts_vsns(InstallationPath),
     ?INFO_MSG("listing lib dirs for erts vsns ~p~n", [Series]),
     lists:sort(fun({N, _}, {N1, _}) -> N > N1 end,
@@ -74,7 +72,6 @@ list_all_releases(InstallationPath) ->
 %% @end
 %%--------------------------------------------------------------------
 list_releases(InstallationPath, TargetErtsVsn) ->
-    RelDir = epkg_installed_paths:release_container_path(InstallationPath),
     Series = epkg_util:erts_series(TargetErtsVsn), 
     ?INFO_MSG("listing lib dirs for erts vsns ~p~n", [Series]),
     lists:sort(fun({N, _}, {N1, _}) -> N > N1 end,
@@ -143,7 +140,7 @@ remove_release(InstallationPath, RelName, RelVsn, Force) ->
 	    end
     end.
 
-question_removal([], PackageName, PackageVsn) ->
+question_removal([], _PackageName, _PackageVsn) ->
     true;
 question_removal(UniqueSpecs, PackageName, PackageVsn) ->
     case ewl_talk:ask([lists:flatten(
@@ -183,7 +180,7 @@ find_highest_local_release_vsn(ReleaseName, TargetErtsVsn) ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
     NameAndVsns = lists:filter(fun({Name, _}) -> ReleaseName == Name end,
 			      list_releases(InstallationPath, TargetErtsVsn)),
-    highest_vsn([Vsn || {Name, Vsn} <- NameAndVsns]).
+    highest_vsn([Vsn || {_Name, Vsn} <- NameAndVsns]).
 
 %%--------------------------------------------------------------------
 %% @doc Find the highest version of a particular release that is installed locally.
@@ -196,7 +193,7 @@ find_highest_local_release_vsn(ReleaseName) ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
     NameAndVsns = lists:filter(fun({Name, _}) -> ReleaseName == Name end,
 			      list_all_releases(InstallationPath)),
-    highest_vsn([Vsn || {Name, Vsn} <- NameAndVsns]).
+    highest_vsn([Vsn || {_Name, Vsn} <- NameAndVsns]).
 
 %%--------------------------------------------------------------------
 %% @doc Find the highest version of a particular application that is installed locally.
@@ -209,7 +206,7 @@ find_highest_local_app_vsn(AppName, TargetErtsVsn) ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
     NameAndVsns = lists:filter(fun({Name, _}) -> AppName == Name end,
 			      list_lib(InstallationPath, TargetErtsVsn)),
-    highest_vsn([Vsn || {Name, Vsn} <- NameAndVsns]).
+    highest_vsn([Vsn || {_Name, Vsn} <- NameAndVsns]).
 
 highest_vsn(Vsns) when length(Vsns) > 0 ->
     HighestLocalVsn = hd(lists:sort(fun(A, B) -> ewr_util:is_version_greater(A, B) end, Vsns)),
@@ -230,7 +227,7 @@ diff_config(RelName, RelVsn1, RelVsn2) ->
 	Rel2ConfigFilePath = epkg_installed_paths:find_config_file_path(RelName, RelVsn2),
 	ewl_config_diff:config_files(Rel1ConfigFilePath, Rel2ConfigFilePath)
     catch
-	_Type:Exception ->
+	_Type:_Exception ->
 	    []
     end.
     

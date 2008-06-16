@@ -403,7 +403,7 @@ install_release_help() ->
 %% @end
 %%--------------------------------------------------------------------
 fetch_release(Repos, ReleaseName, ReleaseVsn, ToDir) when is_atom(Repos)  -> 
-    fetch_release([atom_to_list(Repos)], ReleaseName, ReleaseVsn);
+    fetch_release([atom_to_list(Repos)], ReleaseName, ReleaseVsn, ToDir);
 fetch_release(Repos, ReleaseName, ReleaseVsn, ToDir)  -> 
     ?INFO_MSG("faxien:fetch_release(~p, ~p, ~p)~n", [Repos, ReleaseName, ReleaseVsn]),
     % Any atoms must be turned to strings.  Atoms are accepted because it makes

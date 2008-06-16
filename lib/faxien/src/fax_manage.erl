@@ -171,7 +171,7 @@ add_repo_to_fetch_from(Repo, ConfigFilePath) ->
 get_signature(ConfigFilePath) ->
     case gas:get_env(faxien, signature) of
 	undefined -> 
-	    {ok, {{public_key, {N, E}}, {private_key, {N, D}}, {max_message_size, Bytes}}} = cg_rsa:keygen(), 
+	    {ok, {{public_key, {N, E}}, {private_key, {N, D}}, {max_message_size, _Bytes}}} = cg_rsa:keygen(), 
 	    Sig = {{public_key, {N, E}}, {private_key, {N, D}}},
 	    gas:modify_config_file(ConfigFilePath, faxien, signature, Sig),
 	    {ok, Sig};
@@ -249,7 +249,7 @@ outdated_releases(Repos, TargetErtsVsn, Timeout) ->
     Releases      = epkg_installed_paths:list_releases(),
     lists:foldl(fun(ReleaseName, Acc) -> 
 			case catch is_outdated_release(Repos, TargetErtsVsn, ReleaseName, Timeout) of
-			    {ok, {lower, HighestLocalVsn, HighestRemoteVsn, RemoteErtsVsn}} -> 
+			    {ok, {lower, HighestLocalVsn, HighestRemoteVsn, _RemoteErtsVsn}} -> 
 				[{ReleaseName, HighestLocalVsn, HighestRemoteVsn}|Acc];
 			    _Other -> 
 				Acc

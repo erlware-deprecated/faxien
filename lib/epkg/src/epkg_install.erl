@@ -85,6 +85,7 @@ install_erts(ErtsPackageDirOrArchive, InstallationPath) ->
 %% @end
 %%--------------------------------------------------------------------
 install_release(ReleasePackageArchiveOrDirPath, InstallationPath, IsLocalBoot) ->
+    ?INFO_MSG("installing to ~p~n", [InstallationPath]),
     ReleasePackageDirPath   = epkg_util:unpack_to_tmp_if_archive(ReleasePackageArchiveOrDirPath),
     {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ReleasePackageDirPath),
     InstalledRelPath        = epkg_installed_paths:installed_release_dir_path(InstallationPath, RelName, RelVsn),

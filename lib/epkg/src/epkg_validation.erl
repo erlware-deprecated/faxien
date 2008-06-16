@@ -172,13 +172,13 @@ is_valid_signature_file(SignatureFilePath) ->
     case file:consult(SignatureFilePath) of
 	{ok, [Signature]} ->
 	    is_valid_signature_term(Signature);
-	Error ->
+	_Error ->
 	    false
     end.
 
-is_valid_signature_term({signature, Signature, Modulus, Exponent}) ->
+is_valid_signature_term({signature, _Signature, _Modulus, _Exponent}) ->
     true;
-is_valid_signature_term(BadSigature) ->
+is_valid_signature_term(_BadSigature) ->
     false.
 
 

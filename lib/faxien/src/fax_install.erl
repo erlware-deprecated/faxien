@@ -293,8 +293,8 @@ fetch_remote_release(Repos, TargetErtsVsn, RelName, RelVsn, ToDir, Timeout) ->
     RelLibDirPath = epkg_package_paths:release_package_library_path(RelDirPath),
     io:format("Fetching remote erts package (this may take a while) -> "),
     case catch ewr_fetch:fetch_erts_package(Repos, TargetErtsVsn, RelDirPath, Timeout) of
-	ok    -> io:format("ok~n");
-	Error -> io:format("can't pull down erts - skipping~n")
+	ok     -> io:format("ok~n");
+	_Error -> io:format("can't pull down erts - skipping~n")
     end,
     RelFilePath   = epkg_package_paths:release_package_rel_file_path(RelDirPath, RelName, RelVsn),
     AppAndVsns    = get_app_and_vsns(RelFilePath),

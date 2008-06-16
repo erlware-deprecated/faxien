@@ -50,6 +50,7 @@
 	 list_app_vsns/3,
 	 list_erts_vsns/1,
 	 list_erts_vsns_lower_than/2,
+	 list_erts_vsns_lower_than/1,
 	 package_dir_to_name_and_vsn/1,
 	 get_installation_path/0,
 	 find_config_file_path/2,
@@ -185,7 +186,7 @@ installed_config_file_path() ->
     %% @todo this is not compatible with composable apps - this must run with faxien.  Fix this.
     {ok, InstallationPath} = get_installation_path(),
     {ok, Version}          = faxien:version(),
-    installed_config_file_path(InstallationPath, "faxien", Version, "faxien.config").
+    installed_config_file_path(InstallationPath, "faxien", Version, "sys.config").
 
 %%====================================================================
 %% Other External Functions 

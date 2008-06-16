@@ -171,15 +171,20 @@ overwrite(FunOnYes, Target) ->
 %%      are atoms or integers into strings, and leaves them alone if they are not.
 %% @end
 %%--------------------------------------------------------------------
-if_atom_or_integer_to_string(Arg) when is_atom(Arg); is_integer(Arg) ->
-    [Fixed] = if_atom_or_integer_to_string([Arg]),
-    Fixed;
+if_atom_or_integer_to_string(Arg) when is_integer(Arg) ->
+    integer_to_list(Arg);
+if_atom_or_integer_to_string(Arg) when is_atom(Arg) ->
+    atom_to_list(Arg);
 if_atom_or_integer_to_string(List) ->
-    lists:map(fun(V) when is_atom(V)    -> atom_to_list(V);
-		 (V) when is_integer(V) -> integer_to_list(V);
-		 (V)                    -> V 
-	      end, List).
-    
+    case is_string(List) of
+	true ->
+	    List;
+	false ->
+	    lists:map(fun(V) when is_atom(V)    -> atom_to_list(V);
+			 (V) when is_integer(V) -> integer_to_list(V);
+			 (V)                    -> V 
+		      end, List)
+    end.    
 %%----------------------------------------------------------------------------
 %% @doc Applies executable permissions to the file provided. 
 %% @spec set_executable_perms(Filename) -> ok | {error, Reason}
