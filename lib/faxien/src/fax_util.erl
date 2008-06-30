@@ -26,7 +26,7 @@
 	 repo_list/1,
 	 add_pzs/1,
 	 ask_about_switching_target_ertsVsns/2,
-	 get_erts_vsns_gte_than/1,
+	 get_erts_vsns_gte_than/2,
 	 get_erts_vsn/1
         ]).
 
@@ -55,30 +55,9 @@ execute_on_latest_package_version([], _TargetErtsVsn, _PackageName, _Fun, _Side,
     {error, package_not_found};
 execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, VsnThreshold) 
   when Side == lib; Side == releases ->
-    case find_highest_vsn(Repos, get_erts_vsns_gte_than(TargetErtsVsn), PackageName, Side, VsnThreshold) of
-	{ok, {Repo, HighVsn, RemoteErtsVsn}} -> 
-	    ShortenedRepos = lists:delete(Repo, Repos),
-	    case catch execute_fun(Fun, [Repo|ShortenedRepos], HighVsn, TargetErtsVsn, RemoteErtsVsn) of
-		ok -> 
-		    ok;
-		Error -> 
-		    ?ERROR_MSG("failed with ~p for vsn ~p in repo ~p moving on to next repo and setting vsn threshold to ~p~n", 
-			       [Error, HighVsn, Repo, HighVsn]), 
-		    io:format("Failed operation on ~s at vsn ~s.  Trying for a lower version~n", [PackageName, HighVsn]),
-		    execute_on_latest_package_version(ShortenedRepos, TargetErtsVsn, PackageName, Fun, Side, HighVsn)
-	    end;
-	{error, Reason} ->
-	    ?ERROR_MSG("failed to pull package: ~p~n", [Reason]),
-	    exit("Did not succeed in downloading any version of the package")
-    end.
+    execute_on_latest_package_version(Repos, TargetErtsVsn, infinity, PackageName, Fun, Side, VsnThreshold).
+    
 
-execute_fun(Fun, Repos, HighVsn, ErtsVsn, ErtsVsn) ->
-    Fun(Repos, HighVsn, ErtsVsn);
-execute_fun(Fun, Repos, HighVsn, TargetErtsVsn, RemoteErtsVsn) ->
-    case ask_about_switching_target_ertsVsns(TargetErtsVsn, RemoteErtsVsn) of
-	true  -> Fun(Repos, HighVsn, RemoteErtsVsn);
-	false -> ok
-    end.
 	     
 %% @spec execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side) -> ok | exit()
 %% @equiv execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, infinity) 
@@ -90,8 +69,13 @@ execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side) 
 %% @spec get_erts_vsns_gte_than(TargetErtsVsn) -> ErtsVsns::list()
 %% @end
 %%-------------------------------------------------------------------
-get_erts_vsns_gte_than(TargetErtsVsn) ->
+get_erts_vsns_gte_than(TargetErtsVsn, infinity) ->
     ErtsVsns = [E || {_, E, _} <- ?COMPILER_VSN_TO_ERTS_VSN_TO_ERLANG_VSN, ewr_util:is_version_greater(E, TargetErtsVsn)],
+    [TargetErtsVsn|ErtsVsns];
+get_erts_vsns_gte_than(TargetErtsVsn, VsnThreshold) ->
+    ErtsVsns = [E || {_, E, _} <- ?COMPILER_VSN_TO_ERTS_VSN_TO_ERLANG_VSN,
+		     ewr_util:is_version_greater(E, TargetErtsVsn),
+		     not ewr_util:is_version_greater(E, VsnThreshold)],
     [TargetErtsVsn|ErtsVsns].
 
 %%-------------------------------------------------------------------
@@ -335,13 +319,13 @@ ask_about_switching_target_ertsVsns(TargetErtsVsn, RemoteErtsVsn) ->
     {ok, RemoteErlangVsn} = faxien:translate_version(erts, erlang, RemoteErtsVsn),
     Prompt = lists:flatten(["The package you are installing is for ", RemoteErlangVsn, " (erts: ", RemoteErtsVsn,
 			    ") which is different from your target version of ", TargetErlangVsn, " (erts: ", TargetErtsVsn,
-			    ") would you like to continue [yes|no]"]),
+			    ") would you like to (p)roceed or (s)top and look for something matching your current vsn [p|s]"]),
 			    
     case ewl_talk:ask(Prompt) of
-	Yes when Yes == "y"; Yes == "yes" ->
+	"p" ->
 	    ask_about_setting_target_erts_vsn(RemoteErtsVsn),
 	    true;
-	No when No == "n"; No == "no" ->
+	"s" ->
 	    false;
 	Error ->
 	    ?INFO_MSG("user entered \"~p\"~n", [Error]),
@@ -424,6 +408,33 @@ acc_check(Term, [])  -> flattening(Term);
 acc_check(Term, Acc) -> Acc ++ [", "] ++ flattening(Term).
 
 
+execute_on_latest_package_version(Repos, TargetErtsVsn, ErtsVsnThreshold, PackageName, Fun, Side, VsnThreshold) ->
+    case find_highest_vsn(Repos, get_erts_vsns_gte_than(TargetErtsVsn, ErtsVsnThreshold), PackageName, Side, VsnThreshold) of
+	{ok, {Repo, HighVsn, RemoteErtsVsn}} -> 
+	    ShortenedRepos = lists:delete(Repo, Repos),
+	    case catch execute_fun(Fun, [Repo|ShortenedRepos], HighVsn, TargetErtsVsn, RemoteErtsVsn) of
+		ok ->
+		    ok;
+		{ok, no_from_user} -> 
+		    execute_on_latest_package_version(Repos, TargetErtsVsn, TargetErtsVsn, PackageName, Fun, Side, VsnThreshold);
+		Error -> 
+		    ?ERROR_MSG("failed with ~p for vsn ~p in repo ~p moving on to next repo and setting vsn threshold to ~p~n", 
+			       [Error, HighVsn, Repo, HighVsn]), 
+		    io:format("Failed operation on ~s at vsn ~s.  Trying for a lower version~n", [PackageName, HighVsn]),
+		    execute_on_latest_package_version(ShortenedRepos, TargetErtsVsn, PackageName, Fun, Side, HighVsn)
+	    end;
+	{error, Reason} ->
+	    ?ERROR_MSG("failed to pull package: ~p~n", [Reason]),
+	    exit("Did not succeed in downloading any version of the package")
+    end.
+
+execute_fun(Fun, Repos, HighVsn, ErtsVsn, ErtsVsn) ->
+    Fun(Repos, HighVsn, ErtsVsn);
+execute_fun(Fun, Repos, HighVsn, TargetErtsVsn, RemoteErtsVsn) ->
+    case ask_about_switching_target_ertsVsns(TargetErtsVsn, RemoteErtsVsn) of
+	true  -> Fun(Repos, HighVsn, RemoteErtsVsn);
+	false -> {ok, no_from_user}
+    end.
 
 %%%===================================================================
 %%% Testing Functions

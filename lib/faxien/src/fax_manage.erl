@@ -521,7 +521,7 @@ remove_from_config_list(Key, ValueToRemove, ConfigFilePath) ->
 %% @end
 %%--------------------------------------------------------------------
 is_outdated_release(Repos, TargetErtsVsn, ReleaseName, _Timeout) ->
-    TargetErtsVsns = fax_util:get_erts_vsns_gte_than(TargetErtsVsn),
+    TargetErtsVsns = fax_util:get_erts_vsns_gte_than(TargetErtsVsn, infinity),
     {ok, {_Repo, HighestRemoteVsn, ErtsVsn}} = fax_util:find_highest_vsn(Repos, TargetErtsVsns, ReleaseName, releases),
     case epkg_manage:find_highest_local_release_vsn(ReleaseName) of
 	{ok, HighestLocalVsn} ->
@@ -548,7 +548,7 @@ is_outdated_release(Repos, TargetErtsVsn, ReleaseName, _Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 is_outdated_app(Repos, TargetErtsVsn, AppName, _Timeout) ->
-    TargetErtsVsns = fax_util:get_erts_vsns_gte_than(TargetErtsVsn),
+    TargetErtsVsns = fax_util:get_erts_vsns_gte_than(TargetErtsVsn, infinity),
     {ok, {_Repo, HighestRemoteVsn, RemoteErtsVsn}} = fax_util:find_highest_vsn(Repos, TargetErtsVsns, AppName, lib),
     case epkg_manage:find_highest_local_app_vsn(AppName, TargetErtsVsn) of
 	{ok, HighestLocalVsn} ->

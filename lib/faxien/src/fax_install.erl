@@ -321,8 +321,6 @@ get_app_and_vsns(RelFilePath) ->
 %% @end
 %%--------------------------------------------------------------------
 install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLocalBoot, Force, Timeout) ->
-    %% @todo think about continuing to pass IsLocalBoot from faxien to epkg
-    
     ReleasePackageDirPath   = epkg_util:unpack_to_tmp_if_archive(ReleasePackageArchiveOrDirPath),
     case epkg_validation:is_package_a_release(ReleasePackageDirPath) of
 	false ->
