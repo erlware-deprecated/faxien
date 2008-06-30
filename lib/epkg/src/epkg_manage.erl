@@ -81,9 +81,14 @@ list_releases_for_erts_vsn(InstallationPath, ErtsVsn) ->
     RelDir = epkg_installed_paths:release_container_path(InstallationPath),
     Paths  = filelib:wildcard(RelDir ++ "/*"),
     lists:filter(fun({RelName, RelVsn}) ->
-			 RelFilePath = epkg_installed_paths:installed_release_rel_file_path(InstallationPath, RelName, RelVsn),
-			 ErtsVsn_    = epkg_util:consult_rel_file(erts_vsn, RelFilePath),
-			 ErtsVsn_ == ErtsVsn
+			 try
+			     RelFilePath = epkg_installed_paths:installed_release_rel_file_path(InstallationPath, RelName, RelVsn),
+			     ErtsVsn_    = epkg_util:consult_rel_file(erts_vsn, RelFilePath),
+			     ErtsVsn_ == ErtsVsn
+			 catch
+			     _C:_E ->
+				 false
+			 end
 		 end,
 		 name_and_vsn(Paths)).
 

@@ -268,7 +268,7 @@ outdated_releases(Repos, TargetErtsVsn, Timeout) ->
 upgrade_releases(Repos, TargetErtsVsn, IsLocalBoot, Force, Timeout) ->
     Releases = epkg_installed_paths:list_releases(),
     lists:foreach(fun(ReleaseName) -> 
-			  upgrade_release(Repos, TargetErtsVsn, ReleaseName, IsLocalBoot, Force, Timeout)
+			  (catch upgrade_release(Repos, TargetErtsVsn, ReleaseName, IsLocalBoot, Force, Timeout))
 		  end, Releases).
 
 %%--------------------------------------------------------------------
@@ -371,7 +371,7 @@ outdated_applications(Repos, TargetErtsVsn, Timeout) ->
 %%--------------------------------------------------------------------
 upgrade_applications(Repos, TargetErtsVsn, Force, Timeout) -> 
     AppNames = epkg_installed_paths:list_apps(TargetErtsVsn),
-    lists:foreach(fun(AppName) -> upgrade_application(Repos, TargetErtsVsn, AppName, Force, Timeout) end, AppNames).
+    lists:foreach(fun(AppName) -> (catch upgrade_application(Repos, TargetErtsVsn, AppName, Force, Timeout)) end, AppNames).
 
 %%--------------------------------------------------------------------
 %% @doc upgrade a single application.
