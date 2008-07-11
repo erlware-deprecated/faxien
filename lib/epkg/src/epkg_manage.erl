@@ -22,7 +22,8 @@
 	 list_all_releases/1,
 	 find_highest_local_release_vsn/2,
 	 find_highest_local_release_vsn/1,
-	 find_highest_local_app_vsn/2
+	 find_highest_local_app_vsn/2,
+	 find_highest_local_app_vsn/1
 	]).
 
 %%--------------------------------------------------------------------
@@ -38,16 +39,21 @@
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Returns a list of all applications currently installed.
-%% @spec list_lib(InstallationPath, TargetErtsVsn) -> [{Name, Vsn}]
+%% @spec list_lib(InstallationPath, TargetErtsVsns) -> [{Name, Vsn}]
+%% where
+%%  TargetErtsVsns = [TargetErtsVsn] | TargetErtsVsn
+%%   TargetErtsVsn = string()
 %% @end
 %%--------------------------------------------------------------------
-list_lib(InstallationPath, TargetErtsVsn) ->
-    Series = epkg_util:erts_series(TargetErtsVsn), 
-    ?INFO_MSG("listing lib dirs for erts vsns ~p~n", [Series]),
+list_lib(InstallationPath, [A|_] = TargetErtsVsn) when is_integer(A) ->
+    list_lib(InstallationPath, [TargetErtsVsn]);
+list_lib(InstallationPath, TargetErtsVsns) ->
+    ?INFO_MSG("listing lib dirs for erts vsns ~p~n", [TargetErtsVsns]),
     lists:sort(fun({N, _}, {N1, _}) -> N > N1 end,
-	       lists:flatten([lists:map(fun(ErtsVsn) -> list_lib_for_erts_vsn(InstallationPath, ErtsVsn) end, Series)])).
+	       lists:flatten([
+			      lists:map(fun(ErtsVsn) -> list_lib_for_erts_vsn(InstallationPath, ErtsVsn) end, TargetErtsVsns)
+			     ])).
     
-
 list_lib_for_erts_vsn(InstallationPath, ErtsVsn) ->
     LibDir       = epkg_installed_paths:application_container_path(InstallationPath, ErtsVsn),
     Paths        = filelib:wildcard(LibDir ++ "/*"),
@@ -202,7 +208,16 @@ find_highest_local_release_vsn(ReleaseName) ->
 
 %%--------------------------------------------------------------------
 %% @doc Find the highest version of a particular application that is installed locally.
-%% @spec find_highest_local_app_vsn(AppName, TargetErtsVsn) -> {ok, HighestVsn} | {error, Reason}
+%% @spec find_highest_local_app_vsn(AppName) -> HighestVsn::string()
+%% @end
+%%--------------------------------------------------------------------
+find_highest_local_app_vsn(AppName) ->
+    ErtsVsns = [ErtsVsn || {_, ErtsVsn, _} <- ?COMPILER_VSN_TO_ERTS_VSN_TO_ERLANG_VSN],
+    highest_vsn([find_highest_local_app_vsn(AppName, TargetErtsVsn) || TargetErtsVsn <- ErtsVsns]).
+			
+%%--------------------------------------------------------------------
+%% @doc Find the highest version of a particular application that is installed locally.
+%% @spec find_highest_local_app_vsn(AppName, TargetErtsVsn) -> HighestVsn
 %% @end
 %%--------------------------------------------------------------------
 find_highest_local_app_vsn(AppName, TargetErtsVsn) when is_atom(AppName) ->
@@ -214,12 +229,11 @@ find_highest_local_app_vsn(AppName, TargetErtsVsn) ->
     highest_vsn([Vsn || {_Name, Vsn} <- NameAndVsns]).
 
 highest_vsn(Vsns) when length(Vsns) > 0 ->
-    HighestLocalVsn = hd(lists:sort(fun(A, B) -> ewr_util:is_version_greater(A, B) end, Vsns)),
-    {ok, HighestLocalVsn};
+    hd(lists:sort(fun(A, B) -> ewr_util:is_version_greater(A, B) end, Vsns));
 highest_vsn([]) ->
-    {error, app_not_installed};
+    [];
 highest_vsn(Error) ->
-    {error, Error}.
+    throw({error, Error}).
 
 %%--------------------------------------------------------------------
 %% @doc Diff two config files

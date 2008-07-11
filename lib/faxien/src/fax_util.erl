@@ -10,6 +10,7 @@
 %%--------------------------------------------------------------------
 %-include("eunit.hrl").
 -include("faxien.hrl").
+-include("epkg.hrl").
 
 
 %%--------------------------------------------------------------------
@@ -17,7 +18,7 @@
 %%--------------------------------------------------------------------
 -export([
 	 execute_on_latest_package_version/6,
-	 execute_on_latest_package_version/5,
+	 execute_on_latest_package_version/7,
 	 find_highest_vsn/4,
 	 find_highest_vsn/5,
 	 copy_dir_to_tmp_dir/1,
@@ -41,28 +42,30 @@
 %% <pre>
 %% Variables:
 %%  TargetErtsVsn - the erts version to start with
-%%  Fun - This fun takes two arguments Repos and PackageVsn. This function terminates when the fun returns ok.
+%%  Fun - This fun takes three arguments Repos PackageVsn, and ErtsVsn. This function terminates when the fun returns ok.
 %%  VsnThreshold - is used to indicate that the highest version possible is to be installed but no higher than VsnThreshold.
+%%  ErtsPrompt - indicates whether or not the user should be prompted if a package is to be installed for an erts vsn other than the target.
 %% </pre>
 %%
-%% @spec execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, VsnThreshold) -> ok | exit
+%% @spec execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, VsnThreshold, ErtsPrompt) -> ok | exit
 %% where
 %%  Side = lib | releases
 %%  VsnThreshold = string() | infinity
+%%  ErtsPrompt = bool()
 %% @end
 %%-------------------------------------------------------------------
-execute_on_latest_package_version([], _TargetErtsVsn, _PackageName, _Fun, _Side, _VsnThreshold) ->
+execute_on_latest_package_version([], _TargetErtsVsn, _PackageName, _Fun, _Side, _VsnThreshold, _ErtsPrompt) ->
     {error, package_not_found};
-execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, VsnThreshold) 
+execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, VsnThreshold, ErtsPrompt) 
   when Side == lib; Side == releases ->
-    execute_on_latest_package_version(Repos, TargetErtsVsn, infinity, PackageName, Fun, Side, VsnThreshold).
+    execute_on_latest_package_version(Repos, TargetErtsVsn, infinity, PackageName, Fun, Side, VsnThreshold, ErtsPrompt).
     
 
 	     
-%% @spec execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side) -> ok | exit()
-%% @equiv execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, infinity) 
-execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side) ->
-    execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, infinity).
+%% @spec execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, ErtsPrompt) -> ok | exit()
+%% @equiv execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, infinity, ErtsPrompt) 
+execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, ErtsPrompt) ->
+    execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, infinity, ErtsPrompt).
 
 %%-------------------------------------------------------------------
 %% @doc return all the erts vsns that are greater than or equal to the target erts versions.
@@ -329,14 +332,14 @@ ask_about_switching_target_ertsVsns(TargetErtsVsn, RemoteErtsVsn) ->
 	    false;
 	Error ->
 	    ?INFO_MSG("user entered \"~p\"~n", [Error]),
-	    io:format("Please enter \"yes\" or \"no\"~n"),
+	    io:format("Please enter \"p\" or \"s\"~n"),
 	    ask_about_switching_target_ertsVsns(TargetErtsVsn, RemoteErtsVsn) 
     end.
 
 ask_about_setting_target_erts_vsn(RemoteErtsVsn) ->
     {ok, RemoteErlangVsn} = faxien:translate_version(erts, erlang, RemoteErtsVsn),
     Prompt = lists:flatten(["Would you like to set the target vsn to ",
-			    RemoteErlangVsn, " (erts: ", RemoteErtsVsn, ") [yes|no]"]),
+			    RemoteErlangVsn, " (erts: ", RemoteErtsVsn, ") [y|n]"]),
 
     case ewl_talk:ask(Prompt) of
 	Yes when Yes == "y"; Yes == "yes" ->
@@ -348,7 +351,7 @@ ask_about_setting_target_erts_vsn(RemoteErtsVsn) ->
 	    false;
 	Error ->
 	    ?INFO_MSG("user entered \"~p\"~n", [Error]),
-	    io:format("Please enter \"yes\" or \"no\"~n"),
+	    io:format("Please enter \"y\" or \"n\"~n"),
 	    ask_about_setting_target_erts_vsn(RemoteErtsVsn) 
     end.
 %%====================================================================
@@ -408,32 +411,34 @@ acc_check(Term, [])  -> flattening(Term);
 acc_check(Term, Acc) -> Acc ++ [", "] ++ flattening(Term).
 
 
-execute_on_latest_package_version(Repos, TargetErtsVsn, ErtsVsnThreshold, PackageName, Fun, Side, VsnThreshold) ->
+execute_on_latest_package_version(Repos, TargetErtsVsn, ErtsVsnThreshold, PackageName, Fun, Side, VsnThreshold, ErtsPrompt) ->
     case find_highest_vsn(Repos, get_erts_vsns_gte_than(TargetErtsVsn, ErtsVsnThreshold), PackageName, Side, VsnThreshold) of
 	{ok, {Repo, HighVsn, RemoteErtsVsn}} -> 
 	    ShortenedRepos = lists:delete(Repo, Repos),
-	    case catch execute_fun(Fun, [Repo|ShortenedRepos], HighVsn, TargetErtsVsn, RemoteErtsVsn) of
+	    case catch execute_fun(Fun, [Repo|ShortenedRepos], HighVsn, TargetErtsVsn, RemoteErtsVsn, ErtsPrompt) of
 		ok ->
 		    ok;
-		{ok, no_from_user} -> 
-		    execute_on_latest_package_version(Repos, TargetErtsVsn, TargetErtsVsn, PackageName, Fun, Side, VsnThreshold);
+		{ok, NewErtsVsn} -> 
+		    execute_on_latest_package_version(Repos, NewErtsVsn, NewErtsVsn, PackageName, Fun, Side, VsnThreshold, ErtsPrompt);
 		Error -> 
 		    ?ERROR_MSG("failed with ~p for vsn ~p in repo ~p moving on to next repo and setting vsn threshold to ~p~n", 
 			       [Error, HighVsn, Repo, HighVsn]), 
 		    io:format("Failed operation on ~s at vsn ~s.  Trying for a lower version~n", [PackageName, HighVsn]),
-		    execute_on_latest_package_version(ShortenedRepos, TargetErtsVsn, PackageName, Fun, Side, HighVsn)
+		    execute_on_latest_package_version(ShortenedRepos, TargetErtsVsn, PackageName, Fun, Side, HighVsn, ErtsPrompt)
 	    end;
 	{error, Reason} ->
 	    ?ERROR_MSG("failed to pull package: ~p~n", [Reason]),
 	    exit("Did not succeed in downloading any version of the package")
     end.
 
-execute_fun(Fun, Repos, HighVsn, ErtsVsn, ErtsVsn) ->
+execute_fun(Fun, Repos, HighVsn, ErtsVsn, ErtsVsn, _ErtsPrompt) ->
     Fun(Repos, HighVsn, ErtsVsn);
-execute_fun(Fun, Repos, HighVsn, TargetErtsVsn, RemoteErtsVsn) ->
+execute_fun(Fun, Repos, HighVsn, _TargetErtsVsn, RemoteErtsVsn, false) ->
+    Fun(Repos, HighVsn, RemoteErtsVsn);
+execute_fun(Fun, Repos, HighVsn, TargetErtsVsn, RemoteErtsVsn, true) ->
     case ask_about_switching_target_ertsVsns(TargetErtsVsn, RemoteErtsVsn) of
 	true  -> Fun(Repos, HighVsn, RemoteErtsVsn);
-	false -> {ok, no_from_user}
+	false -> {ok, TargetErtsVsn}
     end.
 
 %%%===================================================================

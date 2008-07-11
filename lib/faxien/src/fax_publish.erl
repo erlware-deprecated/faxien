@@ -19,6 +19,7 @@
 %% External exports
 %%--------------------------------------------------------------------
 -export([
+	 publish_sinan/3,
 	 publish/3,
 	 publish/4
 	 ]).
@@ -35,7 +36,34 @@
 %%====================================================================
 
 %%--------------------------------------------------------------------
-%% @private
+%% @doc Publish from within a Sinan project. This will publish all
+%% compiled applications as well as any releases that have been
+%% created via "dist"
+%% @spec (Repos, CWD, Timeout) -> ok | {error, Reason}
+%% where
+%%  Repos = [string()]
+%%  Timeout = integer()
+%% @end
+%%--------------------------------------------------------------------
+publish_sinan(_Repos, _CWD, _Timeout) ->
+    {ok, not_yet_implemented}.
+    %ProjectRoot = ewl_sinan_paths:find_project_root(CWD),
+    %Apps        = filename:wildcard(filename:join(ProjectRoot, "_build/development/apps/*")),
+    %sort_and_publish_apps(Apps),
+%
+%sort_and_publish_apps(Apps) ->
+    %AppAndVsns = lists:map(fun(App) -> {ok, {Name, Vsn}} = package_dir_to_name_and_vsn(App), {Name, Vsn} end, Apps),
+    %lists:sort(fun({A, V}, {A2, V2}) -> 
+		       %
+    %
+%collect_vsns(AppAndVsns) ->
+    %collect_vsns(AppAndVsns, []).
+%
+%collect_vsns([{App, Vsn}|T], [{App, Vsns}|Acc]) ->
+    %collect_vsns(T, [{
+
+
+%%--------------------------------------------------------------------
 %% @doc 
 %%  Publish a release or appliation to a repository. The PackageDirPath must be formatted in the following 
 %%  way &lt;relname&gt;-&lt;rel version&gt; If you are publishing a tarball it must be compressed and have 

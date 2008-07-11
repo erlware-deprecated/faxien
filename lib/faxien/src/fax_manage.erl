@@ -1,9 +1,8 @@
-
 %%%-----------------------------------------------------------------
 %%% @doc Handles fetching packages from the remote repository and 
 %%%      placing them in the erlware repo.
 %%% 
-%%% @type force() = bool(). Indicates whether an existing app is to be overwritten with or without user conscent.  
+%%% @type force() = bool(). Indicates whether or not to overwrite a package without a prompt
 %%%
 %%% @type repo() = string(). Contains address and repo designation. 
 %%%   Example: http://www.erlware.org/stable   
@@ -74,7 +73,7 @@ describe_latest_release(Repos, TargetErtsVsn, RelName, Timeout) ->
     Fun = fun(ManagedRepos, RelVsn, ErtsVsn) ->
 		  describe_release(ManagedRepos, ErtsVsn, RelName, RelVsn, Timeout)
 	  end,
-    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, RelName, Fun, lib). 
+    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, RelName, Fun, lib, false). 
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -119,7 +118,7 @@ describe_latest_app(Repos, TargetErtsVsn, AppName, Timeout) ->
     Fun = fun(ManagedRepos, AppVsn, ErtsVsn) ->
 		  describe_app(ManagedRepos, ErtsVsn, AppName, AppVsn, Timeout)
 	  end,
-    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, AppName, Fun, lib). 
+    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, AppName, Fun, lib, false). 
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -258,37 +257,41 @@ outdated_releases(Repos, TargetErtsVsn, Timeout) ->
 
 %%--------------------------------------------------------------------
 %% @doc upgrade all applications on the install path.
-%% @spec upgrade_releases(Repos, TargetErtsVsn, IsLocalBoot, Force, Timeout) -> ok | {error, Reason}
+%% @type erts_prompt() = bool(). indicate whether or not to prompt upon finding a package outside of the target erts vsn.
+%% @spec upgrade_releases(Repos, TargetErtsVsn, IsLocalBoot, Options, Timeout) -> ok | {error, Reason}
 %%  where
 %%   Repos = [string()]
 %%   TargetErtsVsn = string()
-%%   Force = force()
+%%   Options = [{force, force()}, {erts_prompt, erts_prompt()}]
 %% @end
 %%--------------------------------------------------------------------
-upgrade_releases(Repos, TargetErtsVsn, IsLocalBoot, Force, Timeout) ->
+upgrade_releases(Repos, TargetErtsVsn, IsLocalBoot, Options, Timeout) ->
     Releases = epkg_installed_paths:list_releases(),
     lists:foreach(fun(ReleaseName) -> 
-			  (catch upgrade_release(Repos, TargetErtsVsn, ReleaseName, IsLocalBoot, Force, Timeout))
+			  (catch upgrade_release(Repos, TargetErtsVsn, ReleaseName, IsLocalBoot, Options, Timeout))
 		  end, Releases).
 
 %%--------------------------------------------------------------------
 %% @doc upgrade a single release.
 %%  IsLocalBoot indicates whether a local specific boot file is to be created or not. See the systools docs for more information.
-%% @spec upgrade_release(Repos, TargetErtsVsn, ReleaseName, IsLocalBoot, Force, Timeout) -> ok | {error, Reason}
+%% @type erts_prompt() = bool(). indicate whether or not to prompt upon finding a package outside of the target erts vsn.
+%% @spec upgrade_release(Repos, TargetErtsVsn, ReleaseName, IsLocalBoot, Options, Timeout) -> ok | {error, Reason}
 %%  where
 %%   Repos = [string()]
 %%   TargetErtsVsn = string()
 %%   ReleaseName = string()
-%%   Force = force()
+%%   OptiONS = [{force, force()}, {erts_prompt, erts_prompt()}]
 %% @end
 %%--------------------------------------------------------------------
-upgrade_release(Repos, TargetErtsVsn, ReleaseName, IsLocalBoot, Force, Timeout) -> 
+upgrade_release(Repos, TargetErtsVsn, ReleaseName, IsLocalBoot, Options, Timeout) -> 
+    Force      = fs_lists:get_val(force, Options),
+    ErtsPrompt = fs_lists:get_val(erts_prompt, Options),
     ?INFO_MSG("fax_manage:upgrade_release(~p, ~p)~n", [Repos, ReleaseName]),
     case is_outdated_release(Repos, TargetErtsVsn, ReleaseName, Timeout) of
 	{ok, {lower, HighestLocalVsn, HighestRemoteVsn, TargetErtsVsn}} ->
 	    handle_upgrade_release(Repos, TargetErtsVsn, ReleaseName, HighestLocalVsn,
 				   HighestRemoteVsn, IsLocalBoot, Force,Timeout);
-	{ok, {lower, HighestLocalVsn, HighestRemoteVsn, RemoteErtsVsn}} ->
+	{ok, {lower, HighestLocalVsn, HighestRemoteVsn, RemoteErtsVsn}} when ErtsPrompt == true ->
 	    case fax_util:ask_about_switching_target_ertsVsns(TargetErtsVsn, RemoteErtsVsn) of
 		true  ->
 		    handle_upgrade_release(Repos, RemoteErtsVsn, ReleaseName, HighestLocalVsn,
@@ -296,6 +299,9 @@ upgrade_release(Repos, TargetErtsVsn, ReleaseName, IsLocalBoot, Force, Timeout) 
 		false -> 
 		    ok
 	    end;
+	{ok, {lower, HighestLocalVsn, HighestRemoteVsn, RemoteErtsVsn}} ->
+	    handle_upgrade_release(Repos, RemoteErtsVsn, ReleaseName, HighestLocalVsn,
+				   HighestRemoteVsn, IsLocalBoot, Force, Timeout);
 	{ok, {_, HighestLocalVsn}} ->
 	    io:format("~s at version ~s is up to date~n", [ReleaseName, HighestLocalVsn]);
 	Error ->
@@ -362,48 +368,57 @@ outdated_applications(Repos, TargetErtsVsn, Timeout) ->
 
 %%--------------------------------------------------------------------
 %% @doc upgrade all applications on the install path.
+%% @type erts_prompt() = bool(). indicate whether or not to prompt upon finding a package outside of the target erts vsn.
 %% @spec upgrade_applications(Repos, TargetErtsVsn, Force, Timeout) -> ok | {error, Reason}
 %%  where
 %%   Repos = [string()]
 %%   TargetErtsVsn = string()
-%%   Force = force()
+%%   Options = [{force, force()}, {erts_prompt, erts_prompt()}]
 %% @end
 %%--------------------------------------------------------------------
-upgrade_applications(Repos, TargetErtsVsn, Force, Timeout) -> 
+upgrade_applications(Repos, TargetErtsVsn, Options, Timeout) -> 
     AppNames = epkg_installed_paths:list_apps(TargetErtsVsn),
-    lists:foreach(fun(AppName) -> (catch upgrade_application(Repos, TargetErtsVsn, AppName, Force, Timeout)) end, AppNames).
+    lists:foreach(fun(AppName) -> (catch upgrade_application(Repos, TargetErtsVsn, AppName, Options, Timeout)) end, AppNames).
 
 %%--------------------------------------------------------------------
 %% @doc upgrade a single application.
-%% @spec upgrade_application(Repos, TargetErtsVsn, AppName, Force, Timeout) -> ok | {error, Reason}
+%% @type erts_prompt() = bool(). indicate whether or not to prompt upon finding a package outside of the target erts vsn.
+%% @spec upgrade_application(Repos, TargetErtsVsn, AppName, Options, Timeout) -> ok | {error, Reason}
 %%  where
 %%   Repos = [string()]
 %%   TargetErtsVsn = string()
 %%   AppName = string()
-%%   Force = force()
+%%   Options = [{force, force()}, {erts_prompt, erts_prompt()}]
 %% @end
 %%--------------------------------------------------------------------
-upgrade_application(Repos, TargetErtsVsn, AppName, Force, Timeout) -> 
-    ?INFO_MSG("fax_manage:upgrade_application(~p, ~p, ~p)~n", [Repos, AppName]),
-    case is_outdated_app(Repos, TargetErtsVsn, AppName, Timeout) of
-	{ok, {lower, HighestLocalVsn, HighestRemoteVsn, TargetErtsVsn}} ->
-	    io:format("Upgrading from version ~s of ~s to version ~s~n", [HighestLocalVsn, AppName, HighestRemoteVsn]),
-	    fax_install:install_remote_application(Repos, TargetErtsVsn, AppName, HighestRemoteVsn, Force, Timeout); 
-	{ok, {lower, HighestLocalVsn, HighestRemoteVsn, RemoteErtsVsn}} ->
-	    io:format("Upgrading from version ~s of ~s to version ~s~n", [HighestLocalVsn, AppName, HighestRemoteVsn]),
-	    case fax_util:ask_about_switching_target_ertsVsns(TargetErtsVsn, RemoteErtsVsn) of
-		true  ->
-		    fax_install:install_remote_application(Repos, TargetErtsVsn, AppName, HighestRemoteVsn, Force, Timeout); 
-		false -> 
-		    ok
-	    end;
-	{ok, {_, HighestLocalVsn}} ->
-	    io:format("~s at version ~s is up to date~n", [AppName, HighestLocalVsn]);
-	Error ->
-	    io:format("~p~n", [Error]),
-	    Error
+upgrade_application(Repos, TargetErtsVsn, AppName, Options, Timeout) ->
+    case epkg_manage:find_highest_local_app_vsn(AppName) of
+	"" ->
+	    io:format("No version of ~s exists locally, initiating install~n", [AppName]),
+	    fax_install:install_latest_remote_application(Repos, TargetErtsVsn, AppName, Options, Timeout);
+	HighestLocalVsn ->
+	    upgrade_application(Repos, TargetErtsVsn, AppName, HighestLocalVsn, Options, Timeout)
     end.
-    
+
+upgrade_application(Repos, TargetErtsVsn, AppName, HighestLocalVsn, Options, Timeout) -> 
+    ?INFO_MSG("fax_manage:upgrade_application(~p, ~p, ~p)~n", [Repos, AppName]),
+    Force      = fs_lists:get_val(force, Options),
+    ErtsPrompt = fs_lists:get_val(erts_prompt, Options),
+
+    Fun = fun(ManagedRepos, HighestRemoteVsn, ErtsVsn) ->
+		  case ewr_util:is_version_greater(HighestRemoteVsn, HighestLocalVsn) of
+		      false ->
+			  io:format("~s at version ~s is up to date~n", [AppName, HighestLocalVsn]);
+		      true ->
+			  io:format("Upgrading from version ~s of ~s to version ~s~n",
+				    [HighestLocalVsn, AppName, HighestRemoteVsn]),
+			  fax_install:install_remote_application(ManagedRepos, ErtsVsn, AppName,
+								 HighestRemoteVsn, Force, Timeout)
+		  end
+	  end,
+
+    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, AppName, Fun, lib, ErtsPrompt).
+	    
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Search through and list packages in remote repositories.
@@ -551,7 +566,9 @@ is_outdated_app(Repos, TargetErtsVsn, AppName, _Timeout) ->
     TargetErtsVsns = fax_util:get_erts_vsns_gte_than(TargetErtsVsn, infinity),
     {ok, {_Repo, HighestRemoteVsn, RemoteErtsVsn}} = fax_util:find_highest_vsn(Repos, TargetErtsVsns, AppName, lib),
     case epkg_manage:find_highest_local_app_vsn(AppName, TargetErtsVsn) of
-	{ok, HighestLocalVsn} ->
+	"" ->
+	    {error, app_not_found};
+	HighestLocalVsn ->
 	    case ewr_util:is_version_greater(HighestLocalVsn, HighestRemoteVsn) of
 		true ->
 		    {ok, {higher, HighestLocalVsn}};
@@ -559,9 +576,7 @@ is_outdated_app(Repos, TargetErtsVsn, AppName, _Timeout) ->
 		    {ok, {same, HighestLocalVsn}};
 		false ->
 		    {ok, {lower, HighestLocalVsn, HighestRemoteVsn, RemoteErtsVsn}}
-	    end;
-	{error, Reason} ->
-	    {error, Reason}
+	    end
     end.
 
 

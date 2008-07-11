@@ -2,7 +2,9 @@
 %%% @doc Handles fetching packages from the remote repository and 
 %%%      placing them in the erlware repo.
 %%%
+%%% @type options() = [{force, force()}, {erts_prompt, erts_prompt()}]
 %%% @type force() = bool(). Indicates whether an existing app is to be overwritten with or without user conscent.  
+%%% @type erts_prompt() = bool(). indicate whether or not to prompt upon finding a package outside of the target erts vsn.
 %%%
 %%% @todo add the force option to local installs in epkg
 %%% @todo add explicit timeouts to every interface function depricate the macro or use it as a default in the faxien module. 
@@ -29,9 +31,9 @@
 	 install_remote_erts/3,
 	 install_erts/3,
 	 install_release/6,
-	 fetch_latest_remote_release/5,
+	 fetch_latest_remote_release/6,
 	 fetch_remote_release/6,
-	 fetch_latest_remote_application/5,
+	 fetch_latest_remote_application/6,
 	 fetch_remote_application/6
 	]).
 
@@ -45,22 +47,25 @@
 %%
 %% <pre>
 %% Examples:
-%%  install_latest_remote_application(["http"//repo.erlware.org/pub"], "5.5.5", gas)
+%%  install_latest_remote_application(["http"//repo.erlware.org/pub"], "5.5.5", gas, [], 10000)
 %% </pre>
 %%
-%% @spec install_latest_remote_application(Repos, TargetErtsVsn, AppName, Force, Timeout) -> ok | {error, Reason} | exit()
+%% @spec install_latest_remote_application(Repos, TargetErtsVsn, AppName, Options, Timeout) -> ok | {error, Reason} | exit()
 %% where
 %%     Repos = string()
 %%     TargetErtsVsn = string()
 %%     AppName = string()
-%%     Force = force()
+%%     Options = options()
 %% @end
 %%--------------------------------------------------------------------
-install_latest_remote_application(Repos, TargetErtsVsn, AppName, Force, Timeout) ->
+install_latest_remote_application(Repos, TargetErtsVsn, AppName, Options, Timeout) ->
+    Force      = fs_lists:get_val(force, Options),
+    ErtsPrompt = fs_lists:get_val(erts_prompt, Options),
+
     Fun = fun(ManagedRepos, AppVsn, ErtsVsn) ->
 		  install_remote_application(ManagedRepos, ErtsVsn, AppName, AppVsn, Force, Timeout)
 	  end,
-    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, AppName, Fun, lib). 
+    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, AppName, Fun, lib, ErtsPrompt). 
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -169,33 +174,36 @@ install_release(Repos, TargetErtsVsn, ReleasePackageArchiveOrDirPath, IsLocalBoo
 %% @doc 
 %%  Install the latest version found of a release package from a repository. 
 %%  IsLocalBoot indicates whether a local specific boot file is to be created or not. See the systools docs for more information.
-%% @spec install_latest_remote_release(Repos, TargetErtsVsn, RelName, IsLocalBoot, Force, Timeout) -> 
+%% @spec install_latest_remote_release(Repos, TargetErtsVsn, RelName, IsLocalBoot, Options, Timeout) -> 
 %%               ok | {error, Reason} | exit()
 %% where
 %%     Repos = string()
 %%     RelName = string()
 %%     RelVsn = string() 
 %%     IsLocalBoot = bool()
-%%     Force = force()
+%%     Options = options()
 %% @end
 %%--------------------------------------------------------------------
-install_latest_remote_release(Repos, TargetErtsVsn, RelName, IsLocalBoot, Force, Timeout) ->
+install_latest_remote_release(Repos, TargetErtsVsn, RelName, IsLocalBoot, Options, Timeout) ->
+    Force      = fs_lists:get_val(force, Options),
+    ErtsPrompt = fs_lists:get_val(erts_prompt, Options),
+
     Fun = fun(ManagedRepos, RelVsn, ErtsVsn) ->
 		  install_remote_release(ManagedRepos, ErtsVsn, RelName, RelVsn, IsLocalBoot, Force, Timeout)
 	  end,
-    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, RelName, Fun, releases). 
+    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, RelName, Fun, releases, ErtsPrompt). 
 
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Install a release package from a repository. 
 %%  IsLocalBoot indicates whether a local specific boot file is to be created or not. See the systools docs for more information.
-%% @spec install_remote_release(Repos, TargetErtsVsn, RelName, RelVsn, IsLocalBoot, Force, Timeout) -> ok | {error, Reason} | exit()
+%% @spec install_remote_release(Repos, TargetErtsVsn, RelName, RelVsn, IsLocalBoot, Options, Timeout) -> ok | {error, Reason} | exit()
 %% where
 %%     Repos = string()
 %%     RelName = string()
 %%     RelVsn = string() 
 %%     IsLocalBoot = bool()
-%%     Force = force()
+%%     Options = [{force, force()}, {erts_prompt, erts_prompt()}]
 %% @end
 %%--------------------------------------------------------------------
 install_remote_release(Repos, TargetErtsVsn, RelName, RelVsn, IsLocalBoot, Force, Timeout) ->
@@ -225,19 +233,21 @@ install_remote_release(Repos, TargetErtsVsn, RelName, RelVsn, IsLocalBoot, Force
 %%  fetch_latest_remote_application(["http"//repo.erlware.org/pub"], "5.5.5", gas)
 %% </pre>
 %%
-%% @spec fetch_latest_remote_application(Repos, TargetErtsVsn, AppName, ToDir, Timeout) -> ok | {error, Reason} | exit()
+%% @spec fetch_latest_remote_application(Repos, TargetErtsVsn, AppName, ToDir, Options, Timeout) -> ok | {error, Reason} | exit()
 %% where
 %%     Repos = string()
 %%     TargetErtsVsn = string()
 %%     AppName = string()
-%%     Force = force()
+%%     Options = options()
 %% @end
 %%--------------------------------------------------------------------
-fetch_latest_remote_application(Repos, TargetErtsVsn, AppName, ToDir, Timeout) ->
+fetch_latest_remote_application(Repos, TargetErtsVsn, AppName, ToDir, Options, Timeout) ->
+    ErtsPrompt = fs_lists:get_val(erts_prompt, Options),
+
     Fun = fun(ManagedRepos, AppVsn, ErtsVsn) ->
 		  fetch_remote_application(ManagedRepos, ErtsVsn, AppName, AppVsn, ToDir, Timeout)
 	  end,
-    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, AppName, Fun, lib). 
+    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, AppName, Fun, lib, ErtsPrompt). 
 
 %%--------------------------------------------------------------------
 %% @doc pull down an application from a repo into the ToDir
@@ -258,7 +268,7 @@ fetch_remote_application(Repos, TargetErtsVsn, AppName, AppVsn, ToDir, Timeout) 
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Fetch the latest version found of a release package from a repository and place it in the specified directory. 
-%% @spec fetch_latest_remote_release(Repos, TargetErtsVsn, RelName, ToDir, Timeout) -> 
+%% @spec fetch_latest_remote_release(Repos, TargetErtsVsn, RelName, ToDir, Options, Timeout) -> 
 %%               ok | {error, Reason} | exit()
 %% where
 %%     Repos = string()
@@ -267,11 +277,13 @@ fetch_remote_application(Repos, TargetErtsVsn, AppName, AppVsn, ToDir, Timeout) 
 %%     ToDir = string()
 %% @end
 %%--------------------------------------------------------------------
-fetch_latest_remote_release(Repos, TargetErtsVsn, RelName, ToDir, Timeout) ->
+fetch_latest_remote_release(Repos, TargetErtsVsn, RelName, ToDir, Options, Timeout) ->
+    ErtsPrompt = fs_lists:get_val(erts_prompt, Options),
+
     Fun = fun(ManagedRepos, RelVsn, ErtsVsn) ->
 		  fetch_remote_release(ManagedRepos, ErtsVsn, RelName, RelVsn, ToDir, Timeout)
 	  end,
-    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, RelName, Fun, releases). 
+    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, RelName, Fun, releases, ErtsPrompt). 
 
 %%--------------------------------------------------------------------
 %% @doc 

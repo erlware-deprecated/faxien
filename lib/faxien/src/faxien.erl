@@ -87,7 +87,8 @@
 -export([
 	 publish/3,
 	 publish/2,
-	 publish/1
+	 publish/1,
+	 publish/0
 	]).
 
 -export([
@@ -173,7 +174,9 @@ upgrade_app(Repo, AppName) when is_atom(Repo) ->
 upgrade_app(Repos, AppName) -> 
     A = epkg_util:if_atom_or_integer_to_string(AppName),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
-    fax_manage:upgrade_application(Repos, TargetErtsVsn, A, false, ?REQUEST_TIMEOUT).
+    {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
+    Options             = [{force, false}, {erts_prompt, ErtsPrompt}], 
+    fax_manage:upgrade_application(Repos, TargetErtsVsn, A, Options, ?REQUEST_TIMEOUT).
 
 %% @spec upgrade_app(AppName) -> ok | {error, Reason}
 %% @equiv upgrade_app(Repos, AppName)
@@ -292,7 +295,9 @@ upgrade_release(Repos, RelName) ->
     A                   = epkg_util:if_atom_or_integer_to_string(RelName),
     {ok, IsLocalBoot}   = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
-    fax_manage:upgrade_release(Repos, TargetErtsVsn, A, IsLocalBoot, false, ?REQUEST_TIMEOUT).
+    {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
+    Options             = [{force, false}, {erts_prompt, ErtsPrompt}], 
+    fax_manage:upgrade_release(Repos, TargetErtsVsn, A, IsLocalBoot, Options, ?REQUEST_TIMEOUT).
 
 %% @spec upgrade_release(RelName) -> ok | {error, Reason}
 %% @equiv upgrade_release(Repos, RelName)
@@ -383,7 +388,9 @@ install_release(ReleaseNameOrPath) ->
     {ok, Repos}         = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
     {ok, IsLocalBoot}   = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
-    fax_install:install_release(Repos, TargetErtsVsn, ReleaseNameOrPath, IsLocalBoot, false, ?REQUEST_TIMEOUT).
+    {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
+    Options             = [{force, false}, {erts_prompt, ErtsPrompt}], 
+    fax_install:install_release(Repos, TargetErtsVsn, ReleaseNameOrPath, IsLocalBoot, Options, ?REQUEST_TIMEOUT).
 	
     
 %% @private
@@ -431,7 +438,9 @@ fetch_release(ReleaseName, ToDir) ->
     {ok, Repos}         = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     [A,B]               = epkg_util:if_atom_or_integer_to_string([ReleaseName, ToDir]),
-    fax_install:fetch_latest_remote_release(Repos, TargetErtsVsn, A, B, ?REQUEST_TIMEOUT).
+    {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
+    Options             = [{force, false}, {erts_prompt, ErtsPrompt}], 
+    fax_install:fetch_latest_remote_release(Repos, TargetErtsVsn, A, B, Options, ?REQUEST_TIMEOUT).
 	
     
 %% @private
@@ -497,7 +506,9 @@ install_app(AppNameOrPath) ->
 	    end;
 	false -> 
 	    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
-	    fax_install:install_latest_remote_application(Repos, TargetErtsVsn, AppNameOrPath, false, ?REQUEST_TIMEOUT)
+	    {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
+	    Options             = [{force, false}, {erts_prompt, ErtsPrompt}], 
+	    fax_install:install_latest_remote_application(Repos, TargetErtsVsn, AppNameOrPath, Options, ?REQUEST_TIMEOUT)
     end.
 
 %% @private
@@ -553,7 +564,9 @@ fetch_app(AppName, ToDir) ->
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     {ok, Repos}         = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
     [A,B]               = epkg_util:if_atom_or_integer_to_string([AppName, ToDir]),
-    fax_install:fetch_latest_remote_application(Repos, TargetErtsVsn, A, B, ?REQUEST_TIMEOUT).
+    {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
+    Options             = [{force, false}, {erts_prompt, ErtsPrompt}], 
+    fax_install:fetch_latest_remote_application(Repos, TargetErtsVsn, A, B, Options, ?REQUEST_TIMEOUT).
 
 %% @private
 fetch_app_help() ->
@@ -598,10 +611,24 @@ publish(PackageDir) ->
     {ok, Timeout} = gas:get_env(faxien, request_timeout, ?REQUEST_TIMEOUT),
     publish(PackageDir, Timeout).
 
+%%--------------------------------------------------------------------
+%% @doc 
+%%  Publish from within a sinan project structure. This will publish
+%%  all applications as well as any releases that have been built.
+%% @spec () -> ok | {error, Reason}
+%% @end
+%%--------------------------------------------------------------------
+publish() ->
+    {ok, Timeout} = gas:get_env(faxien, request_timeout, ?REQUEST_TIMEOUT),
+    {ok, Repos}   = gas:get_env(faxien, repos_to_publish_to, ?ERLWARE_URL),
+    {ok, CWD}     = file:get_cwd(),
+    fax_publish:fax_publish_sinan(Repos, CWD, Timeout).
+
 %% @private
 publish_help() ->
     ["\nHelp for publish\n",
-     "Usage: publish <release package|app package>: will publish an erts, release, or application package. Faxien figures out which based on inspection.\n",
+     "Usage: publish [release package|app package]: will publish an erts, release, or application package.",
+     "Faxien figures out which based on inspection.\n To publish from within a sinan project include no arguments.",
      "Packages should be of the form <package name>-<package version>[.tar.gz|.epkg] for example erts-5.5.5.tar.gz"]. 
 
 
