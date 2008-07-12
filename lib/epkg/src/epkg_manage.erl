@@ -55,7 +55,7 @@ list_lib(InstallationPath, TargetErtsVsns) ->
 			     ])).
     
 list_lib_for_erts_vsn(InstallationPath, ErtsVsn) ->
-    LibDir       = epkg_installed_paths:application_container_path(InstallationPath, ErtsVsn),
+    LibDir       = ewl_installed_paths:application_container_path(InstallationPath, ErtsVsn),
     Paths        = filelib:wildcard(LibDir ++ "/*"),
     name_and_vsn(Paths).
 
@@ -84,11 +84,11 @@ list_releases(InstallationPath, TargetErtsVsn) ->
 	       lists:flatten([lists:map(fun(ErtsVsn) -> list_releases_for_erts_vsn(InstallationPath, ErtsVsn) end, Series)])).
 
 list_releases_for_erts_vsn(InstallationPath, ErtsVsn) ->
-    RelDir = epkg_installed_paths:release_container_path(InstallationPath),
+    RelDir = ewl_installed_paths:release_container_path(InstallationPath),
     Paths  = filelib:wildcard(RelDir ++ "/*"),
     lists:filter(fun({RelName, RelVsn}) ->
 			 try
-			     RelFilePath = epkg_installed_paths:installed_release_rel_file_path(InstallationPath, RelName, RelVsn),
+			     RelFilePath = ewl_installed_paths:installed_release_rel_file_path(InstallationPath, RelName, RelVsn),
 			     ErtsVsn_    = epkg_util:consult_rel_file(erts_vsn, RelFilePath),
 			     ErtsVsn_ == ErtsVsn
 			 catch
@@ -108,7 +108,7 @@ list_releases_for_erts_vsn(InstallationPath, ErtsVsn) ->
 %% @end
 %%--------------------------------------------------------------------
 remove_app(InstallationPath, ErtsVsn, AppName, AppVsn) ->
-    AppPath = epkg_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn),
+    AppPath = ewl_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn),
     ewl_file:delete_dir(AppPath).
 
 %%--------------------------------------------------------------------
@@ -182,7 +182,9 @@ remove_all_releases(InstallationPath, RelName, Force) ->
 
 %%--------------------------------------------------------------------
 %% @doc Find the highest version of a particular release for a particular erts vsn that is installed locally.
-%% @spec find_highest_local_release_vsn(ReleaseName, TargetErtsVsn) -> {ok, HighestVsn} | {error, Reason}
+%% @spec find_highest_local_release_vsn(ReleaseName, TargetErtsVsn) -> HighestVsn
+%% where
+%%  HighestVsn = string()
 %% @end
 %%--------------------------------------------------------------------
 find_highest_local_release_vsn(ReleaseName, TargetErtsVsn) when is_atom(ReleaseName) ->
@@ -195,7 +197,7 @@ find_highest_local_release_vsn(ReleaseName, TargetErtsVsn) ->
 
 %%--------------------------------------------------------------------
 %% @doc Find the highest version of a particular release that is installed locally.
-%% @spec find_highest_local_release_vsn(ReleaseName) -> {ok, HighestVsn} | {error, Reason}
+%% @spec find_highest_local_release_vsn(ReleaseName) -> HighestVsn
 %% @end
 %%--------------------------------------------------------------------
 find_highest_local_release_vsn(ReleaseName) when is_atom(ReleaseName) ->
@@ -305,7 +307,7 @@ fetch_flat_list_app_specs2(_, []) ->
 fetch_app_specs(InstallationPath, RelName, RelVsn) when is_atom(RelName) ->
     fetch_app_specs(InstallationPath, atom_to_list(RelName), RelVsn);
 fetch_app_specs(InstallationPath, RelName, RelVsn) ->
-    RelFilePath = epkg_installed_paths:installed_release_rel_file_path(InstallationPath, RelName, RelVsn),
+    RelFilePath = ewl_installed_paths:installed_release_rel_file_path(InstallationPath, RelName, RelVsn),
     case catch epkg_util:consult_rel_file(app_specs, RelFilePath) of
 	{'EXIT', Reason} -> {error, {"could not find app specs for the release specified", Reason}};
 	AppSpecs         -> {ok, [{element(1, AS), element(2, AS)} || AS <- AppSpecs]}
@@ -317,9 +319,9 @@ fetch_app_specs(InstallationPath, RelName, RelVsn) ->
 %% @end
 %%--------------------------------------------------------------------
 blast_executable_files(InstallationPath, RelName, RelVsn) ->
-    CmdsDirPath           = epkg_installed_paths:installed_release_cmds_dir_path(InstallationPath, RelName, RelVsn),
+    CmdsDirPath           = ewl_installed_paths:installed_release_cmds_dir_path(InstallationPath, RelName, RelVsn),
     LauncherTemplateFiles = filelib:wildcard(CmdsDirPath ++ "/*"),
-    BinDirPath            = epkg_installed_paths:executable_container_path(InstallationPath),
+    BinDirPath            = ewl_installed_paths:executable_container_path(InstallationPath),
     lists:foreach(fun(FilePath) -> 
 			  FileName    = filename:basename(FilePath),
 			  BinFilePath = ewl_file:join_paths(BinDirPath, string:substr(FileName, 1, length(FileName) - 5)),
@@ -334,7 +336,7 @@ blast_executable_files(InstallationPath, RelName, RelVsn) ->
 %% @end
 %%--------------------------------------------------------------------
 blast_app_and_release_packages(UniqueSpecs, InstallationPath, RelName, RelVsn) ->
-    RelFilePath = epkg_installed_paths:installed_release_rel_file_path(InstallationPath, RelName, RelVsn),
+    RelFilePath = ewl_installed_paths:installed_release_rel_file_path(InstallationPath, RelName, RelVsn),
     case catch epkg_util:consult_rel_file(erts_vsn, RelFilePath) of
 	{'EXIT', Reason} -> 
 	    {error, {"could not find erts for the release specified", Reason}};
@@ -344,7 +346,7 @@ blast_app_and_release_packages(UniqueSpecs, InstallationPath, RelName, RelVsn) -
 				  AppVsn  = element(2, AppSpec),
 				  remove_app(InstallationPath, ErtsVsn, atom_to_list(AppName), AppVsn) 
 			  end, UniqueSpecs),
-	    RelPath = epkg_installed_paths:installed_release_dir_path(InstallationPath, RelName, RelVsn),
+	    RelPath = ewl_installed_paths:installed_release_dir_path(InstallationPath, RelName, RelVsn),
 	    ewl_file:delete_dir(RelPath)
     end.
     

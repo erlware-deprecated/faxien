@@ -539,7 +539,9 @@ is_outdated_release(Repos, TargetErtsVsn, ReleaseName, _Timeout) ->
     TargetErtsVsns = fax_util:get_erts_vsns_gte_than(TargetErtsVsn, infinity),
     {ok, {_Repo, HighestRemoteVsn, ErtsVsn}} = fax_util:find_highest_vsn(Repos, TargetErtsVsns, ReleaseName, releases),
     case epkg_manage:find_highest_local_release_vsn(ReleaseName) of
-	{ok, HighestLocalVsn} ->
+	"" ->
+	    {error, release_not_found_locally};
+	HighestLocalVsn ->
 	    case ewr_util:is_version_greater(HighestLocalVsn, HighestRemoteVsn) of
 		true ->
 		    {ok, {higher, HighestLocalVsn}};
@@ -547,9 +549,7 @@ is_outdated_release(Repos, TargetErtsVsn, ReleaseName, _Timeout) ->
 		    {ok, {same, HighestLocalVsn}};
 		false ->
 		    {ok, {lower, HighestLocalVsn, HighestRemoteVsn, ErtsVsn}}
-	    end;
-	{error, Reason} ->
-	    {error, Reason}
+	    end
     end.
 
 %%--------------------------------------------------------------------

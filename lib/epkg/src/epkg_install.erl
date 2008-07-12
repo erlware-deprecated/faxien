@@ -43,8 +43,8 @@ install_application(AppPackageDirOrArchive, InstallationPath, ErtsVsn) ->
 	    false -> 
 		{error, badly_formatted_or_missing_app_package};
 	    true  -> 
-		AppInstallationPath     = epkg_installed_paths:application_container_path(InstallationPath, ErtsVsn),
-		InstalledPackageDir     = epkg_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn),
+		AppInstallationPath     = ewl_installed_paths:application_container_path(InstallationPath, ErtsVsn),
+		InstalledPackageDir     = ewl_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn),
 		install_non_release_package(AppPackageDirPath, InstalledPackageDir, AppInstallationPath)
 	end,
     ?INFO_MSG("returned ~p~n", [Res]), 
@@ -61,7 +61,7 @@ install_erts(ErtsPackageDirOrArchive, InstallationPath) ->
     ?INFO_MSG("with args ~p and ~p~n", [ErtsPackageDirOrArchive, InstallationPath]),
     ErtsPackageDirPath      = epkg_util:unpack_to_tmp_if_archive(ErtsPackageDirOrArchive),
     {ok, {"erts", ErtsVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ErtsPackageDirOrArchive),
-    InstalledErtsPath       = epkg_installed_paths:installed_erts_path(InstallationPath, ErtsVsn),
+    InstalledErtsPath       = ewl_installed_paths:installed_erts_path(InstallationPath, ErtsVsn),
     case {epkg_validation:is_package_erts(InstalledErtsPath),
 	  epkg_validation:is_package_erts(ErtsPackageDirPath)} of
 	{true, _} ->
@@ -70,10 +70,10 @@ install_erts(ErtsPackageDirOrArchive, InstallationPath) ->
 	    {error, badly_formatted_or_missing_erts_package};
 	{false, true}  -> 
 	    {ok, {_, ErtsVsn}}   = epkg_installed_paths:package_dir_to_name_and_vsn(ErtsPackageDirPath),
-	    InstalledPackageDir  = epkg_installed_paths:installed_erts_path(InstallationPath, ErtsVsn),
-	    ErtsInstallationPath = epkg_installed_paths:erts_container_path(InstallationPath),
+	    InstalledPackageDir  = ewl_installed_paths:installed_erts_path(InstallationPath, ErtsVsn),
+	    ErtsInstallationPath = ewl_installed_paths:erts_container_path(InstallationPath),
 	    install_non_release_package(ErtsPackageDirPath, InstalledPackageDir, ErtsInstallationPath),
-	    epkg_util:set_all_executable_perms(epkg_installed_paths:executable_container_path(InstalledPackageDir))
+	    epkg_util:set_all_executable_perms(ewl_installed_paths:executable_container_path(InstalledPackageDir))
     end.
 
 %%--------------------------------------------------------------------
@@ -88,7 +88,7 @@ install_release(ReleasePackageArchiveOrDirPath, InstallationPath, IsLocalBoot) -
     ?INFO_MSG("installing to ~p~n", [InstallationPath]),
     ReleasePackageDirPath   = epkg_util:unpack_to_tmp_if_archive(ReleasePackageArchiveOrDirPath),
     {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ReleasePackageDirPath),
-    InstalledRelPath        = epkg_installed_paths:installed_release_dir_path(InstallationPath, RelName, RelVsn),
+    InstalledRelPath        = ewl_installed_paths:installed_release_dir_path(InstallationPath, RelName, RelVsn),
     case {epkg_validation:is_package_a_release(InstalledRelPath), 
 	  epkg_validation:is_package_a_release(ReleasePackageDirPath)} of
 	{_, false} -> 
@@ -113,7 +113,7 @@ install_release(ReleasePackageArchiveOrDirPath, InstallationPath, IsLocalBoot) -
 %% @end
 %%--------------------------------------------------------------------
 create_script_and_boot(InstallationPath, RelName, RelVsn, IsLocalBoot) ->
-    InstalledRelFilePath    = epkg_installed_paths:installed_release_rel_file_path(InstallationPath, RelName, RelVsn),
+    InstalledRelFilePath    = ewl_installed_paths:installed_release_rel_file_path(InstallationPath, RelName, RelVsn),
     [ErtsVsn, AppSpecs]     = epkg_util:consult_rel_file([erts_vsn, app_specs], InstalledRelFilePath),
     LoadedPaths             = code:get_path(),
 
@@ -121,7 +121,7 @@ create_script_and_boot(InstallationPath, RelName, RelVsn, IsLocalBoot) ->
 			  AppName       = atom_to_list(element(1, AppSpec)),
 			  AppVsn        = element(2, AppSpec),
 			  AppNameAndVsn = AppName ++ "-" ++ AppVsn, 
-			  AppPath       = epkg_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn),
+			  AppPath       = ewl_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn),
 			  remove_redundant_paths(LoadedPaths, AppName, AppNameAndVsn),
 			  ?INFO_MSG("Adding code path: ~p~n", [AppPath]),
 			  code:add_pathz(ewl_file:join_paths(AppPath, "ebin"))
@@ -164,9 +164,9 @@ execute_release_installation_steps(ReleasePackageDirPath, InstallationPath, IsLo
 		Error;
 	    ok ->
 		{ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ReleasePackageDirPath),
-		PackageRelFilePath      = epkg_package_paths:release_package_rel_file_path(ReleasePackageDirPath, RelName, RelVsn),
+		PackageRelFilePath      = ewl_package_paths:release_package_rel_file_path(ReleasePackageDirPath, RelName, RelVsn),
 		ErtsVsn                 = epkg_util:consult_rel_file(erts_vsn, PackageRelFilePath),
-		PackageErtsPackagePath  = epkg_package_paths:release_package_erts_package_path(ReleasePackageDirPath, ErtsVsn),
+		PackageErtsPackagePath  = ewl_package_paths:release_package_erts_package_path(ReleasePackageDirPath, ErtsVsn),
 		lists:foreach(fun(Fun) -> Fun() end, 
 			      [
 			       fun() -> ok = install_erts(PackageErtsPackagePath, InstallationPath) end,
@@ -193,13 +193,13 @@ execute_release_installation_steps(ReleasePackageDirPath, InstallationPath, IsLo
 install_release_package(PackagePath, InstallationPath) ->
     ?INFO_MSG("with args ~p and ~p~n", [PackagePath, InstallationPath]),
     {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(PackagePath),
-    InstalledRelPath        = epkg_installed_paths:installed_release_dir_path(InstallationPath, RelName, RelVsn),
+    InstalledRelPath        = ewl_installed_paths:installed_release_dir_path(InstallationPath, RelName, RelVsn),
     ok                      = ewl_file:delete_dir(InstalledRelPath), 
 
     
     ok = ewl_file:mkdir_p(InstalledRelPath),
-    ok = ewl_file:mkdir_p(epkg_installed_paths:executable_container_path(InstallationPath)),
-    ok = ewl_file:mkdir_p(epkg_installed_paths:release_container_path(InstallationPath)),
+    ok = ewl_file:mkdir_p(ewl_installed_paths:executable_container_path(InstallationPath)),
+    ok = ewl_file:mkdir_p(ewl_installed_paths:release_container_path(InstallationPath)),
 
     ok = ewl_file:copy_dir(PackagePath, InstalledRelPath),
     ok = ewl_file:copy_dir(InstalledRelPath ++ "/releases/" ++ RelVsn, InstalledRelPath ++ "/release"),
@@ -217,10 +217,10 @@ install_release_package(PackagePath, InstallationPath) ->
 %%--------------------------------------------------------------------
 install_apps_for_release(ReleasePackagePath, InstallationPath) ->
     {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ReleasePackagePath),
-    PackageRelFilePath      = epkg_package_paths:release_package_rel_file_path(ReleasePackagePath, RelName, RelVsn),
+    PackageRelFilePath      = ewl_package_paths:release_package_rel_file_path(ReleasePackagePath, RelName, RelVsn),
     ErtsVsn                 = epkg_util:consult_rel_file(erts_vsn, PackageRelFilePath),
 
-    ok = ewl_file:mkdir_p(epkg_installed_paths:application_container_path(InstallationPath, ErtsVsn)),
+    ok = ewl_file:mkdir_p(ewl_installed_paths:application_container_path(InstallationPath, ErtsVsn)),
     MissingAppSpecs = missing_apps_for_release(InstallationPath, PackageRelFilePath),
     case install_each_app_from_appspecs(MissingAppSpecs, ReleasePackagePath, InstallationPath, ErtsVsn) of
 	[] ->
@@ -243,7 +243,7 @@ missing_apps_for_release(InstallationPath, PackageRelFilePath) ->
     lists:foldl(fun(AppSpec, Acc) ->
 			AppName = atom_to_list(element(1, AppSpec)),
 			AppVsn  = element(2, AppSpec),
-			InstalledAppPath = epkg_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn),
+			InstalledAppPath = ewl_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn),
 			case epkg_validation:is_package_an_app(InstalledAppPath) of
 			    false -> 
 				[AppSpec|Acc];
@@ -265,7 +265,7 @@ install_each_app_from_appspecs(AppSpecs, ReleasePackagePath, InstallationPath, E
     lists:foldl(fun(AppSpec, Acc) ->
 			AppName = atom_to_list(element(1, AppSpec)),
 			AppVsn  = element(2, AppSpec),
-			AppPackagePath = epkg_package_paths:release_package_app_package_path(ReleasePackagePath, AppName, AppVsn),
+			AppPackagePath = ewl_package_paths:release_package_app_package_path(ReleasePackagePath, AppName, AppVsn),
 			case install_application(AppPackagePath, InstallationPath, ErtsVsn) of
 			    ok     -> Acc;
 			    _Error -> [{AppName, AppVsn}|Acc]
@@ -338,7 +338,7 @@ create_executable_script(InstallationPath, RelName, RelVsn, ErtsVsn) ->
     create_executable_script_use_bin(InstallationPath, RelName, RelVsn, ErtsVsn).
     
 create_executable_script_use_cmdr(InstallationPath, RelName, RelVsn, ErtsVsn) ->
-    CmdsDirPath = epkg_installed_paths:installed_release_cmds_dir_path(InstallationPath, RelName, RelVsn),
+    CmdsDirPath = ewl_installed_paths:installed_release_cmds_dir_path(InstallationPath, RelName, RelVsn),
     LauncherTemplateFiles = filelib:wildcard(CmdsDirPath ++ "/*"),
     lists:foreach(fun(TemplateFile) -> 
 			  TemplateName = filename:basename(filename:absname(TemplateFile)),
@@ -360,12 +360,12 @@ create_executable_script_use_cmdr(InstallationPath, RelName, RelVsn, ErtsVsn) ->
 		  end, LauncherTemplateFiles). 
 
 create_executable_script_use_bin(InstallationPath, RelName, RelVsn, ErtsVsn) ->
-    BinDirPath   = epkg_installed_paths:installed_release_bin_dir_path(InstallationPath, RelName, RelVsn),
+    BinDirPath   = ewl_installed_paths:installed_release_bin_dir_path(InstallationPath, RelName, RelVsn),
     BinFilePaths = filelib:wildcard(BinDirPath ++ "/*"),
     ?INFO_MSG("bindir path ~p~nbin file paths ~p~n", [BinDirPath, BinFilePaths]),
     lists:foreach(fun(BinFilePath) -> 
 			  BinFileName                      = filename:basename(BinFilePath),
-			  ExecutableContainerPath          = epkg_installed_paths:executable_container_path(InstallationPath),
+			  ExecutableContainerPath          = ewl_installed_paths:executable_container_path(InstallationPath),
 			  ExecutableContainerPlusErtsPath  = ewl_file:join_paths(ExecutableContainerPath, ErtsVsn),
 			  InstalledBinFilePath             = ewl_file:join_paths(ExecutableContainerPath, BinFileName),
 			  InstalledBinPlusErtsFilePath     = ewl_file:join_paths(ExecutableContainerPlusErtsPath, BinFileName),

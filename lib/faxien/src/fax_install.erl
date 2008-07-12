@@ -301,14 +301,14 @@ fetch_remote_release(Repos, TargetErtsVsn, RelName, RelVsn, ToDir, Timeout) ->
     ?INFO_MSG("(~p, ~p, ~p, ~p)~n", [Repos, TargetErtsVsn, RelName, RelVsn]),
     io:format("~nFetching for Remote Release Package ~s-~s~n", [RelName, RelVsn]),
     Res           = fetch_release(Repos, TargetErtsVsn, RelName, RelVsn, ToDir, Timeout),
-    RelDirPath    = epkg_package_paths:package_dir_path(ToDir, RelName, RelVsn),
-    RelLibDirPath = epkg_package_paths:release_package_library_path(RelDirPath),
+    RelDirPath    = ewl_package_paths:package_dir_path(ToDir, RelName, RelVsn),
+    RelLibDirPath = ewl_package_paths:release_package_library_path(RelDirPath),
     io:format("Fetching remote erts package (this may take a while) -> "),
     case catch ewr_fetch:fetch_erts_package(Repos, TargetErtsVsn, RelDirPath, Timeout) of
 	ok     -> io:format("ok~n");
 	_Error -> io:format("can't pull down erts - skipping~n")
     end,
-    RelFilePath   = epkg_package_paths:release_package_rel_file_path(RelDirPath, RelName, RelVsn),
+    RelFilePath   = ewl_package_paths:release_package_rel_file_path(RelDirPath, RelName, RelVsn),
     AppAndVsns    = get_app_and_vsns(RelFilePath),
     lists:foreach(fun({AppName, AppVsn}) ->
 			  io:format("Pulling down ~s-~s -> ", [AppName, AppVsn]),
@@ -339,7 +339,7 @@ install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLoca
 	    {error, bad_package};
 	true ->
 	    {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ReleasePackageDirPath),
-	    RelFilePath             = epkg_package_paths:release_package_rel_file_path(ReleasePackageDirPath, RelName, RelVsn),
+	    RelFilePath             = ewl_package_paths:release_package_rel_file_path(ReleasePackageDirPath, RelName, RelVsn),
 	    TargetErtsVsn           = epkg_util:consult_rel_file(erts_vsn, RelFilePath),
     
 	    case catch epkg:install_release(ReleasePackageDirPath) of
@@ -378,7 +378,7 @@ fetch_app_to_tmp(Repos, TargetErtsVsn, AppName, AppVsn, Timeout) ->
     {ok, TmpPackageDir} = epkg_util:create_unique_tmp_dir(),
     case fetch_remote_application(Repos, TargetErtsVsn, AppName, AppVsn, TmpPackageDir, Timeout) of
 	ok ->
-	    AppPackageDirPath = epkg_package_paths:package_dir_path(TmpPackageDir, AppName, AppVsn),
+	    AppPackageDirPath = ewl_package_paths:package_dir_path(TmpPackageDir, AppName, AppVsn),
 	    {ok, AppPackageDirPath};
 	Error ->
 	    Error
@@ -397,7 +397,7 @@ fetch_erts(Repos, ErtsVsn, Timeout) ->
 	ok                  = ewl_file:delete_dir(ErtsDir),
 	{ok, TmpPackageDir} = epkg_util:create_unique_tmp_dir(),
 	ok                  = ewr_fetch:fetch_erts_package(Repos, ErtsVsn, TmpPackageDir, Timeout),
-	ErtsPackageDirPath  = epkg_package_paths:package_dir_path(TmpPackageDir, "erts", ErtsVsn),
+	ErtsPackageDirPath  = ewl_package_paths:package_dir_path(TmpPackageDir, "erts", ErtsVsn),
 	{ok, ErtsPackageDirPath}
     catch
 	_Class:_Exception = {badmatch, {error, _} = Error} ->
@@ -416,7 +416,7 @@ fetch_release(Repos, TargetErtsVsn, RelName, RelVsn, Timeout) ->
     {ok, TmpPackageDir} = epkg_util:create_unique_tmp_dir(),
     case fetch_release(Repos, TargetErtsVsn, RelName, RelVsn, TmpPackageDir, Timeout) of
 	ok ->
-	    ReleasePackageDirPath = epkg_package_paths:package_dir_path(TmpPackageDir, RelName, RelVsn),
+	    ReleasePackageDirPath = ewl_package_paths:package_dir_path(TmpPackageDir, RelName, RelVsn),
 	    {ok, ReleasePackageDirPath};
 	Error ->
 	    Error

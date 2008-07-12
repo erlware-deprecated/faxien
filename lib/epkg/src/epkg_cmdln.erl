@@ -1,8 +1,8 @@
 %%%-------------------------------------------------------------------
-%%% @copyright Martin Logan, Eric Merritt, Erlware
-%%% @author   Martin Logan 
+%%% @doc Commandline handling
 %%%
-%%% @doc Commandline entry point for epkg
+%%% @author Martin Logan
+%%% @copyright 2007 Erlware
 %%% @end
 %%%-------------------------------------------------------------------
 -module(epkg_cmdln).
@@ -17,22 +17,10 @@
 %% External exports
 %%--------------------------------------------------------------------
 -export([
+	 translate_dash_to_underscore/1,
+	 resolve_alias/2,
+	 cmdln_apply/1
         ]).
-
-%%--------------------------------------------------------------------
-%% Internal exports
-%%--------------------------------------------------------------------
--export([
-	 epkg_apply/1
-        ]).
-
-%%--------------------------------------------------------------------
-%% Macros
-%%--------------------------------------------------------------------
-
-%%--------------------------------------------------------------------
-%% Records
-%%--------------------------------------------------------------------
 
 %%====================================================================
 %% External functions
@@ -52,7 +40,7 @@
 %% <pre>
 %%
 %% Example Command Line Invocation:
-%%  erl -s epkg_util epkg_apply file list_dir \"/home/jdoe\" -s init stop  
+%%  erl -s fax_util faxien_apply file list_dir \"/home/jdoe\" -s init stop  
 %%
 %% Variables:
 %%  MFSList - a list containing the mod func and a list of args to apply comming via erl -s
@@ -60,35 +48,51 @@
 %% Types:
 %%  MFAList = [Mod, Func|Args] Example [file, list_dir, "/var/log"]
 %% </pre>
-%% @spec epkg_apply(MFAList) -> void()
+%% @spec faxien_apply(MFAList) -> void()
 %% @end
 %%--------------------------------------------------------------------
-epkg_apply([_Mod]) ->
-    epkg:help();
-epkg_apply([Mod, RawFunc|Args]) ->
-    Func = sub_func(RawFunc),
-    ?INFO_MSG("mod:func ~p:~p with raw args from commandline: ~w~n", [Mod, Func, Args]),
-    TokedArgs   = lists:map(fun(ArgAtom) -> convert_string_to_terms(atom_to_list(ArgAtom)) end, no_space(Args)),
-    Result = apply_from_commandline(Mod, Func, TokedArgs),
+cmdln_apply([Mod, Func|Args]) ->
+    TokedArgs = lists:map(fun(ArgAtom) -> convert_string_to_terms(atom_to_list(ArgAtom)) end, no_space(Args)),
+    Result    = apply_from_commandline(Mod, Func, TokedArgs),
     ?INFO_MSG("apply the following: apply(~w, ~w, ~p) -> ~p~n", [Mod, Func, TokedArgs, Result]),
     handle_apply_result(Result).
+
+%%--------------------------------------------------------------------
+%% @doc change any -'s into _'s and resolve any alias's in the function to be applied.
+%% @spec translate_dash_to_underscore(Func, AliasList) -> ResolvedFunc
+%% where
+%%  Func = atom() | string()
+%%  AliasList = {string(), string()}
+%%  ResolvedFunc = atom() | string()
+%% @end
+%%--------------------------------------------------------------------
+translate_dash_to_underscore(Func) when is_atom(Func) ->
+    list_to_atom(translate_dash_to_underscore(atom_to_list(Func)));
+translate_dash_to_underscore(Func) ->
+    case regexp:gsub(Func, "-", "_") of
+	{ok, NewFunc, _} -> NewFunc;
+	_                -> Func
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc translate one string to another if there is a translation in the alias list.
+%% @spec (FuncName, AliasList) -> NewFuncName
+%% where
+%%  FuncName = string()
+%%  NewFuncName = string()
+%%  AliasList = [{FuncName, NewFuncName}]
+%% @end
+%%--------------------------------------------------------------------
+resolve_alias(FuncName, [{FuncName, Func}|_]) ->
+    Func;
+resolve_alias(FuncName, [_|T]) ->
+    resolve_alias(FuncName, T);
+resolve_alias(Func, []) ->
+    Func.
 
 %%====================================================================
 %% Internal functions
 %%====================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc change any -'s into _'s in the function to be applied. 
-%% @end
-%%--------------------------------------------------------------------
-sub_func(Func) ->
-    case regexp:gsub(atom_to_list(Func), "-", "_") of
-	{ok, NewFunc, _} ->
-	    list_to_atom(NewFunc);
-	_ ->
-	    Func
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -132,8 +136,7 @@ handle_apply_result({error, PrintableError}) ->
     io:format("~nSuggestions:~n"),
     print_error_specific_error_msg(PrintableError),
     print_logfile_info(),
-    io:format(" - Remember that if you are trying to install a package that 'epkg install <args...>'~n"),
-    io:format("   is for releases, while 'epkg install_app <args...>' is for applications~n").
+    ok.
 
 %%----------------------------------------------------------------------------
 %% @private
@@ -179,6 +182,8 @@ sanitize_error({error, {{_Type, {error, Reason}}, _Trace}}) when is_list(_Trace)
     {error, Reason};
 sanitize_error({Reason, _Trace}) when is_tuple(Reason), is_list(_Trace) ->
     {error, Reason};
+sanitize_error(function_clause) ->
+    {error, function_clause};
 sanitize_error({error, Error}) ->
     {error, Error};
 sanitize_error(Error) ->
@@ -189,6 +194,9 @@ sanitize_error(Error) ->
 %% @doc Print out a custom error message to the user based on a sanitized error term.
 %% @end
 %%----------------------------------------------------------------------------
+print_error_specific_error_msg(no_publish_repos) ->
+    io:format(" - No publish repos have been configured. Add publish repos with 'faxien add-publish-repo <repo-name>'~n" ++
+	      "   Suggested repos are http://repo.erlware.org/writable and http://repo.martinjlogan.com/writable~n");
 print_error_specific_error_msg({unable_to_pull_from_repos, Msg}) ->
     io:format(" - " ++ Msg ++ "~n   Please request that the package compiled for your local~n" ++
 	      "   architecture be published to an accessible repository.~n");
@@ -200,12 +208,14 @@ print_error_specific_error_msg({unhandled, _Error}) ->
     io:format(" - Please report this unhandled error to Erlware at erlware-questions@googlegroups.com or contact@erlware.org.~n");
 print_error_specific_error_msg(bad_package) ->
     io:format(" - The package specified is not valid.  Make sure OTP standards have been followed.~n"),
-    io:format(" - You may have tried to run publish incorrectly try 'epkg help publish' for more information.~n");
+    io:format(" - You may have tried to run publish incorrectly try 'faxien help publish' for more information.~n");
+print_error_specific_error_msg(function_clause) ->
+    io:format(" - The function you are calling exists but you are most likely calling it with a bad value.  Check the docs.~n");
 print_error_specific_error_msg({error,request_timeout}) ->
     io:format(" - The request has timed out.  Specify a larger timeout value.~n");
 print_error_specific_error_msg({package_not_found, PackageName}) ->
     io:format(" - Please request that a " ++ PackageName ++ " package be compiled and published for your local architecture.~n" ++
-	      "   If the package is available locally, publish it with 'epkg publish <package name>'~n");
+	      "   If the package is available locally, publish it with 'faxien publish <package name>'~n");
 print_error_specific_error_msg({undef, _}) ->
     [{Mod, Func, Args}|_] = erlang:get_stacktrace(),
     ArgStr = case length(Args) of
@@ -219,10 +229,10 @@ print_error_specific_error_msg({undef, _}) ->
                      [Func, ArgStr]),
      PropList =
        fun([], Acc, _) ->
-               [" But the function with ", Acc, " arguments exists."];
+               [" But the function ", atom_to_list(Func), " with ", Acc, " arguments exists."];
           ([A], Acc, _) ->
                ArityStr = io_lib:format(" and ~p", [A]),
-               [" But the function with ",
+               [" But the function ", atom_to_list(Func), " with ",
                 lists:reverse([ArityStr | Acc]),
                 " arguments exists."];
           ([A | As], Acc, Y) ->
@@ -235,14 +245,14 @@ print_error_specific_error_msg({undef, _}) ->
                PropList(Arities, [integer_to_list(Arity)], PropList)
        end,
     io:format(" - ~s~n", [lists:flatten(Error ++ Exists)]),
-    io:format(" - Type 'epkg help' for information on the allowed commands.  Or visit www.erlware.org for more info.~n");
+    io:format(" - Type 'faxien help' for information on the allowed commands.  Or visit www.erlware.org for more info.~n");
 print_error_specific_error_msg(_PrintableError) ->
-    io:format(" - Make sure you have the correct permissions to run Epkg~n").
+    io:format(" - Make sure you have the correct permissions to run Faxien~n").
 
 %%-------------------------------------------------------------------
 %% @private
 %% @doc
-%%  Prints information about how to find the epkg logfiles.
+%%  Prints information about how to find the faxien logfiles.
 %%
 %% @spec print_logfile_info() -> void()
 %% @end
@@ -285,7 +295,7 @@ no_space([A1, A2|T], Acc) ->
 
 %%----------------------------------------------------------------------------
 %% @private
-%% @doc Take a commandline string and convert it into a term taking into account some of the nuances of epkg.  This really comes down
+%% @doc Take a commandline string and convert it into a term taking into account some of the nuances of faxien.  This really comes down
 %%      to two cases: 
 %%       the fact that 2.1 gets turned into 2.111111 or somesuch by parse_term.  This needs to be a vsn string not a float but the user
 %%       should not have to enter "2.1" from the commandline.
@@ -300,7 +310,8 @@ convert_string_to_terms(ArgString) ->
 	{match, _, _} -> 
 	    ArgString;
 	_  ->
-	    ScanableArg       = ArgString ++ ". ", 
+	    ScanableArg = ArgString ++ ". ", 
+	    ?INFO_MSG("scanning and parsing ~p~n", [ScanableArg]),
 	    {ok, Toks, _Line} = erl_scan:string(ScanableArg, 1),
 	    case catch erl_parse:parse_term(Toks) of
 		{ok, Term} -> 

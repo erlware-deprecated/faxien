@@ -151,10 +151,10 @@ publish2(Type, Repos, AppDirPath, Timeout) when Type == binary; Type == generic 
     end;
 publish2(release, Repos, RelDirPath, Timeout) -> 
     {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(RelDirPath),
-    RelFilePath             = epkg_package_paths:release_package_rel_file_path(RelDirPath, RelName, RelVsn),
+    RelFilePath             = ewl_package_paths:release_package_rel_file_path(RelDirPath, RelName, RelVsn),
     ErtsVsn                 = epkg_util:consult_rel_file(erts_vsn, RelFilePath),
     ok                      = handle_control(RelDirPath),
-    {ok, ControlFileBinary} = file:read_file(epkg_package_paths:release_package_control_file_path(RelDirPath)),
+    {ok, ControlFileBinary} = file:read_file(ewl_package_paths:release_package_control_file_path(RelDirPath)),
     {ok, RelFileBinary}     = file:read_file(RelFilePath),
     fax_put:put_release_control_file(Repos, ErtsVsn, RelName, RelVsn, ControlFileBinary, Timeout),
     fax_put:put_dot_rel_file(Repos, ErtsVsn, RelName, RelVsn, RelFileBinary, Timeout),
@@ -195,7 +195,7 @@ pack(TarDirPath) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_control(RelDirPath) ->
-    ControlFilePath = epkg_package_paths:release_package_control_file_path(RelDirPath),
+    ControlFilePath = ewl_package_paths:release_package_control_file_path(RelDirPath),
     case epkg_validation:is_valid_control_file(ControlFilePath) of
 	true ->
 	    ok;
@@ -213,7 +213,7 @@ handle_control(RelDirPath) ->
 	    io:format("~n~p.~n~nAbove is the control information collected about this package. This information~n", [ControlTerm]),
 	    io:format("will be placed under the root directory of the package in a file named \"control\".~n"),
 	    io:format("**If done manually for the next publish be sure to include the period after the term**~n~n"),
-	    ControlFilePath = epkg_package_paths:release_package_control_file_path(RelDirPath),
+	    ControlFilePath = ewl_package_paths:release_package_control_file_path(RelDirPath),
 	    write_out(ControlFilePath, ControlTerm)
     end.
 

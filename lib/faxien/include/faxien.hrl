@@ -1,7 +1,6 @@
 %% Contains shared macros
 -include("macros.hrl").
 
-
 %% Must be a list of tuples of strings. Commands can use either the _ or the - separator notation.
 -define(ALIAS_LIST, [
 		     {"upgrade",  "upgrade-release"},

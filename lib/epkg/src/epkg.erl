@@ -12,6 +12,7 @@
 %% API
 %%--------------------------------------------------------------------
 -export([
+	 cmdln_apply/1,
 	 install_release/1,
 	 install_release/2,
 	 install_erts/1,
@@ -52,9 +53,24 @@
 	]).
 
 -include("macros.hrl").
+-include("epkg.hrl").
 %%====================================================================
 %% API
 %%====================================================================
+%%--------------------------------------------------------------------
+%% @doc apply functions from the commandline. 
+%% @spec (MFA) -> void()
+%% @end
+%%--------------------------------------------------------------------
+cmdln_apply([_Mod]) ->
+    help();
+cmdln_apply([Mod, RawFunc|Args]) ->
+    ?INFO_MSG("mod:func ~p:~p with raw args from commandline: ~w~n", [Mod, RawFunc, Args]),
+    Func = list_to_atom(
+	     epkg_cmdln:resolve_alias(
+	       epkg_cmdln:translate_dash_to_underscore(epkg_cmdln:resolve_alias(atom_to_list(RawFunc), ?EPKG_ALIAS_LIST)),
+	       ?EPKG_ALIAS_LIST)),
+    epkg_cmdln:cmdln_apply([Mod, Func|Args]).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -306,9 +322,7 @@ config_file_path(RelName, RelVsn) ->
 %% @end
 %%--------------------------------------------------------------------
 config_file_path(RelName) ->
-    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
-    {ok, RelVsn} = epkg_manage:find_highest_local_release_vsn(RelName, TargetErtsVsn),
-    config_file_path(RelName, RelVsn).
+    config_file_path(RelName, epkg_manage:find_highest_local_release_vsn(RelName)).
 
 %% @private
 config_file_path_help() ->
@@ -378,7 +392,6 @@ commands_help() ->
      "config-file-path        display the path to a release config file."
     ].
 
-
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Print the help screen for a specific command.
@@ -386,18 +399,20 @@ commands_help() ->
 %% @end
 %%--------------------------------------------------------------------
 help(Command) when is_atom(Command) ->
-    help_for_command(Command).
+    help_for_command(atom_to_list(Command)).
 
 %%====================================================================
 %% Internal functions
 %%====================================================================
 
-help_for_command(Command) ->
-    StrCommand = atom_to_list(Command),
-    Func       = list_to_atom(StrCommand ++ "_help"),
+help_for_command(RawCommand) ->
+    Command = epkg_cmdln:resolve_alias(
+		epkg_cmdln:translate_dash_to_underscore(
+		  epkg_cmdln:resolve_alias(RawCommand, ?EPKG_ALIAS_LIST)), ?EPKG_ALIAS_LIST),
+    Func             = list_to_atom(Command ++ "_help"),
     case catch ?MODULE:Func() of
 	{'EXIT', _Reason} ->
-	    io:format("That command does not have detailed help associated with it~n");
+	    io:format("The command ~s does not have detailed help associated with it~n", [Command]);
 	HelpList -> 
 	    print_help_list(HelpList) 
     end.

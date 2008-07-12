@@ -31,3 +31,10 @@
 
 %% Keys that must be present in a control file for it to be considered valid.
 -define(MANDITORY_CONTROL_KEYS, [package_owner, description, package_owner_email, categories]).
+
+%% Must be a list of tuples of strings. Commands can use either the _ or the - separator notation.
+-define(EPKG_ALIAS_LIST, [
+		     {"cfp",      "config-file-path"},
+		     {"raa",      "remove-all-apps"},
+		     {"ra",       "remove-app"}
+		    ]).

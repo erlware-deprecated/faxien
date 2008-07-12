@@ -24,6 +24,7 @@
 %% Include files
 %%--------------------------------------------------------------------
 -include("faxien.hrl").
+-include("epkg.hrl").
 
 %%--------------------------------------------------------------------
 %% External exports
@@ -44,6 +45,8 @@
 	]).
 
 -export([
+	 cmdln_apply/1,
+	 
 	 search/4,
 	 search/2,
 	 search/1,
@@ -156,6 +159,23 @@
 %%====================================================================
 
 %%--------------------------------------------------------------------
+%% @doc apply functions from the commandline. 
+%% @spec (MFA) -> void()
+%% @end
+%%--------------------------------------------------------------------
+cmdln_apply([_Mod]) ->
+    faxien:help();
+cmdln_apply([Mod, RawFunc|Args]) ->
+    ?INFO_MSG("mod:func ~p:~p with raw args from commandline: ~w~n", [Mod, RawFunc, Args]),
+    Func = list_to_atom(
+	     epkg_cmdln:resolve_alias(
+	     epkg_cmdln:translate_dash_to_underscore(epkg_cmdln:resolve_alias(atom_to_list(RawFunc), ?ALIAS_LIST)),
+	     ?ALIAS_LIST)),
+    epkg_cmdln:cmdln_apply([Mod, Func|Args]).
+    
+    
+
+%%--------------------------------------------------------------------
 %% @doc upgrade a single application.
 %% <pre>
 %% Examples:
@@ -209,7 +229,9 @@ upgrade_all_apps(Repo) when is_atom(Repo) ->
     upgrade_all_apps([atom_to_list(Repo)]);
 upgrade_all_apps(Repos) ->
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
-    fax_manage:upgrade_applications(Repos, TargetErtsVsn, false, ?REQUEST_TIMEOUT).
+    {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
+    Options             = [{force, false}, {erts_prompt, ErtsPrompt}], 
+    fax_manage:upgrade_applications(Repos, TargetErtsVsn, Options, ?REQUEST_TIMEOUT).
 
 upgrade_all_apps() -> 
     {ok, Repos} = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
@@ -328,7 +350,9 @@ upgrade_all_releases(Repo) when is_atom(Repo) ->
 upgrade_all_releases(Repos) ->
     {ok, IsLocalBoot}   = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
-    fax_manage:upgrade_releases(Repos, TargetErtsVsn, IsLocalBoot, false, ?REQUEST_TIMEOUT).
+    {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
+    Options             = [{force, false}, {erts_prompt, ErtsPrompt}], 
+    fax_manage:upgrade_releases(Repos, TargetErtsVsn, IsLocalBoot, Options, ?REQUEST_TIMEOUT).
 
 %% @spec upgrade_all_releases() -> ok | {error, Reason}
 %% @equiv upgrade_all_releases(Repos)
@@ -1200,7 +1224,9 @@ show_publish_repos_help() ->
 %%====================================================================
 
 help_for_command(RawCommand) ->
-    Command = fax_cmdln:sub_func(RawCommand, ?ALIAS_LIST),
+    Command = epkg_cmdln:resolve_alias(
+		epkg_cmdln:translate_dash_to_underscore(
+		  epkg_cmdln:resolve_alias(RawCommand, ?ALIAS_LIST)), ?ALIAS_LIST),
     Func             = list_to_atom(Command ++ "_help"),
     case catch ?MODULE:Func() of
 	{'EXIT', _Reason} ->

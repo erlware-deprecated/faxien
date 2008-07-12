@@ -21,22 +21,9 @@
 %% External exports
 %%--------------------------------------------------------------------
 -export([
-	 application_container_path/2,
-	 erts_container_path/1,
-	 executable_container_path/1,
-	 release_file_container_path/3,
-	 release_container_path/1
-	]).
-
--export([
-	 installed_release_dir_path/3,
 	 installed_release_dir_path/2,
-	 installed_app_dir_path/4,
 	 installed_app_dir_path/3,
-	 installed_erts_path/2,
-	 installed_erts_path/1,
-	 installed_release_bin_dir_path/3,
-	 installed_release_cmds_dir_path/3
+	 installed_erts_path/1
 	]).
 
 -export([
@@ -54,53 +41,8 @@
 	 package_dir_to_name_and_vsn/1,
 	 get_installation_path/0,
 	 find_config_file_path/2,
-	 installed_config_file_path/0,
-	 installed_config_file_path/4,
-	 installed_release_rel_file_path/3
+	 installed_config_file_path/0
 	]).
-
-%%====================================================================
-%% Fundamental Paths
-%%====================================================================
-%%--------------------------------------------------------------------
-%% @doc Returns the path to the directory releases are stored in.
-%% @spec release_container_path(InstallationPath) -> string()
-%% @end
-%%--------------------------------------------------------------------
-release_container_path(InstallationPath) ->
-    lists:flatten([InstallationPath, "/release_packages"]).
-
-%%--------------------------------------------------------------------
-%% @doc Returns the path to the directory applications are stored in.
-%% @spec application_container_path(InstallationPath, ErtsVsn) -> string()
-%% @end
-%%--------------------------------------------------------------------
-application_container_path(InstallationPath, ErtsVsn) ->
-    filename:join([InstallationPath, "application_packages", ErtsVsn, "lib"]).
-
-%%--------------------------------------------------------------------
-%% @doc Returns a path to the directory where executable files sit. 
-%% @spec executable_container_path(InstallationPath) -> string()
-%% @end
-%%--------------------------------------------------------------------
-executable_container_path(InstallationPath) when is_list(InstallationPath) -> 
-    lists:flatten([InstallationPath, "/bin/"]).
-
-%%--------------------------------------------------------------------
-%% @doc Returns a path to the directory under which all the erts packages lie.
-%% @spec erts_container_path(InstallationPath) -> string()
-%% @end
-%%--------------------------------------------------------------------
-erts_container_path(InstallationPath) -> 
-    lists:flatten([InstallationPath, "/erts_packages/"]).
-
-%%--------------------------------------------------------------------
-%% @doc Returns a path to the directory under which the release file sits.
-%% @spec release_file_container_path(InstallationPath, RelName, RelVsn) -> string()
-%% @end
-%%--------------------------------------------------------------------
-release_file_container_path(InstallationPath, RelName, RelVsn) ->
-    lists:flatten([installed_release_dir_path(InstallationPath, RelName, RelVsn), "/release/"]).
 
 %%====================================================================
 %% Package Paths
@@ -108,85 +50,41 @@ release_file_container_path(InstallationPath, RelName, RelVsn) ->
 
 %%--------------------------------------------------------------------
 %% @doc Returns a full installaed erts path.
-%% @spec installed_erts_path(InstallationPath, ErtsVsn) -> string()
+%% @spec installed_erts_path(ErtsVsn) -> string()
 %% @end
 %%--------------------------------------------------------------------
-installed_erts_path(InstallationPath, ErtsVsn) when is_list(ErtsVsn) -> 
-    lists:flatten([erts_container_path(InstallationPath), "erts-",  ErtsVsn]).
-
-%% @spec installed_erts_path(ErtsVsn) -> string()
-%% @equiv installed_erts_path(InstallationPath, ErtsVsn)
 installed_erts_path(ErtsVsn) -> 
     {ok, InstallationPath} = get_installation_path(),
-    installed_erts_path(InstallationPath, ErtsVsn).
+    ewl_installed_paths:installed_erts_path(InstallationPath, ErtsVsn).
 
 %%--------------------------------------------------------------------
 %% @doc Returns a full installaed application path i.e underneith this directory lies the src and ebin dirs.
-%% @spec installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn) -> string()
+%% @spec installed_app_dir_path(ErtsVsn, AppName, AppVsn) -> string()
 %% @end
 %%--------------------------------------------------------------------
-installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn) when is_list(AppVsn) -> 
-    lists:flatten([application_container_path(InstallationPath, ErtsVsn), "/", AppName, "-", AppVsn]).
-
-%% @spec installed_app_dir_path(ErtsVsn, AppName, AppVsn) -> string()
-%% @equiv installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn) 
 installed_app_dir_path(ErtsVsn, AppName, AppVsn) ->
     {ok, InstallationPath} = get_installation_path(),
-    installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn).
+    ewl_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn).
 
 %%--------------------------------------------------------------------
 %% @doc Returns a full installaed release path. Under this directory the releases directory would sit and perhaps the bin dir.
-%% @spec installed_release_dir_path(InstallationPath, RelName, RelVsn) -> string()
+%% @spec installed_release_dir_path(RelName, RelVsn) -> string()
 %% @end
 %%--------------------------------------------------------------------
-installed_release_dir_path(InstallationPath, RelName, RelVsn) when is_list(RelVsn) -> 
-    lists:flatten([release_container_path(InstallationPath), "/", RelName, "-", RelVsn]).
-
-%% @spec installed_release_dir_path(RelName, RelVsn) -> string()
-%% @equiv installed_release_dir_path(InstallationPath, RelName, RelVsn) 
 installed_release_dir_path(RelName, RelVsn) ->
     {ok, InstallationPath} = get_installation_path(),
-    installed_release_dir_path(InstallationPath, RelName, RelVsn).
-
-%%--------------------------------------------------------------------
-%% @doc Returns the full path to a rel file.
-%% @spec installed_release_rel_file_path(InstallationPath, RelName, RelVsn) -> string()
-%% @end
-%%--------------------------------------------------------------------
-installed_release_rel_file_path(InstallationPath, RelName, RelVsn) -> 
-    filename:join([release_file_container_path(InstallationPath, RelName, RelVsn), RelName ++ ".rel"]).
-
-%%--------------------------------------------------------------------
-%% @doc Returns the path to the cmds directory in an installed release.
-%% @spec installed_release_cmds_dir_path(InstallationPath, RelName, RelVsn) -> string()
-%% @end
-%%--------------------------------------------------------------------
-installed_release_cmds_dir_path(InstallationPath, RelName, RelVsn) -> 
-    ewl_file:join_paths(installed_release_dir_path(InstallationPath, RelName, RelVsn), "cmds").
-
-%%--------------------------------------------------------------------
-%% @doc Returns the path to the bin directory in an installed release.
-%% @spec installed_release_bin_dir_path(InstallationPath, RelName, RelVsn) -> string()
-%% @end
-%%--------------------------------------------------------------------
-installed_release_bin_dir_path(InstallationPath, RelName, RelVsn) -> 
-    filename:join([installed_release_dir_path(InstallationPath, RelName, RelVsn), "bin"]).
+    ewl_installed_paths:installed_release_dir_path(InstallationPath, RelName, RelVsn).
 
 %%--------------------------------------------------------------------
 %% @doc return the path to config.
-%% @spec installed_config_file_path(InstallationPath, RelName, RelVsn, ConfigFileName) -> string()
+%% @spec installed_config_file_path() -> string()
 %% @end
 %%--------------------------------------------------------------------
-installed_config_file_path(InstallationPath, RelName, RelVsn, ConfigFileName) ->
-    filename:join([release_file_container_path(InstallationPath, RelName, RelVsn), ConfigFileName]).
-    
-%% @spec installed_config_file_path() -> string()
-%% @equiv installed_config_file_path(InstallationPath, "faxien", CurrentFaxienVsn, "faxien.config")
 installed_config_file_path() ->
     %% @todo this is not compatible with composable apps - this must run with faxien.  Fix this.
     {ok, InstallationPath} = get_installation_path(),
     {ok, Version}          = faxien:version(),
-    installed_config_file_path(InstallationPath, "faxien", Version, "sys.config").
+    ewl_installed_paths:installed_config_file_path(InstallationPath, "faxien", Version, "sys.config").
 
 %%====================================================================
 %% Other External Functions 
@@ -198,7 +96,7 @@ installed_config_file_path() ->
 %% @end
 %%--------------------------------------------------------------------
 list_releases(InstallationPath) -> 
-    Packages = filelib:wildcard(lists:flatten([release_container_path(InstallationPath), "/*"])),
+    Packages = filelib:wildcard(lists:flatten([ewl_installed_paths:release_container_path(InstallationPath), "/*"])),
     RelNames = lists:map(fun(PackageName) -> 
 			     {ok, {RelName, _}} = package_dir_to_name_and_vsn(PackageName),
 			     RelName
@@ -218,7 +116,8 @@ list_releases() ->
 %% @end
 %%--------------------------------------------------------------------
 list_apps(InstallationPath, ErtsVsn) -> 
-    Packages = filelib:wildcard(lists:flatten([application_container_path(InstallationPath, ErtsVsn), "/*"])),
+    Packages = filelib:wildcard(
+		 lists:flatten([ewl_installed_paths:application_container_path(InstallationPath, ErtsVsn), "/*"])),
     AppNames = lists:map(fun(PackageName) -> 
 			     {ok, {AppName, _}} = package_dir_to_name_and_vsn(PackageName),
 			     AppName
@@ -237,7 +136,9 @@ list_apps(ErtsVsn) ->
 %% @end
 %%--------------------------------------------------------------------
 list_app_vsns(InstallationPath, ErtsVsn, AppName) -> 
-    Packages = filelib:wildcard(lists:flatten([application_container_path(InstallationPath, ErtsVsn), "/", AppName, "-*"])),
+    Packages = filelib:wildcard(
+		 lists:flatten([ewl_installed_paths:application_container_path(InstallationPath, ErtsVsn),
+				"/", AppName, "-*"])),
     lists:map(fun(PackageName) -> 
 			     {ok, {_, Vsn}} = package_dir_to_name_and_vsn(PackageName),
 			     Vsn
@@ -255,7 +156,7 @@ list_app_vsns(ErtsVsn, AppName) ->
 %% @end
 %%--------------------------------------------------------------------
 list_erts_vsns(InstallationPath) ->
-    ErtsContainerPath = erts_container_path(InstallationPath),
+    ErtsContainerPath = ewl_installed_paths:erts_container_path(InstallationPath),
     lists:map(
       fun(Path) ->
 	      {ok, {_Name, Vsn}} = package_dir_to_name_and_vsn(Path),
@@ -292,7 +193,8 @@ list_erts_vsns_lower_than(TargetErtsVsn) ->
 list_release_vsns(InstallationPath, RelName) when is_atom(RelName) -> 
     list_release_vsns(InstallationPath, atom_to_list(RelName)); 
 list_release_vsns(InstallationPath, RelName) -> 
-    Packages = filelib:wildcard(lists:flatten([release_container_path(InstallationPath), "/", RelName, "-*"])),
+    Packages = filelib:wildcard(
+		 lists:flatten([ewl_installed_paths:release_container_path(InstallationPath), "/", RelName, "-*"])),
     lists:map(fun(PackageName) -> 
 			     {ok, {_, Vsn}} = package_dir_to_name_and_vsn(PackageName),
 			     Vsn
@@ -359,7 +261,7 @@ get_installation_path() ->
 %%--------------------------------------------------------------------
 find_config_file_path(RelName, RelVsn) -> 
     {ok, InstallationPath} = get_installation_path(),
-    RelDirPath             = release_file_container_path(InstallationPath, RelName, RelVsn),
+    RelDirPath             = ewl_installed_paths:release_file_container_path(InstallationPath, RelName, RelVsn),
     case ewl_file:find(RelDirPath, ".*config") of
 	[]                -> throw({error, no_erlang_config_file_found});
 	RelConfigFilePath -> RelConfigFilePath

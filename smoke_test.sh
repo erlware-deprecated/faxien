@@ -14,8 +14,11 @@ faxien installed #| head -n 5
 echo "describe the sinan application at its latest version"
 faxien describe_app sinan #| head -n 5
 
-#(sleep 1; echo "yes") | faxien rr sinan
-faxien install-release sinan 0.10.0.0
+#(sleep 1; echo "yes") | 
+faxien rr sinan
+echo "setting target erts vsn to 5.5.5 for install"
+faxien stev 5.5.5
+faxien install-release sinan 0.8.6
 
 faxien outdated_apps
 echo "upgrade the sinan app"

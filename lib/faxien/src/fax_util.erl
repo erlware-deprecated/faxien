@@ -102,6 +102,12 @@ find_highest_vsn(Repos, TargetErtsVsns, PackageName, Side, VsnThreshold) ->
 	{ok, {_Repo, _HighVsn, _ErtsVsn}} = Reply -> Reply;
 	Exp                                       -> {error, {package_not_found, PackageName, Exp}}
     end.
+
+%% @equiv find_highest_vsn(Repos, TargetErtsVsns, PackageName, Side, infinity)
+%% @spec find_highest_vsn(Repos, TargetErtsVsns, PackageName, Side) -> {ok, {Repo, Vsn, ErtsVsn}} | {error, Reason}
+find_highest_vsn(Repos, TargetErtsVsns, PackageName, Side) ->
+    find_highest_vsn(Repos, TargetErtsVsns, PackageName, Side, infinity).
+
 				 
 find_highest_vsn2(Repos, TargetErtsVsns, PackageName, Side, VsnThreshold) ->
     ?INFO_MSG("Target erts versions to search are ~p~n", [TargetErtsVsns]),
@@ -126,11 +132,6 @@ find_highest_vsn2(Repos, TargetErtsVsns, PackageName, Side, VsnThreshold) ->
 					  end, Acc, Suffixes)
 		      end, [], Repos)),
     find_highest_remote_vsn_under_threshold(VsnThreshold, VsnLists).
-
-%% @equiv find_highest_vsn(Repos, TargetErtsVsns, PackageName, Side, infinity)
-%% @spec find_highest_vsn(Repos, TargetErtsVsns, PackageName, Side) -> {ok, {Repo, Vsn, ErtsVsn}} | {error, Reason}
-find_highest_vsn(Repos, TargetErtsVsns, PackageName, Side) ->
-    find_highest_vsn(Repos, TargetErtsVsns, PackageName, Side, infinity).
 
 suffixes(ErtsVsns, PackageName, Areas, Side) ->
     lists:foldr(fun(ErtsVsn, Acc) ->
@@ -427,8 +428,8 @@ execute_on_latest_package_version(Repos, TargetErtsVsn, ErtsVsnThreshold, Packag
 		    execute_on_latest_package_version(ShortenedRepos, TargetErtsVsn, PackageName, Fun, Side, HighVsn, ErtsPrompt)
 	    end;
 	{error, Reason} ->
-	    ?ERROR_MSG("failed to pull package: ~p~n", [Reason]),
-	    exit("Did not succeed in downloading any version of the package")
+	    ?ERROR_MSG("failed to find package: ~p~n", [Reason]),
+	    exit("Did not succeed in finding any version of the package")
     end.
 
 execute_fun(Fun, Repos, HighVsn, ErtsVsn, ErtsVsn, _ErtsPrompt) ->
