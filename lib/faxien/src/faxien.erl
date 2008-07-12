@@ -792,7 +792,8 @@ help(Command) when is_list(Command) ->
 search(Repos, Side, SearchType, SearchString) when is_atom(SearchString) -> 
     search(Repos, Side, SearchType, atom_to_list(SearchString));
 search(Repos, Side, SearchType, SearchString) -> 
-    fax_manage:search(Repos, Side, SearchType, SearchString).
+    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    fax_manage:search(Repos, Side, SearchType, SearchString, TargetErtsVsn).
 
 %% @spec search(SearchType, SearchString) -> string()
 %% @equiv search(Repos, both, SearchType, SearchString) 

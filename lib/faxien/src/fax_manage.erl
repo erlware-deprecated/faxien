@@ -39,7 +39,7 @@
 	 remove_repo_to_fetch_from/2,
 	 set_request_timeout/2,
 	 set_target_erts_vsn/2,
-	 search/4,
+	 search/5,
 	 describe_release/5,
 	 describe_latest_release/4,
 	 describe_app/5,
@@ -422,15 +422,19 @@ upgrade_application(Repos, TargetErtsVsn, AppName, HighestLocalVsn, Options, Tim
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Search through and list packages in remote repositories.
-%% @spec search(Repos, Side, SearchType, SearchString) -> string()
+%% @spec search(Repos, Side, SearchType, SearchString, TargetErtsVsns) -> string()
 %%  where
 %%   Repos = list()
 %%   Side = lib | releases | both
 %%   SearchType = regexp | normal
 %%   SearchString = string()
+%%   TargetErtsVsns = [TargetErtsVsn] | TargetErtsVsn
+%%    TargetErtsVsn = string()
 %% @end
 %%--------------------------------------------------------------------
-search(Repos, Side, SearchType, SearchString) -> 
+search(Repos, Side, SearchType, SearchString, [H|_] = TargetErtsVsn) when is_integer(H) -> 
+    search(Repos, Side, SearchType, SearchString, [TargetErtsVsn]);
+search(Repos, Side, SearchType, SearchString, TargetErtsVsns) -> 
     FilterFun = case SearchType of
 		    regexp ->
 			fun(E) -> case regexp:match(E, SearchString) of {match, _, _} -> true; _ -> false end end;
@@ -442,12 +446,18 @@ search(Repos, Side, SearchType, SearchString) ->
 
     case Side of
 	both ->
-	    Lib      = filter(FilterFun, lists:foldl(fun({_, A}, Acc) -> A ++ Acc end, [], raw_list(Repos, lib))),
-	    Releases = filter(FilterFun, lists:foldl(fun({_, A}, Acc) -> A ++ Acc end, [], raw_list(Repos, releases))),
+	    Lib      = filter(FilterFun, lists:foldl(fun({_, A}, Acc) -> A ++ Acc end,
+						     [],
+						     raw_list(Repos, "lib", TargetErtsVsns))),
+	    Releases = filter(FilterFun, lists:foldl(fun({_, A}, Acc) -> A ++ Acc end,
+						     [],
+						     raw_list(Repos, "releases", TargetErtsVsns))),
 	    print_list(lib, Lib),
 	    print_list(releases, Releases);
 	Side ->
-	    List = filter(FilterFun, lists:foldl(fun({_, A}, Acc) -> A ++ Acc end, [], raw_list(Repos, Side))),
+	    List = filter(FilterFun, lists:foldl(fun({_, A}, Acc) -> A ++ Acc end,
+						 [],
+						 raw_list(Repos, atom_to_list(Side), TargetErtsVsns))),
 	    print_list(Side, List)
     end.
 
@@ -483,10 +493,13 @@ filter(FilterFun, List) ->
 				   end
 			   end, {undefined, []}, SortedList)).
 
-raw_list(Repos, Side) ->
+raw_list(Repos, Side, TargetErtsVsns) ->
     lists:foldl(fun(Repo, Acc) -> 
 			SysInfo  = ewr_util:system_info(),
-			Suffixes = ewr_util:gen_multi_erts_repo_stub_suffix("", [SysInfo, "Generic"], Side),
+			Suffixes = lists:foldl(fun(ErtsVsn, SufAcc) ->
+						       [ewr_repo_paths:side_suffix(ErtsVsn, SysInfo, Side),
+							ewr_repo_paths:side_suffix(ErtsVsn, "Generic", Side)|SufAcc]
+					       end, [], TargetErtsVsns),
 			try
 			    lists:foldl(fun(Suf, Acc2) -> 
 						?INFO_MSG("pulling data for list from ~s~n", [Repo ++ "/" ++ Suf]),
