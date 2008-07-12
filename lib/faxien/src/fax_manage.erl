@@ -2,10 +2,13 @@
 %%% @doc Handles fetching packages from the remote repository and 
 %%%      placing them in the erlware repo.
 %%% 
-%%% @type force() = bool(). Indicates whether or not to overwrite a package without a prompt
+%%% @type repo() = string(). Contains address and repo designation. Example: http://www.erlware.org/stable.
+%%% @type force() = bool(). Indicates whether an existing app is to be overwritten with or without user conscent.  
+%%% @type erts_prompt() = bool(). indicate whether or not to prompt upon finding a package outside of the target erts vsn.
+%%% @type options() = [Option]
+%%% where
+%%%  Options = {force, force()} | {erts_prompt, erts_prompt()}
 %%%
-%%% @type repo() = string(). Contains address and repo designation. 
-%%%   Example: http://www.erlware.org/stable   
 %%%
 %%% @type timeout() = integer() | infinity. Timeouts are specified in milliseconds.
 %%%
@@ -262,7 +265,7 @@ outdated_releases(Repos, TargetErtsVsn, Timeout) ->
 %%  where
 %%   Repos = [string()]
 %%   TargetErtsVsn = string()
-%%   Options = [{force, force()}, {erts_prompt, erts_prompt()}]
+%%   Options = options()
 %% @end
 %%--------------------------------------------------------------------
 upgrade_releases(Repos, TargetErtsVsn, IsLocalBoot, Options, Timeout) ->
@@ -280,7 +283,7 @@ upgrade_releases(Repos, TargetErtsVsn, IsLocalBoot, Options, Timeout) ->
 %%   Repos = [string()]
 %%   TargetErtsVsn = string()
 %%   ReleaseName = string()
-%%   OptiONS = [{force, force()}, {erts_prompt, erts_prompt()}]
+%%   Options = options()
 %% @end
 %%--------------------------------------------------------------------
 upgrade_release(Repos, TargetErtsVsn, ReleaseName, IsLocalBoot, Options, Timeout) -> 
@@ -373,7 +376,7 @@ outdated_applications(Repos, TargetErtsVsn, Timeout) ->
 %%  where
 %%   Repos = [string()]
 %%   TargetErtsVsn = string()
-%%   Options = [{force, force()}, {erts_prompt, erts_prompt()}]
+%%   Options = options()
 %% @end
 %%--------------------------------------------------------------------
 upgrade_applications(Repos, TargetErtsVsn, Options, Timeout) -> 
@@ -388,7 +391,7 @@ upgrade_applications(Repos, TargetErtsVsn, Options, Timeout) ->
 %%   Repos = [string()]
 %%   TargetErtsVsn = string()
 %%   AppName = string()
-%%   Options = [{force, force()}, {erts_prompt, erts_prompt()}]
+%%   Options = options()
 %% @end
 %%--------------------------------------------------------------------
 upgrade_application(Repos, TargetErtsVsn, AppName, Options, Timeout) ->

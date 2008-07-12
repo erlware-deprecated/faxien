@@ -48,7 +48,7 @@
 %% Types:
 %%  MFAList = [Mod, Func|Args] Example [file, list_dir, "/var/log"]
 %% </pre>
-%% @spec faxien_apply(MFAList) -> void()
+%% @spec cmdln_apply(MFAList) -> void()
 %% @end
 %%--------------------------------------------------------------------
 cmdln_apply([Mod, Func|Args]) ->
@@ -58,8 +58,8 @@ cmdln_apply([Mod, Func|Args]) ->
     handle_apply_result(Result).
 
 %%--------------------------------------------------------------------
-%% @doc change any -'s into _'s and resolve any alias's in the function to be applied.
-%% @spec translate_dash_to_underscore(Func, AliasList) -> ResolvedFunc
+%% @doc change any -'s into _'s 
+%% @spec translate_dash_to_underscore(FuncAliasList) -> ResolvedFunc
 %% where
 %%  Func = atom() | string()
 %%  AliasList = {string(), string()}

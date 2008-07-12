@@ -69,7 +69,7 @@ execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, 
 
 %%-------------------------------------------------------------------
 %% @doc return all the erts vsns that are greater than or equal to the target erts versions.
-%% @spec get_erts_vsns_gte_than(TargetErtsVsn) -> ErtsVsns::list()
+%% @spec get_erts_vsns_gte_than(TargetErtsVsn, VsnThreshold) -> ErtsVsns::list()
 %% @end
 %%-------------------------------------------------------------------
 get_erts_vsns_gte_than(TargetErtsVsn, infinity) ->

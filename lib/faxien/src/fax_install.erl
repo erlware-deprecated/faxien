@@ -2,9 +2,11 @@
 %%% @doc Handles fetching packages from the remote repository and 
 %%%      placing them in the erlware repo.
 %%%
-%%% @type options() = [{force, force()}, {erts_prompt, erts_prompt()}]
 %%% @type force() = bool(). Indicates whether an existing app is to be overwritten with or without user conscent.  
 %%% @type erts_prompt() = bool(). indicate whether or not to prompt upon finding a package outside of the target erts vsn.
+%%% @type options() = [Option]
+%%% where
+%%%  Options = {force, force()} | {erts_prompt, erts_prompt()}
 %%%
 %%% @todo add the force option to local installs in epkg
 %%% @todo add explicit timeouts to every interface function depricate the macro or use it as a default in the faxien module. 
@@ -203,7 +205,7 @@ install_latest_remote_release(Repos, TargetErtsVsn, RelName, IsLocalBoot, Option
 %%     RelName = string()
 %%     RelVsn = string() 
 %%     IsLocalBoot = bool()
-%%     Options = [{force, force()}, {erts_prompt, erts_prompt()}]
+%%     Options = options()
 %% @end
 %%--------------------------------------------------------------------
 install_remote_release(Repos, TargetErtsVsn, RelName, RelVsn, IsLocalBoot, Force, Timeout) ->
