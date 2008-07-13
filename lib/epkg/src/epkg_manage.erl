@@ -193,7 +193,7 @@ find_highest_local_release_vsn(ReleaseName, TargetErtsVsn) ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
     NameAndVsns = lists:filter(fun({Name, _}) -> ReleaseName == Name end,
 			      list_releases(InstallationPath, TargetErtsVsn)),
-    highest_vsn([Vsn || {_Name, Vsn} <- NameAndVsns]).
+    epkg_util:highest_vsn([Vsn || {_Name, Vsn} <- NameAndVsns]).
 
 %%--------------------------------------------------------------------
 %% @doc Find the highest version of a particular release that is installed locally.
@@ -206,7 +206,7 @@ find_highest_local_release_vsn(ReleaseName) ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
     NameAndVsns = lists:filter(fun({Name, _}) -> ReleaseName == Name end,
 			      list_all_releases(InstallationPath)),
-    highest_vsn([Vsn || {_Name, Vsn} <- NameAndVsns]).
+    epkg_util:highest_vsn([Vsn || {_Name, Vsn} <- NameAndVsns]).
 
 %%--------------------------------------------------------------------
 %% @doc Find the highest version of a particular application that is installed locally.
@@ -215,7 +215,7 @@ find_highest_local_release_vsn(ReleaseName) ->
 %%--------------------------------------------------------------------
 find_highest_local_app_vsn(AppName) ->
     ErtsVsns = [ErtsVsn || {_, ErtsVsn, _} <- ?COMPILER_VSN_TO_ERTS_VSN_TO_ERLANG_VSN],
-    highest_vsn([find_highest_local_app_vsn(AppName, TargetErtsVsn) || TargetErtsVsn <- ErtsVsns]).
+    epkg_util:highest_vsn([find_highest_local_app_vsn(AppName, TargetErtsVsn) || TargetErtsVsn <- ErtsVsns]).
 			
 %%--------------------------------------------------------------------
 %% @doc Find the highest version of a particular application that is installed locally.
@@ -228,14 +228,8 @@ find_highest_local_app_vsn(AppName, TargetErtsVsn) ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
     NameAndVsns = lists:filter(fun({Name, _}) -> AppName == Name end,
 			      list_lib(InstallationPath, TargetErtsVsn)),
-    highest_vsn([Vsn || {_Name, Vsn} <- NameAndVsns]).
+    epkg_util:highest_vsn([Vsn || {_Name, Vsn} <- NameAndVsns]).
 
-highest_vsn(Vsns) when length(Vsns) > 0 ->
-    hd(lists:sort(fun(A, B) -> ewr_util:is_version_greater(A, B) end, Vsns));
-highest_vsn([]) ->
-    [];
-highest_vsn(Error) ->
-    throw({error, Error}).
 
 %%--------------------------------------------------------------------
 %% @doc Diff two config files

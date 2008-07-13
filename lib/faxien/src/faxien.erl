@@ -41,7 +41,8 @@
 	 fetch_release/2,
 	 install_release/3,
 	 install_release/2,
-	 install_release/1
+	 install_release/1,
+	 install_release/0
 	]).
 
 -export([
@@ -416,11 +417,23 @@ install_release(ReleaseNameOrPath) ->
     Options             = [{force, false}, {erts_prompt, ErtsPrompt}], 
     fax_install:install_release(Repos, TargetErtsVsn, ReleaseNameOrPath, IsLocalBoot, Options, ?REQUEST_TIMEOUT).
 	
+%%--------------------------------------------------------------------
+%% @doc Install release with no arguments from within a Sinan project
+%%      will publish the latest dist tarball it finds within the Sinan project.
+%%
+%% @spec install_release() -> ok | {error, Reason}
+%% @end
+%%--------------------------------------------------------------------
+install_release() ->
+    epkg:install_release().
     
 %% @private
 install_release_help() ->
     ["\nHelp for install-release\n",
-     "Usage: install-release <release-name|release-tarball> [release-version]: will install a release remotely or from a local package depending on its argument\n"]. 
+     "Usage: install-release [release-name|release-tarball] [release-version]: will install a release remotely",
+     "or from a local package depending on its argument",
+     "If no arguments are supplied and this is run from within a sinan project this will publish the",
+     "latest release tarball found within the project~n"]. 
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -646,7 +659,7 @@ publish() ->
     {ok, Timeout} = gas:get_env(faxien, request_timeout, ?REQUEST_TIMEOUT),
     {ok, Repos}   = gas:get_env(faxien, repos_to_publish_to, ?ERLWARE_URL),
     {ok, CWD}     = file:get_cwd(),
-    fax_publish:fax_publish_sinan(Repos, CWD, Timeout).
+    fax_publish:publish_sinan(Repos, CWD, Timeout).
 
 %% @private
 publish_help() ->

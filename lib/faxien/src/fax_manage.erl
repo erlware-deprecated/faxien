@@ -518,7 +518,6 @@ raw_list(Repos, Side, TargetErtsVsns) ->
 			end
 		end, [], Repos).
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Add an element to a config tuple whose value is a list.

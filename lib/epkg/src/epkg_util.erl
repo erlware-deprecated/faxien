@@ -12,6 +12,7 @@
 %% API
 %%--------------------------------------------------------------------
 -export([
+	 highest_vsn/1,
 	 get_current_release_version/1,
 	 is_string/1,
 	 overwrite_yes_no/4,
@@ -30,7 +31,10 @@
 	 find_bad_control_categories/1,
 	 if_atom_or_integer_to_string/1,
 	 consult_rel_file/2,
-	 consult_control_file/2
+	 consult_control_file/2,
+	 get_sinan_build_flavor/1,
+	 ask_about_string_in_list/2,
+	 collect_name_and_high_vsn_pairs/1
 	]).
 
 %%--------------------------------------------------------------------
@@ -44,6 +48,105 @@
 %%====================================================================
 %% API
 %%====================================================================
+%%--------------------------------------------------------------------
+%% @doc given a list of versioned apps return a list of each app
+%%      with its highest found version.
+%% <pre>
+%% Example [{"faxien", "2.2"}, {"sinan", "5.6"}] = collect_name_and_high_vsn_pairs(["faxien-1.4", "faxien-2.2", "sinan-5.6"]).
+%% </pre>
+%% @spec collect_name_and_high_vsn_pairs(Packages::list()) -> list() 
+%% @end
+%%--------------------------------------------------------------------
+collect_name_and_high_vsn_pairs(Packages) ->
+    PackageAndVsns = lists:foldl(fun(Package, Acc) ->
+					 try
+					     {ok, {Name, Vsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(Package),
+					     [{Name, Vsn}|Acc]
+					 catch
+					     _C:E ->
+						 ?ERROR_MSG("Skipping ~p because ~p~n", [Package, E]),
+						 Acc
+					 end
+			       end, [], Packages),
+    lists:map(fun({Package, Vsns}) -> {Package, epkg_util:highest_vsn(Vsns)} end, collect_vsns(PackageAndVsns)).
+    
+collect_vsns(PackageAndVsns) ->
+    Sorted = lists:sort(fun({Name, _}, {Name2, _}) -> Name < Name2 end, PackageAndVsns),
+    collect_vsns(Sorted, []).
+
+collect_vsns([{Package, Vsn}|T], [{Package, Vsns}|Acc]) ->
+    collect_vsns(T, [{Package, [Vsn|Vsns]}|Acc]);
+collect_vsns([{Package, Vsn}|T], Acc) ->
+    collect_vsns(T, [{Package, [Vsn]}|Acc]);
+collect_vsns([], Acc) ->
+    Acc.
+
+%%--------------------------------------------------------------------
+%% @doc Select one build flavor among potentially many.
+%% @spec get_sinan_build_flavor(ProjectRoot) -> string()
+%% @end
+%%--------------------------------------------------------------------
+get_sinan_build_flavor(ProjectRoot) ->
+    case ewl_sinan_paths:get_build_flavors(ProjectRoot) of
+	[BuildFlavor] ->
+	    BuildFlavor;
+	[] ->
+	    throw(project_not_built);
+	BuildFlavors ->
+	    ask_about_build_flavor(BuildFlavors)
+    end.
+
+ask_about_build_flavor(BuildFlavors) ->
+    FlavorsString = string:join(BuildFlavors, ", "),
+    Prompt = lists:flatten(["The following build flavors have been found ", FlavorsString, 
+			    " please type the name of the one you would like to publish from >"]),
+    Flavor = ewl_talk:ask(Prompt),
+    case lists:member(Flavor, BuildFlavors) of
+	true ->
+	    Flavor;
+	false ->
+	    ?INFO_MSG("user entered \"~p\"~n", [Flavor]),
+	    io:format("That is not a valid build flavor please retry~n"),
+	    ask_about_build_flavor(BuildFlavors)
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc Given a list of strings ask the user one by one if each string
+%%      should remain in the final list. The prompt prefix is appended
+%%      to the begining of the prompt the users sees.
+%% @spec ask_about_string_in_list(List::list(), PromptPrefix::string()) -> NewList::list()
+%% @end
+%%--------------------------------------------------------------------
+ask_about_string_in_list(Paths, PromptPrefix) ->
+    ask_about_string_in_list(Paths, Paths, PromptPrefix, []).
+	    
+ask_about_string_in_list([], _Paths, _PromptPrefix, Acc) ->
+    Acc;
+ask_about_string_in_list([Path|T] = CurrentPaths, Paths, PromptPrefix, Acc) ->
+    Prompt = lists:flatten([PromptPrefix, Path, "~nEnter (y)es, (n)o, or yes to (a)ll? > "]),
+    case ewl_talk:ask(Prompt) of
+	"y" ->
+	    ask_about_string_in_list(T, Paths, PromptPrefix, [Path|Acc]);
+	"n" ->
+	    ask_about_string_in_list(T, Paths, PromptPrefix, Acc);
+	"a" ->
+	    Paths;
+	Error ->
+	    ?INFO_MSG("user entered \"~p\"~n", [Error]),
+	    io:format("Please enter 'y', 'n', or 'a'~n"),
+	    ask_about_string_in_list(CurrentPaths, Paths, PromptPrefix, Acc)
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc find the highest version in a list of version strings.
+%% @spec (Vsns::list()) -> Vsn::string()
+%% @end
+%%--------------------------------------------------------------------
+highest_vsn(Vsns) when length(Vsns) > 0 ->
+    hd(lists:sort(fun(A, B) -> ewr_util:is_version_greater(A, B) end, Vsns));
+highest_vsn([]) ->
+    [].
+
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Return the version of the current specified release.

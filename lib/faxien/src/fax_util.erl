@@ -26,7 +26,7 @@
 	 flatten_term/1,
 	 repo_list/1,
 	 add_pzs/1,
-	 ask_about_switching_target_ertsVsns/2,
+	 ask_about_switching_target_ertsVsns/4,
 	 get_erts_vsns_gte_than/2,
 	 get_erts_vsn/1
         ]).
@@ -315,46 +315,32 @@ fetch_vsn(AppDirPath, Module) ->
 
 %%--------------------------------------------------------------------
 %% @doc Prompt the user when he is switching erts vsns due to an install. 
-%% @spec ask_about_switching_target_ertsVsns(TargetErtsVsn, RemoteErtsVsn) -> bool()
+%% @spec ask_about_switching_target_ertsVsns(PackageName, PackageVsn, TargetErtsVsn, RemoteErtsVsn) -> bool()
 %% @end
 %%--------------------------------------------------------------------
-ask_about_switching_target_ertsVsns(TargetErtsVsn, RemoteErtsVsn) ->
+ask_about_switching_target_ertsVsns(PackageName, PackageVsn, TargetErtsVsn, RemoteErtsVsn) ->
     {ok, TargetErlangVsn} = faxien:translate_version(erts, erlang, TargetErtsVsn),
     {ok, RemoteErlangVsn} = faxien:translate_version(erts, erlang, RemoteErtsVsn),
-    Prompt = lists:flatten(["The package you are installing is for ", RemoteErlangVsn, " (erts: ", RemoteErtsVsn,
-			    ") which is different from your target version of ", TargetErlangVsn, " (erts: ", TargetErtsVsn,
-			    ") would you like to (p)roceed or (s)top and look for something matching your current vsn [p|s]"]),
+    Prompt = lists:flatten(["~nYou are attempting to install ", PackageName, "-", PackageVsn, " which is compiled for~n",
+			    RemoteErlangVsn, " (erts: ", RemoteErtsVsn, ").~n",
+			    "This version is different from your target version of ",TargetErlangVsn,
+			    " (erts: ",TargetErtsVsn,")~n",
+			    "*Note* This is generally not a concern unless you manage your versions~n",
+			    "closely for special reasons.~n"
+			    "Would you like to (p)roceed or (s)top and look for something matching~n",
+			    "your current vsn [p|s]"]),
 			    
     case ewl_talk:ask(Prompt) of
 	"p" ->
-	    ask_about_setting_target_erts_vsn(RemoteErtsVsn),
 	    true;
 	"s" ->
 	    false;
 	Error ->
 	    ?INFO_MSG("user entered \"~p\"~n", [Error]),
 	    io:format("Please enter \"p\" or \"s\"~n"),
-	    ask_about_switching_target_ertsVsns(TargetErtsVsn, RemoteErtsVsn) 
+	    ask_about_switching_target_ertsVsns(PackageName, PackageVsn, TargetErtsVsn, RemoteErtsVsn) 
     end.
 
-ask_about_setting_target_erts_vsn(RemoteErtsVsn) ->
-    {ok, RemoteErlangVsn} = faxien:translate_version(erts, erlang, RemoteErtsVsn),
-    Prompt = lists:flatten(["Would you like to set the target vsn to ",
-			    RemoteErlangVsn, " (erts: ", RemoteErtsVsn, ") [y|n]"]),
-
-    case ewl_talk:ask(Prompt) of
-	Yes when Yes == "y"; Yes == "yes" ->
-	    {ok, FaxienVsn} = faxien:version(),
-	    ConfigFilePath  = epkg_installed_paths:find_config_file_path(faxien, FaxienVsn),
-	    fax_manage:set_target_erts_vsn(RemoteErtsVsn, ConfigFilePath),
-	    true;
-	No when No == "n"; No == "no" ->
-	    false;
-	Error ->
-	    ?INFO_MSG("user entered \"~p\"~n", [Error]),
-	    io:format("Please enter \"y\" or \"n\"~n"),
-	    ask_about_setting_target_erts_vsn(RemoteErtsVsn) 
-    end.
 %%====================================================================
 %% Internal functions
 %%====================================================================
@@ -416,7 +402,8 @@ execute_on_latest_package_version(Repos, TargetErtsVsn, ErtsVsnThreshold, Packag
     case find_highest_vsn(Repos, get_erts_vsns_gte_than(TargetErtsVsn, ErtsVsnThreshold), PackageName, Side, VsnThreshold) of
 	{ok, {Repo, HighVsn, RemoteErtsVsn}} -> 
 	    ShortenedRepos = lists:delete(Repo, Repos),
-	    case catch execute_fun(Fun, [Repo|ShortenedRepos], HighVsn, TargetErtsVsn, RemoteErtsVsn, ErtsPrompt) of
+	    case catch execute_fun(Fun, [Repo|ShortenedRepos], PackageName, HighVsn,
+				   TargetErtsVsn, RemoteErtsVsn, ErtsPrompt) of
 		ok ->
 		    ok;
 		{ok, NewErtsVsn} -> 
@@ -432,12 +419,12 @@ execute_on_latest_package_version(Repos, TargetErtsVsn, ErtsVsnThreshold, Packag
 	    exit("Did not succeed in finding any version of the package")
     end.
 
-execute_fun(Fun, Repos, HighVsn, ErtsVsn, ErtsVsn, _ErtsPrompt) ->
+execute_fun(Fun, Repos, _PackageName, HighVsn, ErtsVsn, ErtsVsn, _ErtsPrompt) ->
     Fun(Repos, HighVsn, ErtsVsn);
-execute_fun(Fun, Repos, HighVsn, _TargetErtsVsn, RemoteErtsVsn, false) ->
+execute_fun(Fun, Repos, _PackageName, HighVsn, _TargetErtsVsn, RemoteErtsVsn, false) ->
     Fun(Repos, HighVsn, RemoteErtsVsn);
-execute_fun(Fun, Repos, HighVsn, TargetErtsVsn, RemoteErtsVsn, true) ->
-    case ask_about_switching_target_ertsVsns(TargetErtsVsn, RemoteErtsVsn) of
+execute_fun(Fun, Repos, PackageName, HighVsn, TargetErtsVsn, RemoteErtsVsn, true) ->
+    case ask_about_switching_target_ertsVsns(PackageName, HighVsn, TargetErtsVsn, RemoteErtsVsn) of
 	true  -> Fun(Repos, HighVsn, RemoteErtsVsn);
 	false -> {ok, TargetErtsVsn}
     end.
