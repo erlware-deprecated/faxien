@@ -12,6 +12,7 @@
 %% API
 %%--------------------------------------------------------------------
 -export([
+	 highest_vsn/1,
 	 get_current_release_version/1,
 	 is_string/1,
 	 overwrite_yes_no/4,
@@ -44,6 +45,17 @@
 %%====================================================================
 %% API
 %%====================================================================
+
+%%--------------------------------------------------------------------
+%% @doc find the highest version in a list of version strings.
+%% @spec (Vsns::list()) -> Vsn::string()
+%% @end
+%%--------------------------------------------------------------------
+highest_vsn(Vsns) when length(Vsns) > 0 ->
+    hd(lists:sort(fun(A, B) -> ewr_util:is_version_greater(A, B) end, Vsns));
+highest_vsn([]) ->
+    [].
+
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Return the version of the current specified release.

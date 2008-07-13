@@ -45,24 +45,13 @@
 %%  Timeout = integer()
 %% @end
 %%--------------------------------------------------------------------
-publish_sinan(_Repos, _CWD, _Timeout) ->
-    {ok, not_yet_implemented}.
-    %ProjectRoot = ewl_sinan_paths:find_project_root(CWD),
-    %Apps        = filename:wildcard(filename:join(ProjectRoot, "_build/development/apps/*")),
-    %sort_and_publish_apps(Apps),
-%
-%sort_and_publish_apps(Apps) ->
-    %AppAndVsns = lists:map(fun(App) -> {ok, {Name, Vsn}} = package_dir_to_name_and_vsn(App), {Name, Vsn} end, Apps),
-    %lists:sort(fun({A, V}, {A2, V2}) -> 
-		       %
-    %
-%collect_vsns(AppAndVsns) ->
-    %collect_vsns(AppAndVsns, []).
-%
-%collect_vsns([{App, Vsn}|T], [{App, Vsns}|Acc]) ->
-    %collect_vsns(T, [{
-
-
+publish_sinan(Repos, CWD, Timeout) ->
+    ProjectRootDir = ewl_sinan_paths:find_project_root(CWD),
+    BuildFlavor    = get_build_flavor(ProjectRootDir),
+    ?INFO_MSG("Publishing contents within the ~s build flavor~n", [BuildFlavor]),
+    publish_apps_from_sinan(Repos, ProjectRootDir, BuildFlavor, Timeout),
+    publish_dist_tarball_from_sinan(Repos, ProjectRootDir, BuildFlavor, Timeout).
+    
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Publish a release or appliation to a repository. The PackageDirPath must be formatted in the following 
@@ -74,17 +63,18 @@ publish_sinan(_Repos, _CWD, _Timeout) ->
 %%  publish(["http://www.erlware.org/stable"], "/home/jdoe/my_proj/lib/my_app", 40000).
 %% </pre>
 %%
-%% @spec publish(Repos, PackageDirPath, Timeout::timeout()) -> ok | {error, Reason}
+%% @spec publish(Repos, PackageDirPaths, Timeout::timeout()) -> ok | {error, Reason}
 %% where
 %%     IsGuarded = bool() 
 %%     Repos = [repo()] 
 %%     ErtsVsn = string()
-%%     PackageDirPath = string() 
+%%     PackageDirPaths = [PackageDirPath] | PackageDirPath 
+%%      PackageDirPath = string()
 %% @end
 %%--------------------------------------------------------------------
 publish([], _RawPackageDirPath, _Timeout) -> 
     {error, no_publish_repos};
-publish(Repos, RawPackageDirPath, Timeout) -> 
+publish(Repos, [H|_] = RawPackageDirPath, Timeout) when is_integer(H) -> 
     PackageDirPath = epkg_util:unpack_to_tmp_if_archive(RawPackageDirPath),
     case epkg_validation:validate_type(PackageDirPath) of
 	{ok, Type} ->
@@ -92,7 +82,13 @@ publish(Repos, RawPackageDirPath, Timeout) ->
 	    publish(Type, Repos, PackageDirPath, Timeout);
 	{error, Reason} ->
 	    {error, Reason}
-    end.
+    end;
+publish(Repos, RawPackageDirPaths, Timeout) -> 
+    lists:foreach(fun(PackagePath) ->
+			  io:format("Publishing ~p package~n", [PackagePath]), 
+			  publish(Repos, PackagePath, Timeout)
+		  end, RawPackageDirPaths).
+			  
 
 %%--------------------------------------------------------------------
 %% @doc publish a local application to a repository. 
@@ -260,4 +256,125 @@ ignore_files_in_release(RelDirPath, FilesToBeIgnored) ->
 	    TmpRelDirPath;
 	false ->
 	    RelDirPath
+    end.
+    
+
+%%--------------------------------------------------------------------
+%% @doc Select one build flavor among potentially many
+%% @private
+%% @end
+%%--------------------------------------------------------------------
+get_build_flavor(ProjectRoot) ->
+    case ewl_sinan_paths:get_build_flavors(ProjectRoot) of
+	[BuildFlavor] ->
+	    BuildFlavor;
+	[] ->
+	    throw(project_not_built);
+	BuildFlavors ->
+	    ask_about_build_flavor(BuildFlavors)
+    end.
+
+ask_about_build_flavor(BuildFlavors) ->
+    FlavorsString = string:join(BuildFlavors, ", "),
+    Prompt = lists:flatten(["The following build flavors have been found ", FlavorsString, 
+			    " please type the name of the one you would like to publish from >"]),
+    Flavor = ewl_talk:ask(Prompt),
+    case lists:member(Flavor, BuildFlavors) of
+	true ->
+	    Flavor;
+	false ->
+	    ?INFO_MSG("user entered \"~p\"~n", [Flavor]),
+	    io:format("That is not a valid build flavor please retry~n"),
+	    ask_about_build_flavor(BuildFlavors)
+    end.
+
+ask_about_publishing(Paths, PromptPrefix) ->
+    try ask_about_publishing(Paths, Paths, PromptPrefix, [])
+    catch _C:E -> E
+    end.
+	    
+ask_about_publishing([], _Paths, _PromptPrefix, Acc) ->
+    Acc;
+ask_about_publishing([Path|T] = CurrentPaths, Paths, PromptPrefix, Acc) ->
+    Prompt = lists:flatten([PromptPrefix, Path, "~nEnter (y)es, (n)o, or yes to (a)ll? > "]),
+    case ewl_talk:ask(Prompt) of
+	"y" ->
+	    ask_about_publishing(T, Paths, PromptPrefix, [Path|Acc]);
+	"n" ->
+	    ask_about_publishing(T, Paths, PromptPrefix, Acc);
+	"a" ->
+	    Paths;
+	Error ->
+	    ?INFO_MSG("user entered \"~p\"~n", [Error]),
+	    io:format("Please enter 'y', 'n', or 'a'~n"),
+	    ask_about_publishing(CurrentPaths, Paths, PromptPrefix, Acc)
+    end.
+    
+    
+%%--------------------------------------------------------------------
+%% @doc given a list of versioned apps return a list of each app
+%%      with its highest found version.
+%% <pre>
+%% Example [{"faxien", "2.2"}, {"sinan", "5.6"}] = collect_name_and_high_vsn_pairs(["faxien-1.4", "faxien-2.2", "sinan-5.6"]).
+%% </pre>
+%% @private
+%% @end
+%%--------------------------------------------------------------------
+collect_name_and_high_vsn_pairs(Packages) ->
+    PackageAndVsns = lists:foldl(fun(Package, Acc) ->
+					 try
+					     {ok, {Name, Vsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(Package),
+					     [{Name, Vsn}|Acc]
+					 catch
+					     _C:E ->
+						 ?ERROR_MSG("Skipping ~p because ~p~n", [Package, E]),
+						 Acc
+					 end
+			       end, [], Packages),
+    lists:map(fun({Package, Vsns}) -> {Package, epkg_util:highest_vsn(Vsns)} end, collect_vsns(PackageAndVsns)).
+    
+collect_vsns(PackageAndVsns) ->
+    Sorted = lists:sort(fun({Name, _}, {Name2, _}) -> Name < Name2 end, PackageAndVsns),
+    collect_vsns(Sorted, []).
+
+collect_vsns([{Package, Vsn}|T], [{Package, Vsns}|Acc]) ->
+    collect_vsns(T, [{Package, [Vsn|Vsns]}|Acc]);
+collect_vsns([{Package, Vsn}|T], Acc) ->
+    collect_vsns(T, [{Package, [Vsn]}|Acc]);
+collect_vsns([], Acc) ->
+    Acc.
+
+publish_apps_from_sinan(Repos, ProjectRootDir, BuildFlavor, Timeout) ->
+    %% Publish the apps
+    Apps = filelib:wildcard(filename:join([ProjectRootDir, "_build", BuildFlavor, "apps/*"])),
+    ?INFO_MSG("Found the following apps ~p~n", [Apps]),
+    AppPaths = 
+	lists:map(fun({AppName, AppVsn}) ->
+			  ewl_sinan_paths:built_app_path(ProjectRootDir, BuildFlavor, AppName, AppVsn)
+		      end,
+		      collect_name_and_high_vsn_pairs(Apps)),
+
+    case ask_about_publishing(AppPaths, "Do you want to publish the app: ") of
+	[] ->
+	    io:format("~nNO apps will be published. To generate app packages run 'sinan'~nin your project dir~n~n");
+	AppPaths ->
+	    publish(Repos, AppPaths, Timeout)
+    end.
+
+publish_dist_tarball_from_sinan(Repos, ProjectRootDir, BuildFlavor, Timeout) ->
+    %% Publish the release
+    Tars = filelib:wildcard(filename:join([ProjectRootDir, "_build", BuildFlavor, "tar/*"])),
+    ?INFO_MSG("Found the following dist tarballs ~p~n", [Tars]),
+    RelPaths = 
+	lists:map(fun({RelName, RelVsn}) ->
+			  ewl_sinan_paths:dist_tarball_path(ProjectRootDir, BuildFlavor, RelName, RelVsn)
+		  end,
+		  collect_name_and_high_vsn_pairs(Tars)),
+    
+    case ask_about_publishing(RelPaths, "Do you want to publish the release: ") of
+	[] ->
+	    io:format("~nNO release tarball will be published. To generate a dist tarball run~n" ++
+		      "'sinan dist' in your project dir~n~n");
+	RelPaths -> 
+	    publish(Repos, RelPaths, Timeout)
     end.
