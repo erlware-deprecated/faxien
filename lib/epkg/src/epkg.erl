@@ -13,6 +13,7 @@
 %%--------------------------------------------------------------------
 -export([
 	 cmdln_apply/1,
+	 install_release/0,
 	 install_release/1,
 	 install_release/2,
 	 install_erts/1,
@@ -122,10 +123,24 @@ install_release(RelPackagePath) ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
     install_release(RelPackagePath, InstallationPath).
 
+%%--------------------------------------------------------------------
+%% @doc Install release with no arguments from within a Sinan project
+%%      will publish the latest dist tarball it finds within the Sinan project.
+%%
+%% @spec install_release() -> ok | {error, Reason}
+%% @end
+%%--------------------------------------------------------------------
+install_release() ->
+    {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
+    {ok, CWD} = file:get_cwd(),
+    epkg_install:install_sinan_release(CWD, InstallationPath, false).
+
 %% @private
 install_release_help() ->
     ["\nHelp for install-release\n",
-     "Usage: install-release <package_path> [installation-path]: Install an release from a local package\n"]. 
+     "Usage: install-release [package_path] [installation-path]: Install an release from a local package",
+    "If no arguments are supplied and this is run from within a sinan project this will publish the",
+    "latest release tarball found within the project~n"]. 
 
 %%--------------------------------------------------------------------
 %% @doc 

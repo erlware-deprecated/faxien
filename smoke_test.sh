@@ -49,3 +49,4 @@ faxien show_request_timeout
 
 echo "show faxien and epkg versions"
 faxien version
+epkg version

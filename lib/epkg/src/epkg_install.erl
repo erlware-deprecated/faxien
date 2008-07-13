@@ -20,6 +20,7 @@
 	 install_erts/2,
 	 install_application/3,
 	 install_release/3,
+	 install_sinan_release/3,
 	 create_script_and_boot/4
 	]).
 
@@ -27,6 +28,33 @@
 %% External functions
 %%====================================================================
 
+
+%%--------------------------------------------------------------------
+%% @doc If run from within a sinan project this will publish the
+%%      latest dist tarball it finds within the Sinan project.
+%%
+%% @spec install_sinan_release(CWD, InstallationPath, IsLocalBoot) -> ok | {error, Reason}
+%% @end
+%%--------------------------------------------------------------------
+install_sinan_release(CWD, InstallationPath, IsLocalBoot) ->
+    ProjectRootDir = ewl_sinan_paths:find_project_root(CWD),
+    BuildFlavor    = epkg_util:get_sinan_build_flavor(ProjectRootDir),
+    ?INFO_MSG("Installing release within the ~s build flavor~n", [BuildFlavor]),
+    Tars = filelib:wildcard(filename:join([ProjectRootDir, "_build", BuildFlavor, "tar/*"])),
+    RelPaths = 
+	lists:map(fun({RelName, RelVsn}) ->
+			  ewl_sinan_paths:dist_tarball_path(ProjectRootDir, BuildFlavor, RelName, RelVsn)
+		  end,
+		  epkg_util:collect_name_and_high_vsn_pairs(Tars)),
+    
+    case epkg_util:ask_about_string_in_list(RelPaths, "Do you want to install the release: ") of
+	[] ->
+	    io:format("~nNO release tarball will be installed. To generate a release~n" ++
+		      "tarball run 'sinan dist' in your project dir~n~n");
+	RelPaths -> 
+	   lists:foreach(fun(RelPath) -> install_release(RelPath, InstallationPath, IsLocalBoot) end, RelPaths)
+    end.
+    
 %%--------------------------------------------------------------------
 %% @doc Install an application from a complte local application package. 
 %% @spec install_application(AppPackageDirOrArchive, InstallationPath, ErtsVsn) -> ok | {error, Reason}
@@ -97,7 +125,8 @@ install_release(ReleasePackageArchiveOrDirPath, InstallationPath, IsLocalBoot) -
 	    ewl_file:delete_dir(InstalledRelPath),
 	    execute_release_installation_steps(ReleasePackageDirPath, InstallationPath, IsLocalBoot);
 	{true, true}  -> 
-	    {error, release_already_instaled}
+	    ?INFO_MSG("The release is already installed at ~p~n", [InstalledRelPath]),
+	    execute_release_installation_steps(ReleasePackageDirPath, InstallationPath, IsLocalBoot)
     end.
 
 %%--------------------------------------------------------------------
@@ -201,18 +230,20 @@ install_release_package(PackagePath, InstallationPath) ->
     ok = ewl_file:mkdir_p(ewl_installed_paths:executable_container_path(InstallationPath)),
     ok = ewl_file:mkdir_p(ewl_installed_paths:release_container_path(InstallationPath)),
 
+    ewl_file:delete_dir(InstalledRelPath),
     ok = ewl_file:copy_dir(PackagePath, InstalledRelPath),
     ok = ewl_file:copy_dir(InstalledRelPath ++ "/releases/" ++ RelVsn, InstalledRelPath ++ "/release"),
     build_if_build_file(InstalledRelPath),
+    ok = ewl_file:delete_dir(InstalledRelPath ++ "/lib"),
     ok = ewl_file:delete_dir(InstalledRelPath ++ "/releases").
     
 
 %%--------------------------------------------------------------------
-%% @private
 %% @doc Ensure that all apps specified by the release file are installed
 %% @spec install_apps_for_release(ReleasePackagePath, InstallationPath) -> ok | {error, Reason}
 %% where 
 %%  Reason = term() | {failed_to_install, [{AppName, AppVsn}]}
+%% @private
 %% @end
 %%--------------------------------------------------------------------
 install_apps_for_release(ReleasePackagePath, InstallationPath) ->
@@ -221,38 +252,15 @@ install_apps_for_release(ReleasePackagePath, InstallationPath) ->
     ErtsVsn                 = epkg_util:consult_rel_file(erts_vsn, PackageRelFilePath),
 
     ok = ewl_file:mkdir_p(ewl_installed_paths:application_container_path(InstallationPath, ErtsVsn)),
-    MissingAppSpecs = missing_apps_for_release(InstallationPath, PackageRelFilePath),
-    case install_each_app_from_appspecs(MissingAppSpecs, ReleasePackagePath, InstallationPath, ErtsVsn) of
+    [ErtsVsn, RawAppSpecs] = epkg_util:consult_rel_file([erts_vsn, app_specs], PackageRelFilePath),
+    AppSpecs = [{element(1, AppSpec), element(2, AppSpec)} || AppSpec <- RawAppSpecs],
+    case install_each_app_from_appspecs(AppSpecs, ReleasePackagePath, InstallationPath, ErtsVsn) of
 	[] ->
 	    ok;
         FailedApps ->
 	    {error, {failed_to_install, FailedApps}}
     end.
-		   
-	    
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Given the installation path and a release file this function determines which apps perscribed by the release file
-%%      are not yet installed.
-%% @spec missing_apps_for_release(InstallationPath, PackageRelFilePath) -> [AppSpecs]
-%% @end
-%%--------------------------------------------------------------------
-missing_apps_for_release(InstallationPath, PackageRelFilePath) ->
-    [ErtsVsn, AppSpecs] = epkg_util:consult_rel_file([erts_vsn, app_specs], PackageRelFilePath),
-    lists:foldl(fun(AppSpec, Acc) ->
-			AppName = atom_to_list(element(1, AppSpec)),
-			AppVsn  = element(2, AppSpec),
-			InstalledAppPath = ewl_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn),
-			case epkg_validation:is_package_an_app(InstalledAppPath) of
-			    false -> 
-				[AppSpec|Acc];
-			    true  -> 
-				Acc
-			end
-		end, [], AppSpecs).
-			
-    
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Given a list of OTP release app specs try to install each from the lib of a release pacakge.
@@ -265,10 +273,22 @@ install_each_app_from_appspecs(AppSpecs, ReleasePackagePath, InstallationPath, E
     lists:foldl(fun(AppSpec, Acc) ->
 			AppName = atom_to_list(element(1, AppSpec)),
 			AppVsn  = element(2, AppSpec),
-			AppPackagePath = ewl_package_paths:release_package_app_package_path(ReleasePackagePath, AppName, AppVsn),
-			case install_application(AppPackagePath, InstallationPath, ErtsVsn) of
-			    ok     -> Acc;
-			    _Error -> [{AppName, AppVsn}|Acc]
+			AppPackagePath =
+			    ewl_package_paths:release_package_app_package_path(ReleasePackagePath, AppName, AppVsn),
+			InstalledAppPath =
+			    ewl_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn),
+			Validations = {epkg_validation:is_package_an_app(InstalledAppPath),
+				       epkg_validation:is_package_an_app(AppPackagePath)},
+			case Validations of
+			    {_, true} ->
+				case install_application(AppPackagePath, InstallationPath, ErtsVsn) of
+				    ok     -> Acc;
+				    _Error -> [{AppName, AppVsn}|Acc]
+				end;
+			    {true, false} ->
+				Acc;
+			    {false, false} ->
+				[{AppName, AppVsn}|Acc]
 			end
 		end, [], AppSpecs).
     
@@ -300,7 +320,8 @@ remove_redundant_paths([], _, _) ->
 %%--------------------------------------------------------------------
 install_non_release_package(PackagePath, InstalledPackageDir, PackageInstallationPath) ->
     ewl_file:mkdir_p(PackageInstallationPath),
-    ?INFO_MSG("copying ~s to ~s~n", [PackagePath, InstalledPackageDir]),
+    ?INFO_MSG("copying ~s over to ~s~n", [PackagePath, InstalledPackageDir]),
+    ewl_file:delete_dir(InstalledPackageDir),
     ewl_file:copy_dir(PackagePath, InstalledPackageDir),
     build_if_build_file(InstalledPackageDir).
 
