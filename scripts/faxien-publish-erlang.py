@@ -454,15 +454,25 @@ def get_published_apps():
     return apps
 
 
-def is_generic_lib(app_dir):
-    """Is the application generic? (i.e., no hardware specific code)."""
-    if os.path.isdir(os.path.join(app_dir, 'lib')):
-        return False
+BINARY_FILE_EXTENSIONS = ["cmx", "py", "c", "bat", "exe", "so"]
 
-    if os.path.isdir(os.path.join(app_dir, 'priv', 'lib')):
-        return False
+def is_binary_lib(app_dir):
+    """Is the application binary? (i.e., has hardware specific code).
 
-    return True
+    This function should be kept in sync with is_package_a_binary_app/1
+    in the epkg_validation module.
+    """
+
+    for name in os.listdir(app_dir):
+        if name.endswith('_src'):
+            return True
+
+    for _, _, files in os.walk(app_dir):
+        for name in files:
+            if os.path.splitext(name)[1][1:] in BINARY_FILE_EXTENSIONS:
+                return True
+
+    return False
 
 
 def main():
@@ -586,7 +596,7 @@ def main():
             print 'Skipping', appname, '(already published)'
             continue
 
-        if is_generic_lib(pub_dir) and IS_64_BIT:
+        if not is_binary_lib(pub_dir) and IS_64_BIT:
             print 'Skipping', appname, '(generic and we are on 64-bit platform)'
             continue
 
