@@ -295,7 +295,7 @@ upgrade_release(Repos, TargetErtsVsn, ReleaseName, IsLocalBoot, Options, Timeout
 	    handle_upgrade_release(Repos, TargetErtsVsn, ReleaseName, HighestLocalVsn,
 				   HighestRemoteVsn, IsLocalBoot, Force,Timeout);
 	{ok, {lower, HighestLocalVsn, HighestRemoteVsn, RemoteErtsVsn}} when ErtsPrompt == true ->
-	    case fax_util:ask_about_switching_target_ertsVsns(TargetErtsVsn, RemoteErtsVsn) of
+	    case fax_util:ask_about_switching_target_ertsVsns(ReleaseName, HighestRemoteVsn, TargetErtsVsn, RemoteErtsVsn) of
 		true  ->
 		    handle_upgrade_release(Repos, RemoteErtsVsn, ReleaseName, HighestLocalVsn,
 					   HighestRemoteVsn, IsLocalBoot, Force, Timeout);
