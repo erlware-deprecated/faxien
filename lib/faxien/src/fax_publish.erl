@@ -271,8 +271,8 @@ publish_apps_from_sinan(Repos, ProjectRootDir, BuildFlavor, Timeout) ->
     case epkg_util:ask_about_string_in_list(AppPaths, "Do you want to publish the app: ") of
 	[] ->
 	    io:format("~nNO apps will be published. To generate app packages run 'sinan'~nin your project dir~n~n");
-	AppPaths ->
-	    publish(Repos, AppPaths, Timeout)
+	AlteredAppPaths ->
+	    publish(Repos, AlteredAppPaths, Timeout)
     end.
 
 publish_dist_tarball_from_sinan(Repos, ProjectRootDir, BuildFlavor, Timeout) ->
@@ -289,6 +289,6 @@ publish_dist_tarball_from_sinan(Repos, ProjectRootDir, BuildFlavor, Timeout) ->
 	[] ->
 	    io:format("~nNO release tarball will be published. To generate a release~n" ++
 		      "tarball run 'sinan dist' in your project dir~n~n");
-	RelPaths -> 
-	    publish(Repos, RelPaths, Timeout)
+	AlteredRelPaths -> 
+	    publish(Repos, AlteredRelPaths, Timeout)
     end.

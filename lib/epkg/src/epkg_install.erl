@@ -51,8 +51,8 @@ install_sinan_release(CWD, InstallationPath, IsLocalBoot) ->
 	[] ->
 	    io:format("~nNO release tarball will be installed. To generate a release~n" ++
 		      "tarball run 'sinan dist' in your project dir~n~n");
-	RelPaths -> 
-	   lists:foreach(fun(RelPath) -> install_release(RelPath, InstallationPath, IsLocalBoot) end, RelPaths)
+	AlteredRelPaths -> 
+	   lists:foreach(fun(RelPath) -> install_release(RelPath, InstallationPath, IsLocalBoot) end, AlteredRelPaths)
     end.
     
 %%--------------------------------------------------------------------
