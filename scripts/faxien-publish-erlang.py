@@ -475,6 +475,44 @@ def is_binary_lib(app_dir):
     return False
 
 
+def clone_bootstrap(working_dir, log_dir):
+    """Clone the bootstrap repo into the working directory."""
+
+    run_command(['git', 'clone', 'http://git.erlware.org/bootstrap.git'],
+                working_dir, log_dir, 'clone-bootstrap')
+
+    bootstrap_dir = os.path.join(working_dir, 'bootstrap')
+
+    if not os.path.exists(bootstrap_dir):
+        print 'Missing bootstrap directory:', bootstrap_dir
+        sys.exit(1)
+
+    return bootstrap_dir
+
+
+def create_bootstrap(bootstrap_dir, erts_dir, log_dir):
+    """Create the bootstrapper using the create_bootstrap.sh script."""
+
+    run_command(['./create_bootstrap.sh', erts_dir], bootstrap_dir,
+                log_dir, 'create-bootstrap')
+
+    files = os.listdir(bootstrap_dir)
+    for name in files:
+        if name.startswith('faxien-launcher-') and name.endswith('.sh'):
+            return os.path.join(bootstrap_dir, name)
+
+    print 'No boostrap file in:', bootstrap_dir
+
+
+def make_bootstrapper(working_dir, erts_dir, log_dir):
+    """Make a bootstrapper from the erts directory."""
+
+    bootstrap_dir = clone_bootstrap(working_dir, log_dir)
+    bootstrap_file = create_bootstrap(bootstrap_dir, erts_dir, log_dir)
+
+    print 'The bootstrap file was created here:', bootstrap_file
+
+
 def main():
     usage = """%prog [options]
 
@@ -491,6 +529,9 @@ def main():
     """
 
     parser = optparse.OptionParser(usage=usage)
+
+    help = 'instead of publishing, create a bootstrapper'
+    parser.add_option("-b", "--bootstrapper", action='store_true', help=help)
 
     help = 'let me choose the version to use from the current available'
     parser.add_option("-c", "--choose", action='store_true', help=help)
@@ -568,6 +609,10 @@ def main():
         sys.exit(1)
 
     erts_dir = get_erts_dir(erlang_dir)
+
+    if options.bootstrapper:
+        make_bootstrapper(working_dir, erts_dir, log_dir)
+        sys.exit(0)
 
     # the version of erts we are publishing
     erts_version = os.path.basename(erts_dir).split('-')[1]
