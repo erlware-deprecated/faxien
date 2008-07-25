@@ -210,7 +210,6 @@ list_lib() ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
     {ok, TargetErtsVsn}    = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     Series                 = epkg_util:all_erts_vsns(TargetErtsVsn),
-    io:format("series is ~p~n", [Series]),
     NameVsnsPairs          = collect_dups(epkg_manage:list_lib(InstallationPath, Series)),
     io:format("~nInstalled Applications for ERTS versions between ~s and ~s:~n", [hd(Series), hd(lists:reverse(Series))]),
     print_installed(NameVsnsPairs).

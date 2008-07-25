@@ -1,4 +1,4 @@
-@title Welcome to the Faxien application
+@title Welcome to the Faxien Release
 @doc 
 
 <p>
@@ -9,6 +9,24 @@ provides elegant Erlang/OTP package management which at its heart comes down to 
 <p>
 Faxien deals with two distinct types of packages. The first is the OTP application which consists of src, ebin, etc... The second is an OTP release which is essentially a standalone erlang service comprised of a number of applications combined with configuration, .script and .boot files, and executable scripts. 
 </p>
+
+<h2>Example development Cycle using Faxien and Sinan</h2>
+
+From within a Sinan project here is an example dev cycle from coding through to publishing.
+
+1. code code code
+
+2. sinan
+
+3. sinan doc # want to make sure my docs work of course
+
+4. sinan dist # build a distribution tarball - a full release essentially
+
+5. faxien install-release # running this with no args from within a sinan project automatically installs from any dist tarball you have built.(overwrites any previously installed code of the same version.)
+
+6. run my release and test it if there are problems go back to step 1
+
+7. faxien publish # called with no argsfrom within a sinan project this will prompt the user to publish the appropriate artifacts to repos
 
 @author Martin Logan
 @copyright 2007, 2008 Erlware
