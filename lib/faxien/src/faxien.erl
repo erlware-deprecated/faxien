@@ -113,6 +113,7 @@
 -export([
 	 outdated_release_help/0,
 	 outdated_apps_help/0,
+	 alias_help/0,
 	 examples_help/0,
 	 commands_help/0,
 	 translate_version_help/0,
@@ -697,11 +698,16 @@ help() ->
        "faxien help commands: Lists all faxien commands",
        "faxien help <command>: Gives help on an individual command",
        "faxien help examples: Lists example usages of faxien",
+       "faxien alias: lists faxien command aliases",
        "\nShort Examples:",
        "faxien install-release sinan",
        "faxien search yaws",
        "faxien help search"
       ]).  
+
+%% @private
+alias_help() ->
+    [lists:flatten([Alias, "   ->   ", Command]) || {Alias, Command} <- ?ALIAS_LIST].
 
 %% @private
 examples_help() ->
