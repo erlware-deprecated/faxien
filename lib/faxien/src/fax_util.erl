@@ -111,7 +111,7 @@ find_highest_vsn(Repos, TargetErtsVsns, PackageName, Side) ->
 				 
 find_highest_vsn2(Repos, TargetErtsVsns, PackageName, Side, VsnThreshold) ->
     ?INFO_MSG("Target erts versions to search are ~p~n", [TargetErtsVsns]),
-    VsnLists =
+    VsnList =
 	lists:flatten(
 	  lists:foldl(fun(Repo, Acc) -> 
 			      SysInfo  = ewr_util:system_info(),
@@ -131,23 +131,23 @@ find_highest_vsn2(Repos, TargetErtsVsns, PackageName, Side, VsnThreshold) ->
 						  end
 					  end, Acc, Suffixes)
 		      end, [], Repos)),
-    find_highest_remote_vsn_under_threshold(VsnThreshold, VsnLists).
+    find_highest_remote_vsn_under_threshold(VsnThreshold, VsnList).
 
 suffixes(ErtsVsns, PackageName, Areas, Side) ->
     lists:foldr(fun(ErtsVsn, Acc) ->
 			Acc ++ ewr_util:gen_repo_stub_suffix(ErtsVsn, PackageName, Areas, Side)
 		end, [], ErtsVsns).
 
-find_highest_remote_vsn_under_threshold(VsnThreshold, VsnLists) ->
-    ?INFO_MSG("find_highest_vsn list of remote versions ~p with threshold of ~p~n", [VsnLists, VsnThreshold]),
+find_highest_remote_vsn_under_threshold(VsnThreshold, VsnList) ->
+    ?INFO_MSG("find_highest_vsn list of remote versions ~p with threshold of ~p~n", [VsnList, VsnThreshold]),
     case VsnThreshold of
 	infinity ->
-	    {ok, hd(lists:sort(fun({_, V1, _}, {_, V2, _}) -> ewr_util:is_version_greater(V1, V2) end, VsnLists))};
+	    {ok, hd(sort_vsn_list(VsnList))};
 	VsnThreshold ->
-	    case lop_off_top(VsnLists, VsnThreshold) of
+	    case lop_off_top(VsnList, VsnThreshold) of
 		{ok, {Repo, HighVsn, _HighErtsVsn}} = Res ->
 		    ?INFO_MSG("find_highest_vsn list of remote versions ~p with threshold of ~p found highest ~p at vsn ~s~n", 
-			      [VsnLists, VsnThreshold, Repo, HighVsn]),
+			      [VsnList, VsnThreshold, Repo, HighVsn]),
 		    Res;
 		{error, _Reason} = Error ->
 		    ?INFO_MSG("Failed to find a version lower than ~p~n", [VsnThreshold]),
@@ -155,8 +155,8 @@ find_highest_remote_vsn_under_threshold(VsnThreshold, VsnLists) ->
 	    end
     end.
 
-lop_off_top(VsnLists, VsnThreshold) ->
-    SortedVsnLists = lists:sort(fun({_, V1, _}, {_, V2, _}) -> ewr_util:is_version_greater(V1, V2) end, VsnLists),
+lop_off_top(VsnList, VsnThreshold) ->
+    SortedVsnLists = sort_vsn_list(VsnList),
     lop_off_top2(SortedVsnLists, VsnThreshold).
 
 lop_off_top2([{Repo, Vsn, ErtsVsn}|T], VsnThreshold) ->
@@ -167,6 +167,13 @@ lop_off_top2([{Repo, Vsn, ErtsVsn}|T], VsnThreshold) ->
 lop_off_top2([], VsnThreshold) ->
     {error, {"no packages with version less than ", VsnThreshold}}.
 	    
+sort_vsn_list(VsnList) ->
+    lists:sort(fun({_,_V, EV1}, {_, _V, EV2}) ->
+		       ewr_util:is_version_greater(EV1, EV2);
+		  ({_, V1, _}, {_, V2, _}) ->
+		       ewr_util:is_version_greater(V1, V2)
+	       end, VsnList).
+    
 
 %%--------------------------------------------------------------------
 %% @doc take a directory and copy it into a temporary directory.

@@ -63,6 +63,9 @@ list_lib_for_erts_vsn(InstallationPath, ErtsVsn) ->
 %% @doc 
 %%  Returns a list of all releases currently installed.
 %% @spec list_all_releases(InstallationPath) -> [{Name, Vsn}]
+%% where
+%%  TargetErtsVsns = [TargetErtsVsn] | TargetErtsVsns
+%%  TargetErtsVsn = string()
 %% @end
 %%--------------------------------------------------------------------
 list_all_releases(InstallationPath) ->
@@ -74,14 +77,20 @@ list_all_releases(InstallationPath) ->
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Returns a list of all releases currently installed.
-%% @spec list_releases(InstallationPath, TargetErtsVsn) -> [{Name, Vsn}]
+%% @spec list_releases(InstallationPath, TargetErtsVsns) -> [{Name, Vsn}]
+%% where
+%%  TargetErtsVsns = [TargetErtsVsn] | TargetErtsVsns
+%%  TargetErtsVsn = string()
 %% @end
 %%--------------------------------------------------------------------
-list_releases(InstallationPath, TargetErtsVsn) ->
-    Series = epkg_util:erts_series(TargetErtsVsn), 
-    ?INFO_MSG("listing lib dirs for erts vsns ~p~n", [Series]),
+list_releases(InstallationPath, [A|_] = TargetErtsVsn) when is_integer(A) ->
+    list_releases(InstallationPath, [TargetErtsVsn]);
+list_releases(InstallationPath, TargetErtsVsns) ->
+    ?INFO_MSG("listing lib dirs for erts vsns ~p~n", [TargetErtsVsns]),
     lists:sort(fun({N, _}, {N1, _}) -> N > N1 end,
-	       lists:flatten([lists:map(fun(ErtsVsn) -> list_releases_for_erts_vsn(InstallationPath, ErtsVsn) end, Series)])).
+	       lists:flatten([
+			      lists:map(fun(ErtsVsn) -> list_releases_for_erts_vsn(InstallationPath, ErtsVsn) end, TargetErtsVsns)
+			     ])).
 
 list_releases_for_erts_vsn(InstallationPath, ErtsVsn) ->
     RelDir = ewl_installed_paths:release_container_path(InstallationPath),

@@ -113,6 +113,7 @@
 -export([
 	 outdated_release_help/0,
 	 outdated_apps_help/0,
+	 alias_help/0,
 	 examples_help/0,
 	 commands_help/0,
 	 translate_version_help/0,
@@ -697,11 +698,16 @@ help() ->
        "faxien help commands: Lists all faxien commands",
        "faxien help <command>: Gives help on an individual command",
        "faxien help examples: Lists example usages of faxien",
+       "faxien alias: lists faxien command aliases",
        "\nShort Examples:",
        "faxien install-release sinan",
        "faxien search yaws",
        "faxien help search"
       ]).  
+
+%% @private
+alias_help() ->
+    [lists:flatten([Alias, "   ->   ", Command]) || {Alias, Command} <- ?ALIAS_LIST].
 
 %% @private
 examples_help() ->
@@ -806,7 +812,8 @@ search(Repos, Side, SearchType, SearchString) when is_atom(SearchString) ->
     search(Repos, Side, SearchType, atom_to_list(SearchString));
 search(Repos, Side, SearchType, SearchString) -> 
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
-    fax_manage:search(Repos, Side, SearchType, SearchString, TargetErtsVsn).
+    Series              = epkg_util:all_erts_vsns(TargetErtsVsn),
+    fax_manage:search(Repos, Side, SearchType, SearchString, Series).
 
 %% @spec search(SearchType, SearchString) -> string()
 %% @equiv search(Repos, both, SearchType, SearchString) 

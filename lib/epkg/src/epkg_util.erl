@@ -25,6 +25,8 @@
 	 unpack_to_tmp_if_archive/1,
 	 foreach_erts_vsn/3,
 	 foreach_erts_vsn/2,
+	 all_erts_vsns/0,
+	 all_erts_vsns/1,
 	 erts_series/2,
 	 erts_series/1,
 	 erts_lower_bound_from_target/1,
@@ -220,6 +222,23 @@ erts_series(TargetErtsVsn) ->
 erts_lower_bound_from_target(TargetErtsVsn) ->
     [MajorErtsVsn, MinorErtsVsn|_] = string:tokens(TargetErtsVsn, "."),
     lists:flatten([MajorErtsVsn,".", MinorErtsVsn]).
+
+%%--------------------------------------------------------------------
+%% @doc return all known erts vsns
+%% @spec () -> string()
+%% @end
+%%--------------------------------------------------------------------
+all_erts_vsns() ->
+    [ErtsVsn || {_, ErtsVsn, _} <- ?COMPILER_VSN_TO_ERTS_VSN_TO_ERLANG_VSN].
+
+%%--------------------------------------------------------------------
+%% @doc return all known erts vsns where the versions are greater or
+%%      equal to the LowBound
+%% @spec (LowBound::string()) -> string()
+%% @end
+%%--------------------------------------------------------------------
+all_erts_vsns(LowBound) ->
+    [ErtsVsn || ErtsVsn <- all_erts_vsns(), ewr_util:is_version_greater(ErtsVsn, LowBound) orelse LowBound == ErtsVsn].
 
 %%----------------------------------------------------------------------------
 %% @doc Checks to see if a list is a string.
