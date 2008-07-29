@@ -13,7 +13,7 @@ DOWNLOAD_URL = 'http://erlang.org/download'
 
 INTERACTIVE = os.isatty(sys.stdin.fileno())
 
-WORKING_DIR = os.path.join(tempfile.gettempdir(), 'faxien-erlang-publish')
+WORKING_DIR = os.path.join(tempfile.gettempdir(), 'faxien-auto-publish')
 
 IS_64_BIT = sys.maxint > 2**31 - 1
 
