@@ -18,9 +18,9 @@
 	 install_release/2,
 	 install_erts/1,
 	 install_erts/2,
+	 install_app/1,
 	 install_app/2,
-	 install_app/3,
-	 install/3,
+	 install/1,
 	 install/2,
 	 list/0,
 	 list_lib/0,
@@ -77,19 +77,19 @@ cmdln_apply([Mod, RawFunc|Args]) ->
 %% @doc 
 %%  Determine the type of a package and then install it appropriately. You must specify the erts vsn the package was created
 %%  with or for. 
-%% @spec install(RelPackagePath, ErtsVsn, InstallationPath) -> ok | {error, Reason}
+%% @spec install(RelPackagePath, InstallationPath) -> ok | {error, Reason}
 %% where
 %%  ErtsVsn = string()
 %%  Reason = badly_formatted_or_missing_package | {failed_to_install, [{AppName, AppVsn}]}
 %% @end
 %%--------------------------------------------------------------------
-install(PackageDirOrArchive, ErtsVsn, RawInstallationPath) -> 
+install(PackageDirOrArchive, RawInstallationPath) -> 
     InstallationPath = epkg_util:if_atom_or_integer_to_string(RawInstallationPath),
     PackageDirPath   = epkg_util:unpack_to_tmp_if_archive(PackageDirOrArchive), 
-    ?INFO_MSG("with ~p ~p ~p~n", [PackageDirOrArchive, ErtsVsn, InstallationPath]),
+    ?INFO_MSG("with ~p ~p ~p~n", [PackageDirOrArchive, InstallationPath]),
     case epkg_validation:validate_type(PackageDirPath) of
-	{ok, binary}  -> epkg_install:install_application(PackageDirPath, InstallationPath, ErtsVsn);
-	{ok, generic} -> epkg_install:install_application(PackageDirPath, InstallationPath, ErtsVsn);
+	{ok, binary}  -> epkg_install:install_application(PackageDirPath, InstallationPath);
+	{ok, generic} -> epkg_install:install_application(PackageDirPath, InstallationPath);
 	{ok, release} -> epkg_install:install_release(PackageDirPath, InstallationPath, false);
 	{ok, erts}    -> epkg_install:install_erts(PackageDirPath, InstallationPath);
 	Error   -> Error
@@ -97,14 +97,14 @@ install(PackageDirOrArchive, ErtsVsn, RawInstallationPath) ->
 
 %% @spec install(RelPackagePath, ErtsVsn) -> ok | {error, Reason}
 %% @equiv install(RelPackagePath, ErtsVsn, InstallationPath) 
-install(PackageDirOrArchive, ErtsVsn) -> 
+install(PackageDirOrArchive) -> 
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
-    install(PackageDirOrArchive, ErtsVsn, InstallationPath).
+    install(PackageDirOrArchive, InstallationPath).
 
 %% @private
 install_help() ->
     ["\nHelp for install\n",
-     "Usage: install <package_path> <erts-vsn> [installation-path]: Install a release from a local package\n"]. 
+     "Usage: install <package_path> [installation-path]: Install a release from a local package\n"]. 
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -145,24 +145,24 @@ install_release_help() ->
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Install an application package or package archive. You must include the erts vsn the app was compiled with.
-%% @spec install_app(AppPackagePath, ErtsVsn, InstallationPath) -> ok | {error, Reason}
+%% @spec install_app(AppPackagePath, InstallationPath) -> ok | {error, Reason}
 %% where
 %%  Reason = badly_formatted_or_missing_app_package
 %% @end
 %%--------------------------------------------------------------------
-install_app(AppPackagePath, ErtsVsn, InstallationPath) -> 
-    epkg_install:install_application(AppPackagePath, epkg_util:if_atom_or_integer_to_string(InstallationPath), ErtsVsn).
+install_app(AppPackagePath, InstallationPath) -> 
+    epkg_install:install_application(AppPackagePath, epkg_util:if_atom_or_integer_to_string(InstallationPath)).
 
-%% @spec install_app(AppPackagePath, ErtsVsn) -> ok | {error, Reason}
-%% @equiv install_app(AppPackagePath, ErtsVsn, InstallationPath) 
-install_app(AppPackagePath, ErtsVsn) -> 
+%% @spec install_app(AppPackagePath) -> ok | {error, Reason}
+%% @equiv install_app(AppPackagePath, InstallationPath) 
+install_app(AppPackagePath) -> 
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
-    install_app(AppPackagePath, ErtsVsn, InstallationPath). 
+    install_app(AppPackagePath, InstallationPath). 
 
 %% @private
 install_app_help() ->
     ["\nHelp for install-app\n",
-     "Usage: install-app <package_path> <erts-vsn> [installation-path]: Install an application from a local package\n"]. 
+     "Usage: install-app <package_path> [installation-path]: Install an application from a local package\n"]. 
 
 %%--------------------------------------------------------------------
 %% @doc 

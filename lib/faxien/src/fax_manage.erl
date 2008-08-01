@@ -8,6 +8,9 @@
 %%% @type options() = [Option]
 %%% where
 %%%  Options = {force, force()} | {erts_prompt, erts_prompt()}
+%%% @type target_erts_vsns() = [TargetErtsVsn] | TargetErtsVsn
+%%%  where
+%%%   TargetErtsVsn = string()
 %%%
 %%%
 %%% @type timeout() = integer() | infinity. Timeouts are specified in milliseconds.
@@ -72,11 +75,13 @@
 %%   Timeout = Milliseconds::integer() | infinity
 %% @end
 %%--------------------------------------------------------------------
-describe_latest_release(Repos, TargetErtsVsn, RelName, Timeout) ->
-    Fun = fun(ManagedRepos, RelVsn, ErtsVsn) ->
-		  describe_release(ManagedRepos, ErtsVsn, RelName, RelVsn, Timeout)
+describe_latest_release(Repos, [_H|_] = TargetErtsVsn, RelName, Timeout) when is_integer(_H) ->
+    describe_latest_release(Repos, TargetErtsVsns, RelName, Timeout);
+describe_latest_release(Repos, TargetErtsVsns, RelName, Timeout) ->
+    Fun = fun(Repo, RelVsn, ErtsVsn) ->
+		  describe_release([Repo], ErtsVsn, RelName, RelVsn, Timeout)
 	  end,
-    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, RelName, Fun, lib, false). 
+    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsns, RelName, Fun, lib, false). 
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -112,16 +117,18 @@ describe_release(Repos, TargetErtsVsn, RelName, RelVsn, Timeout) ->
 %% @spec describe_latest_app(Repos, TargetErtsVsn, AppName, Timeout) -> ok | {error, Reason} | exit()
 %%  where
 %%   Repos = list()
-%%   TargetErtsVsn = string()
+%%   TargetErtsVsns = target_erts_vsns()
 %%   AppName = string()
 %%   Timeout = Milliseconds::integer() | infinity
 %% @end
 %%--------------------------------------------------------------------
-describe_latest_app(Repos, TargetErtsVsn, AppName, Timeout) ->
-    Fun = fun(ManagedRepos, AppVsn, ErtsVsn) ->
-		  describe_app(ManagedRepos, ErtsVsn, AppName, AppVsn, Timeout)
+describe_latest_app(Repos, [_H|_] = TargetErtsVsns, AppName, Timeout) when is_integer(_H) ->
+    describe_latest_app(Repos, TargetErtsVsns, AppName, Timeout);
+describe_latest_app(Repos, TargetErtsVsns, AppName, Timeout) ->
+    Fun = fun(Repo, AppVsn, ErtsVsn) ->
+		  describe_app([Repo], ErtsVsn, AppName, AppVsn, Timeout)
 	  end,
-    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, AppName, Fun, lib, false). 
+    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsns, AppName, Fun, lib, false). 
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -408,14 +415,14 @@ upgrade_application(Repos, TargetErtsVsn, AppName, HighestLocalVsn, Options, Tim
     Force      = fs_lists:get_val(force, Options),
     ErtsPrompt = fs_lists:get_val(erts_prompt, Options),
 
-    Fun = fun(ManagedRepos, HighestRemoteVsn, ErtsVsn) ->
+    Fun = fun(Repo, HighestRemoteVsn, ErtsVsn) ->
 		  case ewr_util:is_version_greater(HighestRemoteVsn, HighestLocalVsn) of
 		      false ->
 			  io:format("~s at version ~s is up to date~n", [AppName, HighestLocalVsn]);
 		      true ->
 			  io:format("Upgrading from version ~s of ~s to version ~s~n",
 				    [HighestLocalVsn, AppName, HighestRemoteVsn]),
-			  fax_install:install_remote_application(ManagedRepos, ErtsVsn, AppName,
+			  fax_install:install_remote_application([Repo], ErtsVsn, AppName,
 								 HighestRemoteVsn, Force, Timeout)
 		  end
 	  end,

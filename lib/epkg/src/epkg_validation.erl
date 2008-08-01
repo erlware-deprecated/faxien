@@ -10,6 +10,7 @@
 -export([
 	 validate_type/1,
 	 verify_presence_of_erl_files/1,
+	 verify_app_erts_vsn/1,
 	 is_package_erts/1,
 	 is_package_an_app/1,
 	 is_package_a_binary_app/1,
@@ -237,6 +238,75 @@ verify_presence_of_erl_files(AppDirPath) ->
 	Error -> {error, {"missing source files", Error}}
     end.
 
+%%--------------------------------------------------------------------
+%% @doc Verify that all beams within an application were compiled with for the same erts vsn. 
+%% @spec verify_app_erts_vsn(AppDirPath) -> {ok, ErtsVsn} | {error, Reason}
+%% @end
+%%--------------------------------------------------------------------
+verify_app_erts_vsn(AppDirPath) ->
+    case get_compiler_vsn(AppDirPath) of
+	{ok, CompilerVsn} -> search_static_vsns(CompilerVsn);
+	Error             -> Error
+    end.
+
+search_static_vsns(CompilerVsn) ->
+    search_static_vsns(CompilerVsn, ?COMPILER_VSN_TO_ERTS_VSN_TO_ERLANG_VSN).
+
+search_static_vsns(CompilerVsn, [{CompilerVsn, ErtsVsn, _ErlangVsn}|_]) ->
+    {ok, ErtsVsn};
+search_static_vsns(CompilerVsn, [_|T]) ->
+    search_static_vsns(CompilerVsn, T);
+search_static_vsns(CompilerVsn, []) ->
+    search_dynamic_vsns(CompilerVsn).
+
+
+search_dynamic_vsns(CompilerVsn) ->
+    %% @todo this function will find the version being looked for in a repo and then return the erts vsn it is found for.
+    {error, {no_erts_vsn_found, {compiler_vsn, CompilerVsn}}}.
+				 
+%%--------------------------------------------------------------------
+%% @doc Fetch the compiler version that all modules in the application were compiled with.
+%% @spec get_compiler_vsn(AppDirPath) -> {ok, CompilerVsn} | {error, Reason}
+%% @end
+%%--------------------------------------------------------------------
+get_compiler_vsn(AppDirPath) ->
+    {ok, [{modules, Modules}]} = ewr_util:fetch_local_appfile_key_values(AppDirPath, [modules]),
+    try
+	case Modules of
+	    [] ->
+		{error, {empty_module_list_for_app, AppDirPath}};
+	    Modules ->
+		{ok, _CompilerVsn} = Resp = get_compiler_vsn(AppDirPath, Modules, undefined),
+		Resp
+	end
+    catch
+	_C:Error ->
+	    ?ERROR_MSG("error ~p ~n", [Error]),
+	    {error, {bad_module, "found a module compiled with unsuppored version", Error, Modules}}
+    end.
+
+get_compiler_vsn(AppDirPath, [Module|Modules], undefined) ->
+    CompilerVsn = fetch_vsn(AppDirPath, Module),
+    get_compiler_vsn(AppDirPath, Modules, CompilerVsn);
+get_compiler_vsn(AppDirPath, [Module|Modules], CompilerVsn) ->
+    case catch fetch_vsn(AppDirPath, Module) of
+	CompilerVsn ->
+	    get_compiler_vsn(AppDirPath, Modules, CompilerVsn);
+	Error ->
+	    throw(Error)
+    end;
+get_compiler_vsn(_AppDirPath, [], CompilerVsn) ->
+    {ok, CompilerVsn}.
+	
+fetch_vsn(AppDirPath, Module) ->
+    BeamPath  = AppDirPath ++ "/ebin/" ++ atom_to_list(Module),
+    {ok, {Module, [{compile_info, CompileInfo}]}} = beam_lib:chunks(BeamPath, [compile_info]),
+    case fs_lists:get_val(version, CompileInfo) of
+	undefined ->
+	    {error, {no_compiler_vsn_found, BeamPath}};
+	Vsn ->
+	    Vsn
+    end.
 
 %%====================================================================
 %% Internal functions

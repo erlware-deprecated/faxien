@@ -26,9 +26,8 @@
 	 flatten_term/1,
 	 repo_list/1,
 	 add_pzs/1,
-	 ask_about_switching_target_ertsVsns/4,
-	 get_erts_vsns_gte_than/2,
-	 get_erts_vsn/1
+	 ask_about_switching_target_erts_vsns/4,
+	 get_erts_vsns_gte_than/2
         ]).
 
 %%====================================================================
@@ -54,11 +53,26 @@
 %%  ErtsPrompt = bool()
 %% @end
 %%-------------------------------------------------------------------
-execute_on_latest_package_version([], _TargetErtsVsn, _PackageName, _Fun, _Side, _VsnThreshold, _ErtsPrompt) ->
+execute_on_latest_package_version([], _TargetErtsVsns, _PackageName, _Fun, _Side, _VsnThreshold, _ErtsPrompt) ->
     {error, package_not_found};
-execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, VsnThreshold, ErtsPrompt) 
+execute_on_latest_package_version(Repos, TargetErtsVsns, PackageName, Fun, Side, VsnThreshold, ErtsPrompt) 
   when Side == lib; Side == releases ->
-    execute_on_latest_package_version(Repos, TargetErtsVsn, infinity, PackageName, Fun, Side, VsnThreshold, ErtsPrompt).
+    case find_highest_vsn(Repos, TargetErtsVsns, PackageName, Side, VsnThreshold) of
+	{ok, {Repo, HighVsn, RemoteErtsVsn}} -> 
+	    ShortenedRepos = lists:delete(Repo, Repos),
+	    case Fun(Repo, HighVsn, RemoteErtsVsn) of
+		ok ->
+		    ok;
+		Error -> 
+		    ?ERROR_MSG("failed with ~p for vsn ~p in repo ~p moving on to next repo and setting vsn threshold to ~p~n", 
+			       [Error, HighVsn, Repo, HighVsn]), 
+		    io:format("Failed operation on ~s at vsn ~s.  Trying for a lower version~n", [PackageName, HighVsn]),
+		    execute_on_latest_package_version(ShortenedRepos, TargetErtsVsns, PackageName, Fun, Side, HighVsn, ErtsPrompt)
+	    end;
+	{error, Reason} ->
+	    ?ERROR_MSG("failed to find package: ~p~n", [Reason]),
+	    exit("Did not succeed in finding any version of the package")
+    end.
     
 
 	     
@@ -66,6 +80,7 @@ execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, 
 %% @equiv execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, infinity, ErtsPrompt) 
 execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, ErtsPrompt) ->
     execute_on_latest_package_version(Repos, TargetErtsVsn, PackageName, Fun, Side, infinity, ErtsPrompt).
+
 
 %%-------------------------------------------------------------------
 %% @doc return all the erts vsns that are greater than or equal to the target erts versions.
@@ -249,83 +264,13 @@ parse_out_package_versions(Body) ->
     {Elem, _} = xmerl_scan:string(Body),
     [filename:basename(E) || E <- tl(lists:sort(xmerl_xs:value_of(xmerl_xs:select("//D:href", Elem))))].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Fetch the erts version that matches the compiler version of the modules in the application supplied. 
-%% @spec get_erts_vsn(AppDirPath) -> {ok, ErtsVsn} | {error, Reason}
-%% @end
-%%--------------------------------------------------------------------
-get_erts_vsn(AppDirPath) ->
-    case get_compiler_vsn(AppDirPath) of
-	{ok, CompilerVsn} -> search_static_vsns(CompilerVsn);
-	Error             -> Error
-    end.
-
-search_static_vsns(CompilerVsn) ->
-    search_static_vsns(CompilerVsn, ?COMPILER_VSN_TO_ERTS_VSN_TO_ERLANG_VSN).
-
-search_static_vsns(CompilerVsn, [{CompilerVsn, ErtsVsn, _ErlangVsn}|_]) ->
-    {ok, ErtsVsn};
-search_static_vsns(CompilerVsn, [_|T]) ->
-    search_static_vsns(CompilerVsn, T);
-search_static_vsns(CompilerVsn, []) ->
-    search_dynamic_vsns(CompilerVsn).
-
-
-search_dynamic_vsns(CompilerVsn) ->
-    %% @todo this function will find the version being looked for in a repo and then return the erts vsn it is found for.
-    {error, {no_erts_vsn_found, {compiler_vsn, CompilerVsn}}}.
-				 
-%%--------------------------------------------------------------------
-%% @doc Fetch the compiler version that all modules in the application were compiled with.
-%% @spec get_compiler_vsn(AppDirPath) -> {ok, CompilerVsn} | {error, Reason}
-%% @end
-%%--------------------------------------------------------------------
-get_compiler_vsn(AppDirPath) ->
-    {ok, [{modules, Modules}]} = ewr_util:fetch_local_appfile_key_values(AppDirPath, [modules]),
-    try
-	case Modules of
-	    [] ->
-		{error, {empty_module_list_for_app, AppDirPath}};
-	    Modules ->
-		{ok, _CompilerVsn} = Resp = get_compiler_vsn(AppDirPath, Modules, undefined),
-		Resp
-	end
-    catch
-	_C:Error ->
-	    ?ERROR_MSG("error ~p ~n", [Error]),
-	    {error, {bad_module, "found a module compiled with unsuppored version", Error, Modules}}
-    end.
-
-get_compiler_vsn(AppDirPath, [Module|Modules], undefined) ->
-    CompilerVsn = fetch_vsn(AppDirPath, Module),
-    get_compiler_vsn(AppDirPath, Modules, CompilerVsn);
-get_compiler_vsn(AppDirPath, [Module|Modules], CompilerVsn) ->
-    case catch fetch_vsn(AppDirPath, Module) of
-	CompilerVsn ->
-	    get_compiler_vsn(AppDirPath, Modules, CompilerVsn);
-	Error ->
-	    throw(Error)
-    end;
-get_compiler_vsn(_AppDirPath, [], CompilerVsn) ->
-    {ok, CompilerVsn}.
-	
-fetch_vsn(AppDirPath, Module) ->
-    BeamPath  = AppDirPath ++ "/ebin/" ++ atom_to_list(Module),
-    {ok, {Module, [{compile_info, CompileInfo}]}} = beam_lib:chunks(BeamPath, [compile_info]),
-    case fs_lists:get_val(version, CompileInfo) of
-	undefined ->
-	    {error, {no_compiler_vsn_found, BeamPath}};
-	Vsn ->
-	    Vsn
-    end.
 
 %%--------------------------------------------------------------------
 %% @doc Prompt the user when he is switching erts vsns due to an install. 
-%% @spec ask_about_switching_target_ertsVsns(PackageName, PackageVsn, TargetErtsVsn, RemoteErtsVsn) -> bool()
+%% @spec ask_about_switching_target_erts_vsns(PackageName, PackageVsn, TargetErtsVsn, RemoteErtsVsn) -> bool()
 %% @end
 %%--------------------------------------------------------------------
-ask_about_switching_target_ertsVsns(PackageName, PackageVsn, TargetErtsVsn, RemoteErtsVsn) ->
+ask_about_switching_target_erts_vsns(PackageName, PackageVsn, TargetErtsVsn, RemoteErtsVsn) ->
     {ok, TargetErlangVsn} = faxien:translate_version(erts, erlang, TargetErtsVsn),
     {ok, RemoteErlangVsn} = faxien:translate_version(erts, erlang, RemoteErtsVsn),
     Prompt = lists:flatten(["~nYou are attempting to install ", PackageName, "-", PackageVsn, " which is compiled for~n",
@@ -345,7 +290,7 @@ ask_about_switching_target_ertsVsns(PackageName, PackageVsn, TargetErtsVsn, Remo
 	Error ->
 	    ?INFO_MSG("user entered \"~p\"~n", [Error]),
 	    io:format("Please enter \"p\" or \"s\"~n"),
-	    ask_about_switching_target_ertsVsns(PackageName, PackageVsn, TargetErtsVsn, RemoteErtsVsn) 
+	    ask_about_switching_target_erts_vsns(PackageName, PackageVsn, TargetErtsVsn, RemoteErtsVsn) 
     end.
 
 %%====================================================================
@@ -405,36 +350,6 @@ acc_check(Term, [])  -> flattening(Term);
 acc_check(Term, Acc) -> Acc ++ [", "] ++ flattening(Term).
 
 
-execute_on_latest_package_version(Repos, TargetErtsVsn, ErtsVsnThreshold, PackageName, Fun, Side, VsnThreshold, ErtsPrompt) ->
-    case find_highest_vsn(Repos, get_erts_vsns_gte_than(TargetErtsVsn, ErtsVsnThreshold), PackageName, Side, VsnThreshold) of
-	{ok, {Repo, HighVsn, RemoteErtsVsn}} -> 
-	    ShortenedRepos = lists:delete(Repo, Repos),
-	    case catch execute_fun(Fun, [Repo|ShortenedRepos], PackageName, HighVsn,
-				   TargetErtsVsn, RemoteErtsVsn, ErtsPrompt) of
-		ok ->
-		    ok;
-		{ok, NewErtsVsn} -> 
-		    execute_on_latest_package_version(Repos, NewErtsVsn, NewErtsVsn, PackageName, Fun, Side, VsnThreshold, ErtsPrompt);
-		Error -> 
-		    ?ERROR_MSG("failed with ~p for vsn ~p in repo ~p moving on to next repo and setting vsn threshold to ~p~n", 
-			       [Error, HighVsn, Repo, HighVsn]), 
-		    io:format("Failed operation on ~s at vsn ~s.  Trying for a lower version~n", [PackageName, HighVsn]),
-		    execute_on_latest_package_version(ShortenedRepos, TargetErtsVsn, PackageName, Fun, Side, HighVsn, ErtsPrompt)
-	    end;
-	{error, Reason} ->
-	    ?ERROR_MSG("failed to find package: ~p~n", [Reason]),
-	    exit("Did not succeed in finding any version of the package")
-    end.
-
-execute_fun(Fun, Repos, _PackageName, HighVsn, ErtsVsn, ErtsVsn, _ErtsPrompt) ->
-    Fun(Repos, HighVsn, ErtsVsn);
-execute_fun(Fun, Repos, _PackageName, HighVsn, _TargetErtsVsn, RemoteErtsVsn, false) ->
-    Fun(Repos, HighVsn, RemoteErtsVsn);
-execute_fun(Fun, Repos, PackageName, HighVsn, TargetErtsVsn, RemoteErtsVsn, true) ->
-    case ask_about_switching_target_ertsVsns(PackageName, HighVsn, TargetErtsVsn, RemoteErtsVsn) of
-	true  -> Fun(Repos, HighVsn, RemoteErtsVsn);
-	false -> {ok, TargetErtsVsn}
-    end.
 
 %%%===================================================================
 %%% Testing Functions

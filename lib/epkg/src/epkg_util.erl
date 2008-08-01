@@ -238,7 +238,9 @@ all_erts_vsns() ->
 %% @end
 %%--------------------------------------------------------------------
 all_erts_vsns(LowBound) ->
-    [ErtsVsn || ErtsVsn <- all_erts_vsns(), ewr_util:is_version_greater(ErtsVsn, LowBound) orelse LowBound == ErtsVsn].
+    A = [ErtsVsn || ErtsVsn <- all_erts_vsns(), ewr_util:is_version_greater(ErtsVsn, LowBound) orelse LowBound == ErtsVsn],
+    [H|T] = lists:reverse(A),
+    [H|lists:reverse(T)].
 
 %%----------------------------------------------------------------------------
 %% @doc Checks to see if a list is a string.
