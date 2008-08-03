@@ -348,6 +348,22 @@ def install(src_dir, install_dir, log_dir):
         sys.exit(1)
 
 
+def make_app_files(install_dir, log_dir):
+    """Use the genapp.erl script to give .app files to built-in
+    libs that do no have them."""
+
+    escript = os.path.join(install_dir, 'bin', 'escript')
+    lib_dir = os.path.join(install_dir, 'lib', 'erlang', 'lib')
+    run_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
+    genapp = os.path.join(run_dir, 'genapp.erl')
+
+    if not os.path.exists(genapp):
+        print 'Missing genapp.erl:', genapp
+        sys.exit(1)
+
+    run_command([escript, genapp, lib_dir], run_dir, log_dir, 'genapp')
+
+
 def get_erts_dir(erlang_dir):
     """Return the erts sub-directory in the erlang installation directory."""
 
@@ -613,6 +629,8 @@ def main():
     if options.bootstrapper:
         make_bootstrapper(working_dir, erts_dir, log_dir)
         sys.exit(0)
+
+    make_app_files(install_dir, log_dir)
 
     # the version of erts we are publishing
     erts_version = os.path.basename(erts_dir).split('-')[1]
