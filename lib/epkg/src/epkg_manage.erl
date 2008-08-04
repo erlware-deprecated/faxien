@@ -2,6 +2,10 @@
 %%% @author Martin Logan 
 %%% @doc Contains functions that help manage the packages installed on the local disk.
 %%% 
+%%% @type target_erts_vsns() = [TargetErtsVsn] | TargetErtsVsn
+%%%  where
+%%%   TargetErtsVsn = string()
+%%%
 %%% @end
 %%% @copyright (C) 2007, Martin Logan, Eric Merritt, Erlware
 %%% Created : 14 Dec 2007
@@ -193,15 +197,25 @@ remove_all_releases(InstallationPath, RelName, Force) ->
 %% @doc Find the highest version of a particular release for a particular erts vsn that is installed locally.
 %% @spec find_highest_local_release_vsn(ReleaseName, TargetErtsVsn) -> HighestVsn
 %% where
-%%  HighestVsn = string()
+%%  TargetErtsVsns = target_erts_vsns()
 %% @end
 %%--------------------------------------------------------------------
-find_highest_local_release_vsn(ReleaseName, TargetErtsVsn) when is_atom(ReleaseName) ->
-    find_highest_local_release_vsn(atom_to_list(ReleaseName), TargetErtsVsn);
-find_highest_local_release_vsn(ReleaseName, TargetErtsVsn) ->
+find_highest_local_release_vsn(ReleaseName, [_H|_] = TargetErtsVsn) when is_integer(_H) ->
+    find_highest_local_release_vsn(ReleaseName, [TargetErtsVsn]); 
+find_highest_local_release_vsn(ReleaseName, TargetErtsVsns) when is_atom(ReleaseName) ->
+    find_highest_local_release_vsn(atom_to_list(ReleaseName), TargetErtsVsns);
+find_highest_local_release_vsn(ReleaseName, TargetErtsVsns) ->
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
-    NameAndVsns = lists:filter(fun({Name, _}) -> ReleaseName == Name end,
-			      list_releases(InstallationPath, TargetErtsVsn)),
+    NameAndVsns =
+	lists:foldl(
+	  fun(TargetErtsVsn, Acc) ->
+		  lists:filter(fun({Name, _}) ->
+				       ReleaseName == Name
+			       end,
+			       list_releases(InstallationPath, TargetErtsVsn)) ++ Acc
+	  end,
+	  [],
+	  TargetErtsVsns),
     epkg_util:highest_vsn([Vsn || {_Name, Vsn} <- NameAndVsns]).
 
 %%--------------------------------------------------------------------

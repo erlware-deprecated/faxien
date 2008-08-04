@@ -67,16 +67,16 @@
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Fetch the description for the latest version of a particular release from a remote repository.
-%% @spec describe_latest_release(Repos, TargetErtsVsn, RelName, Timeout) -> ok | {error, Reason} | exit()
+%% @spec describe_latest_release(Repos, TargetErtsVsns, RelName, Timeout) -> ok | {error, Reason} | exit()
 %%  where
 %%   Repos = list()
-%%   TargetErtsVsn = string()
+%%   TargetErtsVsns = target_erts_vsns()
 %%   RelName = string()
 %%   Timeout = Milliseconds::integer() | infinity
 %% @end
 %%--------------------------------------------------------------------
 describe_latest_release(Repos, [_H|_] = TargetErtsVsn, RelName, Timeout) when is_integer(_H) ->
-    describe_latest_release(Repos, TargetErtsVsns, RelName, Timeout);
+    describe_latest_release(Repos, [TargetErtsVsn], RelName, Timeout);
 describe_latest_release(Repos, TargetErtsVsns, RelName, Timeout) ->
     Fun = fun(Repo, RelVsn, ErtsVsn) ->
 		  describe_release([Repo], ErtsVsn, RelName, RelVsn, Timeout)
@@ -86,16 +86,18 @@ describe_latest_release(Repos, TargetErtsVsns, RelName, Timeout) ->
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Fetch the description for a particular release from a remote repository.
-%% @spec describe_release(Repos, TargetErtsVsn, RelName, RelVsn, Timeout) -> ok | {error, Reason} | exit()
+%% @spec describe_release(Repos, TargetErtsVsns, RelName, RelVsn, Timeout) -> ok | {error, Reason} | exit()
 %%  where
 %%   Repos = list()
-%%   TargetErtsVsn = string()
+%%   TargetErtsVsns = target_erts_vsns()
 %%   RelName = string()
 %%   RelVsn = string()
 %%   Timeout = Milliseconds::integer() | infinity
 %% @end
 %%--------------------------------------------------------------------
-describe_release(Repos, TargetErtsVsn, RelName, RelVsn, Timeout) ->
+describe_release(Repos, [_H|_] = TargetErtsVsn, RelName, RelVsn, Timeout) when is_integer(_H) ->
+    describe_release(Repos, [TargetErtsVsn], RelName, RelVsn, Timeout);
+describe_release(Repos, TargetErtsVsns, RelName, RelVsn, Timeout) ->
     Fun = fun(ErtsVsn) -> 
 		  ControlSuffix = ewr_repo_paths:release_control_file_suffix(ErtsVsn, RelName, RelVsn),
 		  fs_lists:do_until(
@@ -109,12 +111,12 @@ describe_release(Repos, TargetErtsVsn, RelName, RelVsn, Timeout) ->
 			    end
 		    end, ok, Repos)
 	  end,
-    ok = epkg_util:foreach_erts_vsn(TargetErtsVsn, Fun).
+    ok = epkg_util:foreach_erts_vsn(TargetErtsVsns, Fun).
 
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Fetch the description for the latest version of a particular application from a remote repository.
-%% @spec describe_latest_app(Repos, TargetErtsVsn, AppName, Timeout) -> ok | {error, Reason} | exit()
+%% @spec describe_latest_app(Repos, TargetErtsVsns, AppName, Timeout) -> ok | {error, Reason} | exit()
 %%  where
 %%   Repos = list()
 %%   TargetErtsVsns = target_erts_vsns()
@@ -122,8 +124,8 @@ describe_release(Repos, TargetErtsVsn, RelName, RelVsn, Timeout) ->
 %%   Timeout = Milliseconds::integer() | infinity
 %% @end
 %%--------------------------------------------------------------------
-describe_latest_app(Repos, [_H|_] = TargetErtsVsns, AppName, Timeout) when is_integer(_H) ->
-    describe_latest_app(Repos, TargetErtsVsns, AppName, Timeout);
+describe_latest_app(Repos, [_H|_] = TargetErtsVsn, AppName, Timeout) when is_integer(_H) ->
+    describe_latest_app(Repos, [TargetErtsVsn], AppName, Timeout);
 describe_latest_app(Repos, TargetErtsVsns, AppName, Timeout) ->
     Fun = fun(Repo, AppVsn, ErtsVsn) ->
 		  describe_app([Repo], ErtsVsn, AppName, AppVsn, Timeout)
@@ -133,16 +135,18 @@ describe_latest_app(Repos, TargetErtsVsns, AppName, Timeout) ->
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Fetch the description for a particular application from a remote repository.
-%% @spec describe_app(Repos, TargetErtsVsn, AppName, AppVsn, Timeout) -> ok | {error, Reason} | exit()
+%% @spec describe_app(Repos, TargetErtsVsns, AppName, AppVsn, Timeout) -> ok | {error, Reason} | exit()
 %%  where
 %%   Repos = list()
-%%   TargetErtsVsn = string()
+%%   TargetErtsVsns = target_erts_vsns()
 %%   AppName = string()
 %%   AppVsn = string()
 %%   Timeout = Milliseconds::integer() | infinity
 %% @end
 %%--------------------------------------------------------------------
-describe_app(Repos, TargetErtsVsn, AppName, AppVsn, Timeout) ->
+describe_app(Repos, [_H|_] = TargetErtsVsn, AppName, AppVsn, Timeout) when is_integer(_H) ->
+    describe_app(Repos, [TargetErtsVsn], AppName, AppVsn, Timeout);
+describe_app(Repos, TargetErtsVsns, AppName, AppVsn, Timeout) ->
     Fun = fun(ErtsVsn) -> 
 		  Suffix = ewr_repo_paths:dot_app_file_suffix(ErtsVsn, AppName, AppVsn),
 		  fs_lists:do_until(
@@ -156,7 +160,7 @@ describe_app(Repos, TargetErtsVsn, AppName, AppVsn, Timeout) ->
 			    end
 		    end, ok, Repos)
 	  end,
-    ok = epkg_util:foreach_erts_vsn(TargetErtsVsn, Fun).
+    ok = epkg_util:foreach_erts_vsn(TargetErtsVsns, Fun).
 
 %%--------------------------------------------------------------------
 %% @doc Add a repository to fetch from. 
@@ -247,17 +251,19 @@ set_target_erts_vsn(TargetErtsVsn, ConfigFilePath) ->
 
 %%--------------------------------------------------------------------
 %% @doc Display all currently installed releases that have available updates.
-%% @spec outdated_releases(Repos, TargetErtsVsn, Timeout) -> OutdatedReleases
+%% @spec outdated_releases(Repos, TargetErtsVsns, Timeout) -> OutdatedReleases
 %%  where
 %%   Repos = [string()]
-%%   TargetErtsVsn = string()
+%%   TargetErtsVsns = target_erts_vsns()
 %%   OutdatedReleases = [{ReleaseName, HighestLocalVsn, HigherVersion}]
 %% @end
 %%--------------------------------------------------------------------
-outdated_releases(Repos, TargetErtsVsn, Timeout) ->
+outdated_releases(Repos, [_H|_] = TargetErtsVsn, Timeout) when is_integer(_H) ->
+    outdated_releases(Repos, [TargetErtsVsn], Timeout);
+outdated_releases(Repos, TargetErtsVsns, Timeout) ->
     Releases      = epkg_installed_paths:list_releases(),
     lists:foldl(fun(ReleaseName, Acc) -> 
-			case catch is_outdated_release(Repos, TargetErtsVsn, ReleaseName, Timeout) of
+			case catch is_outdated_release(Repos, TargetErtsVsns, ReleaseName, Timeout) of
 			    {ok, {lower, HighestLocalVsn, HighestRemoteVsn, _RemoteErtsVsn}} -> 
 				[{ReleaseName, HighestLocalVsn, HighestRemoteVsn}|Acc];
 			    _Other -> 
@@ -268,36 +274,40 @@ outdated_releases(Repos, TargetErtsVsn, Timeout) ->
 %%--------------------------------------------------------------------
 %% @doc upgrade all applications on the install path.
 %% @type erts_prompt() = bool(). indicate whether or not to prompt upon finding a package outside of the target erts vsn.
-%% @spec upgrade_releases(Repos, TargetErtsVsn, IsLocalBoot, Options, Timeout) -> ok | {error, Reason}
+%% @spec upgrade_releases(Repos, TargetErtsVsns, IsLocalBoot, Options, Timeout) -> ok | {error, Reason}
 %%  where
 %%   Repos = [string()]
-%%   TargetErtsVsn = string()
+%%   TargetErtsVsns = target_erts_vsns()
 %%   Options = options()
 %% @end
 %%--------------------------------------------------------------------
-upgrade_releases(Repos, TargetErtsVsn, IsLocalBoot, Options, Timeout) ->
+upgrade_releases(Repos, [_H|_] = TargetErtsVsn, IsLocalBoot, Options, Timeout) when is_integer(_H) ->
+    upgrade_releases(Repos, [TargetErtsVsn], IsLocalBoot, Options, Timeout);
+upgrade_releases(Repos, TargetErtsVsns, IsLocalBoot, Options, Timeout) ->
     Releases = epkg_installed_paths:list_releases(),
     lists:foreach(fun(ReleaseName) -> 
-			  (catch upgrade_release(Repos, TargetErtsVsn, ReleaseName, IsLocalBoot, Options, Timeout))
+			  (catch upgrade_release(Repos, TargetErtsVsns, ReleaseName, IsLocalBoot, Options, Timeout))
 		  end, Releases).
 
 %%--------------------------------------------------------------------
 %% @doc upgrade a single release.
 %%  IsLocalBoot indicates whether a local specific boot file is to be created or not. See the systools docs for more information.
 %% @type erts_prompt() = bool(). indicate whether or not to prompt upon finding a package outside of the target erts vsn.
-%% @spec upgrade_release(Repos, TargetErtsVsn, ReleaseName, IsLocalBoot, Options, Timeout) -> ok | {error, Reason}
+%% @spec upgrade_release(Repos, TargetErtsVsns, ReleaseName, IsLocalBoot, Options, Timeout) -> ok | {error, Reason}
 %%  where
 %%   Repos = [string()]
-%%   TargetErtsVsn = string()
+%%   TargetErtsVsns = target_erts_vsns()
 %%   ReleaseName = string()
 %%   Options = options()
 %% @end
 %%--------------------------------------------------------------------
-upgrade_release(Repos, TargetErtsVsn, ReleaseName, IsLocalBoot, Options, Timeout) -> 
+upgrade_release(Repos, [_H|_] = TargetErtsVsn, ReleaseName, IsLocalBoot, Options, Timeout) when is_integer(_H) -> 
+    upgrade_release(Repos, [TargetErtsVsn], ReleaseName, IsLocalBoot, Options, Timeout);
+upgrade_release(Repos, [TargetErtsVsn|_] = TargetErtsVsns, ReleaseName, IsLocalBoot, Options, Timeout) -> 
     Force      = fs_lists:get_val(force, Options),
     ErtsPrompt = fs_lists:get_val(erts_prompt, Options),
     ?INFO_MSG("fax_manage:upgrade_release(~p, ~p)~n", [Repos, ReleaseName]),
-    case is_outdated_release(Repos, TargetErtsVsn, ReleaseName, Timeout) of
+    case is_outdated_release(Repos, TargetErtsVsns, ReleaseName, Timeout) of
 	{ok, {lower, HighestLocalVsn, HighestRemoteVsn, TargetErtsVsn}} ->
 	    handle_upgrade_release(Repos, TargetErtsVsn, ReleaseName, HighestLocalVsn,
 				   HighestRemoteVsn, IsLocalBoot, Force,Timeout);
@@ -320,9 +330,9 @@ upgrade_release(Repos, TargetErtsVsn, ReleaseName, IsLocalBoot, Options, Timeout
     end.
 
 
-handle_upgrade_release(Repos, TargetErtsVsn, ReleaseName, HighestLocalVsn, HighestRemoteVsn, IsLocalBoot, Force, Timeout) ->
+handle_upgrade_release(Repos, TargetErtsVsns, ReleaseName, HighestLocalVsn, HighestRemoteVsn, IsLocalBoot, Force, Timeout) ->
     io:format("Upgrading from version ~s of ~s to version ~s~n", [HighestLocalVsn, ReleaseName, HighestRemoteVsn]),
-    fax_install:install_remote_release(Repos,TargetErtsVsn,ReleaseName,HighestRemoteVsn,IsLocalBoot,Force,Timeout), 
+    fax_install:install_remote_release(Repos,TargetErtsVsns,ReleaseName,HighestRemoteVsn,IsLocalBoot,Force,Timeout), 
     handle_config_on_upgrade(ReleaseName, HighestRemoteVsn, HighestLocalVsn).
     
 
@@ -357,17 +367,19 @@ prompt_for_config_policy(RelName, HighestRemoteVsn, HighestLocalVsn) ->
 
 %%--------------------------------------------------------------------
 %% @doc Display all currently installed applications that have available updates.
-%% @spec outdated_applications(Repos, TargetErtsVsn, Timeout) -> OutdatedApps
+%% @spec outdated_applications(Repos, TargetErtsVsns, Timeout) -> OutdatedApps
 %%  where
 %%   Repos = [string()]
-%%   TargetErtsVsn = string()
+%%   TargetErtsVsns = target_erts_vsns()
 %%   OutdatedApps = [{AppName, HighestLocalVsn, HigherVersion}]
 %% @end
 %%--------------------------------------------------------------------
-outdated_applications(Repos, TargetErtsVsn, Timeout) ->
-    Apps          = epkg_installed_paths:list_apps(TargetErtsVsn),
+outdated_applications(Repos, [_H|_] = TargetErtsVsn, Timeout) when is_integer(_H) ->
+    outdated_applications(Repos, [TargetErtsVsn], Timeout);
+outdated_applications(Repos, TargetErtsVsns, Timeout) ->
+    Apps = epkg_installed_paths:list_apps(TargetErtsVsns),
     lists:foldl(fun(AppName, Acc) -> 
-			case catch is_outdated_app(Repos, TargetErtsVsn, AppName, Timeout) of
+			case catch is_outdated_app(Repos, TargetErtsVsns, AppName, Timeout) of
 			    {ok, {lower, HighestLocalVsn, HighestRemoteVsn, _RemoteErtsVsn}} -> 
 				[{AppName, HighestLocalVsn, HighestRemoteVsn}|Acc];
 			    _Other -> 
@@ -379,38 +391,42 @@ outdated_applications(Repos, TargetErtsVsn, Timeout) ->
 %%--------------------------------------------------------------------
 %% @doc upgrade all applications on the install path.
 %% @type erts_prompt() = bool(). indicate whether or not to prompt upon finding a package outside of the target erts vsn.
-%% @spec upgrade_applications(Repos, TargetErtsVsn, Force, Timeout) -> ok | {error, Reason}
+%% @spec upgrade_applications(Repos, TargetErtsVsns, Force, Timeout) -> ok | {error, Reason}
 %%  where
 %%   Repos = [string()]
-%%   TargetErtsVsn = string()
+%%   TargetErtsVsns = target_erts_vsns()
 %%   Options = options()
 %% @end
 %%--------------------------------------------------------------------
-upgrade_applications(Repos, TargetErtsVsn, Options, Timeout) -> 
-    AppNames = epkg_installed_paths:list_apps(TargetErtsVsn),
-    lists:foreach(fun(AppName) -> (catch upgrade_application(Repos, TargetErtsVsn, AppName, Options, Timeout)) end, AppNames).
+upgrade_applications(Repos, [_H|_] = TargetErtsVsn, Options, Timeout) when is_integer(_H) -> 
+    upgrade_applications(Repos, [TargetErtsVsn], Options, Timeout);
+upgrade_applications(Repos, TargetErtsVsns, Options, Timeout) -> 
+    AppNames = epkg_installed_paths:list_apps(TargetErtsVsns),
+    lists:foreach(fun(AppName) -> (catch upgrade_application(Repos, TargetErtsVsns, AppName, Options, Timeout)) end, AppNames).
 
 %%--------------------------------------------------------------------
 %% @doc upgrade a single application.
 %% @type erts_prompt() = bool(). indicate whether or not to prompt upon finding a package outside of the target erts vsn.
-%% @spec upgrade_application(Repos, TargetErtsVsn, AppName, Options, Timeout) -> ok | {error, Reason}
+%% @spec upgrade_application(Repos, TargetErtsVsns, AppName, Options, Timeout) -> ok | {error, Reason}
 %%  where
 %%   Repos = [string()]
-%%   TargetErtsVsn = string()
+%%   TargetErtsVsns = target_erts_vsns()
 %%   AppName = string()
 %%   Options = options()
 %% @end
 %%--------------------------------------------------------------------
-upgrade_application(Repos, TargetErtsVsn, AppName, Options, Timeout) ->
+upgrade_application(Repos, [_H|_] = TargetErtsVsn, AppName, Options, Timeout) when is_integer(_H) ->
+    upgrade_application(Repos, [TargetErtsVsn], AppName, Options, Timeout);
+upgrade_application(Repos, TargetErtsVsns, AppName, Options, Timeout) ->
     case epkg_manage:find_highest_local_app_vsn(AppName) of
 	"" ->
 	    io:format("No version of ~s exists locally, initiating install~n", [AppName]),
-	    fax_install:install_latest_remote_application(Repos, TargetErtsVsn, AppName, Options, Timeout);
+	    fax_install:install_latest_remote_application(Repos, TargetErtsVsns, AppName, Options, Timeout);
 	HighestLocalVsn ->
-	    upgrade_application(Repos, TargetErtsVsn, AppName, HighestLocalVsn, Options, Timeout)
+	    upgrade_application(Repos, TargetErtsVsns, AppName, HighestLocalVsn, Options, Timeout)
     end.
 
-upgrade_application(Repos, TargetErtsVsn, AppName, HighestLocalVsn, Options, Timeout) -> 
+upgrade_application(Repos, TargetErtsVsns, AppName, HighestLocalVsn, Options, Timeout) -> 
     ?INFO_MSG("fax_manage:upgrade_application(~p, ~p, ~p)~n", [Repos, AppName]),
     Force      = fs_lists:get_val(force, Options),
     ErtsPrompt = fs_lists:get_val(erts_prompt, Options),
@@ -427,7 +443,7 @@ upgrade_application(Repos, TargetErtsVsn, AppName, HighestLocalVsn, Options, Tim
 		  end
 	  end,
 
-    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsn, AppName, Fun, lib, ErtsPrompt).
+    fax_util:execute_on_latest_package_version(Repos, TargetErtsVsns, AppName, Fun, lib, ErtsPrompt).
 	    
 %%--------------------------------------------------------------------
 %% @doc 
@@ -438,7 +454,7 @@ upgrade_application(Repos, TargetErtsVsn, AppName, HighestLocalVsn, Options, Tim
 %%   Side = lib | releases | both
 %%   SearchType = regexp | normal
 %%   SearchString = string()
-%%   TargetErtsVsns = [TargetErtsVsn] | TargetErtsVsn
+%%   TargetErtsVsns = target_erts_vsns()
 %%    TargetErtsVsn = string()
 %% @end
 %%--------------------------------------------------------------------
@@ -550,15 +566,14 @@ remove_from_config_list(Key, ValueToRemove, ConfigFilePath) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc A determine if a release has a lower version than what is available in the remote repositories.
-%% @spec is_outdated_release(Repos, TargetErtsVsn, ReleaseName, Timeout) -> {ok, Compare} | {error, Reason}
+%% @spec is_outdated_release(Repos, TargetErtsVsns, ReleaseName, Timeout) -> {ok, Compare} | {error, Reason}
 %%  where
 %%   Repos = [string()]
-%%   TargetErtsVsn = string()
+%%   TargetErtsVsns = target_erts_vsns()
 %%   Compare = {higher, HighestLocalVsn} | {same, HighestLocalVsn} | {lower, {HighestLocalVsn, HigherRemoteVsn, RemoteErtsVsn}}
 %% @end
 %%--------------------------------------------------------------------
-is_outdated_release(Repos, TargetErtsVsn, ReleaseName, _Timeout) ->
-    TargetErtsVsns = fax_util:get_erts_vsns_gte_than(TargetErtsVsn, infinity),
+is_outdated_release(Repos, TargetErtsVsns, ReleaseName, _Timeout) ->
     {ok, {_Repo, HighestRemoteVsn, ErtsVsn}} = fax_util:find_highest_vsn(Repos, TargetErtsVsns, ReleaseName, releases),
     case epkg_manage:find_highest_local_release_vsn(ReleaseName) of
 	"" ->
@@ -577,17 +592,16 @@ is_outdated_release(Repos, TargetErtsVsn, ReleaseName, _Timeout) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc A determine if an application has a lower version than what is available in the remote repositories.
-%% @spec is_outdated_app(Repos, TargetErtsVsn, AppName, Timeout) -> {ok, Compare} | {error, Reason}
+%% @spec is_outdated_app(Repos, TargetErtsVsns, AppName, Timeout) -> {ok, Compare} | {error, Reason}
 %%  where
 %%   Repos = [string()]
-%%   TargetErtsVsn = string()
+%%   TargetErtsVsns = target_erts_vsns()
 %%   Compare = {higher, HighestLocalVsn} | {same, HighestLocalVsn} | {lower, {HighestLocalVsn, HigherRemoteVsn, RemoteErtsVsn}}
 %% @end
 %%--------------------------------------------------------------------
-is_outdated_app(Repos, TargetErtsVsn, AppName, _Timeout) ->
-    TargetErtsVsns = fax_util:get_erts_vsns_gte_than(TargetErtsVsn, infinity),
+is_outdated_app(Repos, TargetErtsVsns, AppName, _Timeout) ->
     {ok, {_Repo, HighestRemoteVsn, RemoteErtsVsn}} = fax_util:find_highest_vsn(Repos, TargetErtsVsns, AppName, lib),
-    case epkg_manage:find_highest_local_app_vsn(AppName, TargetErtsVsn) of
+    case epkg_manage:find_highest_local_app_vsn(AppName, TargetErtsVsns) of
 	"" ->
 	    {error, app_not_found};
 	HighestLocalVsn ->

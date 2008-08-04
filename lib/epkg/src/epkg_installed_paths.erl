@@ -112,23 +112,34 @@ list_releases() ->
 
 %%--------------------------------------------------------------------
 %% @doc return a list of installed apps.
-%% @spec list_apps(InstallationPath, ErtsVsn) -> [string()]
+%% @spec list_apps(InstallationPath, ErtsVsns) -> [string()]
 %% @end
 %%--------------------------------------------------------------------
-list_apps(InstallationPath, ErtsVsn) -> 
-    Packages = filelib:wildcard(
-		 lists:flatten([ewl_installed_paths:application_container_path(InstallationPath, ErtsVsn), "/*"])),
+list_apps(InstallationPath, [_H|_] = ErtsVsn) when is_integer(_H) -> 
+    list_apps(InstallationPath, [ErtsVsn]);
+list_apps(InstallationPath, ErtsVsns) -> 
+    Packages = lists:foldl(fun(ErtsVsn, Acc) ->
+				   filelib:wildcard(
+				     lists:flatten([
+						    ewl_installed_paths:application_container_path(InstallationPath, ErtsVsn),
+						    "/*"
+						   ])) ++ Acc
+			   end,
+			   [],
+			   ErtsVsns),
     AppNames = lists:map(fun(PackageName) -> 
 			     {ok, {AppName, _}} = package_dir_to_name_and_vsn(PackageName),
 			     AppName
 		     end, Packages),
     ordsets:to_list(ordsets:from_list(AppNames)).
 
-%% @spec list_apps(ErtsVsn) -> [string()]
-%% @equiv list_apps(InstallationPath, ErtsVsn)
-list_apps(ErtsVsn) ->
+%% @spec list_apps(ErtsVsns) -> [string()]
+%% @equiv list_apps(InstallationPath, ErtsVsns)
+list_apps([_H|_] = ErtsVsn) when is_integer(_H) ->
+    list_apps([ErtsVsn]);
+list_apps(ErtsVsns) ->
     {ok, InstallationPath} = get_installation_path(),
-    list_apps(InstallationPath, ErtsVsn).
+    list_apps(InstallationPath, ErtsVsns).
 
 %%--------------------------------------------------------------------
 %% @doc return a list of versions installed for a particular application.

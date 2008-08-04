@@ -628,6 +628,7 @@ fetch_app_help() ->
 %% @end
 %%--------------------------------------------------------------------
 publish(Repo, PackageDir, Timeout) -> 
+    io:format("Faxien is currently set to publish to: ~p~n", [Repo]),
     [A,B] = epkg_util:if_atom_or_integer_to_string([Repo, PackageDir]),
     fax_publish:publish([A], B, Timeout).
 
@@ -636,6 +637,7 @@ publish(Repo, PackageDir, Timeout) ->
 publish(PackageDir, Timeout) when is_integer(Timeout); Timeout == infinity -> 
     {ok, Repos} = gas:get_env(faxien, repos_to_publish_to, ?ERLWARE_URL),
     [A]         = epkg_util:if_atom_or_integer_to_string([PackageDir]),
+    io:format("Faxien is currently set to publish to: ~p~n", [Repos]),
     fax_publish:publish(Repos, A, Timeout);
 
 %% @spec publish(Repos PackageDir) -> ok | {error, Reason}
@@ -662,6 +664,7 @@ publish() ->
     {ok, Timeout} = gas:get_env(faxien, request_timeout, ?REQUEST_TIMEOUT),
     {ok, Repos}   = gas:get_env(faxien, repos_to_publish_to, ?ERLWARE_URL),
     {ok, CWD}     = file:get_cwd(),
+    io:format("Faxien is currently set to publish to: ~p~n", [Repos]),
     fax_publish:publish_sinan(Repos, CWD, Timeout).
 
 %% @private
