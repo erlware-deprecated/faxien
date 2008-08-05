@@ -195,12 +195,13 @@ erts_series(TargetErtsVsn, ErtsLowerBound) ->
     end.
 
 create_series(MajorErtsVsn, MinorErtsVsn, HighPatchErtsVsn, LowPatchErtsVsn) ->
-    lists:map(fun(PatchVsn) when PatchVsn > 0 ->
+    lists:reverse(
+      lists:map(fun(PatchVsn) when PatchVsn > 0 ->
 		      lists:flatten([MajorErtsVsn, ".", MinorErtsVsn, ".", integer_to_list(PatchVsn)]);
 		 (0) ->
 		      lists:flatten([MajorErtsVsn, ".", MinorErtsVsn])
 	      end,
-	      lists:seq(list_to_integer(LowPatchErtsVsn), list_to_integer(HighPatchErtsVsn))).
+	      lists:seq(list_to_integer(LowPatchErtsVsn), list_to_integer(HighPatchErtsVsn)))).
 
 %%-------------------------------------------------------------------
 %% @doc Return a list of erts vsns from the target vsn to the lowest patch compatible version. For example if 

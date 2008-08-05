@@ -20,6 +20,7 @@
 	 install_erts/2,
 	 install_app/1,
 	 install_app/2,
+	 install_app/3,
 	 install/1,
 	 install/2,
 	 list/0,
@@ -144,7 +145,19 @@ install_release_help() ->
 
 %%--------------------------------------------------------------------
 %% @doc 
-%%  Install an application package or package archive. You must include the erts vsn the app was compiled with.
+%%  Install an application package or package archive. Including the erts vsn means that this should be installed for use
+%%  with erts vsn X no matter the erts vsn this was compiled with. 
+%% @spec install_app(AppPackagePath, ErtsVsn, InstallationPath) -> ok | {error, Reason}
+%% where
+%%  Reason = badly_formatted_or_missing_app_package
+%% @end
+%%--------------------------------------------------------------------
+install_app(AppPackagePath, ErtsVsn, InstallationPath) -> 
+    epkg_install:install_application(AppPackagePath, ErtsVsn, epkg_util:if_atom_or_integer_to_string(InstallationPath)).
+
+%%--------------------------------------------------------------------
+%% @doc 
+%%  Install an application package or package archive. The erts version will be determined automatically.
 %% @spec install_app(AppPackagePath, InstallationPath) -> ok | {error, Reason}
 %% where
 %%  Reason = badly_formatted_or_missing_app_package

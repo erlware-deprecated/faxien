@@ -160,7 +160,7 @@ describe_app(Repos, TargetErtsVsns, AppName, AppVsn, Timeout) ->
 			    end
 		    end, ok, Repos)
 	  end,
-    ok = epkg_util:foreach_erts_vsn(TargetErtsVsns, Fun).
+    fs_lists:do_until(Fun, ok, TargetErtsVsns).
 
 %%--------------------------------------------------------------------
 %% @doc Add a repository to fetch from. 

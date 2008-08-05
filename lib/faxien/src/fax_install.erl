@@ -6,7 +6,8 @@
 %%% @type erts_prompt() = bool(). indicate whether or not to prompt upon finding a package outside of the target erts vsn.
 %%% @type options() = [Option]
 %%% where
-%%%  Options = {force, force()} | {erts_prompt, erts_prompt()}
+%%%  Options = {force, force()} | {erts_prompt, erts_prompt()} | {erts_policy, ErtsPolicy}
+%%%   ErtsPolicy = strict | loose
 %%% @type target_erts_vsns() = [TargetErtsVsn] | TargetErtsVsn
 %%%  where
 %%%   TargetErtsVsn = string()
@@ -37,7 +38,7 @@
 	 install_erts/3,
 	 install_release/6,
 	 fetch_latest_remote_release/6,
-	 fetch_remote_release/6,
+	 fetch_remote_release/7,
 	 fetch_latest_remote_application/6,
 	 fetch_remote_application/6
 	]).
@@ -97,7 +98,7 @@ install_latest_remote_application(Repos, TargetErtsVsns, AppName, Options, Timeo
 %%--------------------------------------------------------------------
 install_remote_application(Repos, [_H|_] = TargetErtsVsn, AppName, AppVsn, Force, Timeout) when is_integer(_H) ->
     install_remote_application(Repos, [TargetErtsVsn], AppName, AppVsn, Force, Timeout);
-install_remote_application(Repos, TargetErtsVsns, AppName, AppVsn, Force, Timeout) ->
+install_remote_application(Repos, [TargetErtsVsn|_] = TargetErtsVsns, AppName, AppVsn, Force, Timeout) ->
     ?INFO_MSG("install_remote_application(~p, ~p, ~p, ~p)~n", [Repos, TargetErtsVsns, AppName, AppVsn]),
     % @TODO perhaps put more logic around determing if the app is already installed
     AppDir = epkg_installed_paths:installed_app_dir_path(hd(TargetErtsVsns), AppName, AppVsn),
@@ -105,7 +106,9 @@ install_remote_application(Repos, TargetErtsVsns, AppName, AppVsn, Force, Timeou
 	false -> 
 	    io:format("Pulling down ~s-~s -> ", [AppName, AppVsn]),
 	    {ok, AppPackageDirPath} = fetch_app_to_tmp(Repos, TargetErtsVsns, AppName, AppVsn, Timeout),
-	    Res                     = epkg:install_app(AppPackageDirPath),
+	    %% XXX Get rid of installation path here
+	    {ok, InstallationPath}  = epkg_installed_paths:get_installation_path(),
+	    Res                     = epkg:install_app(AppPackageDirPath, TargetErtsVsn, InstallationPath),
 	    ok                      = ewl_file:delete_dir(AppPackageDirPath),
 	    io:format("~p~n", [Res]),
 	    Res;
@@ -167,22 +170,22 @@ install_remote_erts(Repos, ErtsVsn, Timeout) ->
 %%  Install a release package.  This function will determine whether the target (AppNameOrPath) is a request to install
 %%  an application from a remote repository or to install a release package (.epkg) or an untarred package directory.
 %%  IsLocalBoot indicates whether a local specific boot file is to be created or not. See the systools docs for more information.
-%% @spec install_release(Repos, TargetErtsVsns, ReleasePackageArchiveOrDirPath, IsLocalBoot, Force, Timeout) -> ok | {error, Reason} | exit()
+%% @spec install_release(Repos, TargetErtsVsns, ReleasePackageArchiveOrDirPath, IsLocalBoot, Options, Timeout) -> ok | {error, Reason} | exit()
 %% where
 %%     TargetErtsVsns = target_erts_vsns()
 %%     Type = application | release
 %%     AppNameOrPath = string()
 %%     ReleasePackageArchiveOrDirPath = string()
 %%     IsLocalBoot = bool()
-%%     Force = force()
+%%     Options = force()
 %% @end
 %%--------------------------------------------------------------------
-install_release(Repos, [_H|_] = TargetErtsVsn, ReleasePackageArchiveOrDirPath, IsLocalBoot, Force, Timeout) when is_integer(_H) ->
-    install_release(Repos, [TargetErtsVsn], ReleasePackageArchiveOrDirPath, IsLocalBoot, Force, Timeout);
-install_release(Repos, TargetErtsVsn, ReleasePackageArchiveOrDirPath, IsLocalBoot, Force, Timeout) ->
+install_release(Repos, [_H|_]= TargetErtsVsn, ReleasePackageArchiveOrDirPath, IsLocalBoot, Options, Timeout) when is_integer(_H) ->
+    install_release(Repos, [TargetErtsVsn], ReleasePackageArchiveOrDirPath, IsLocalBoot, Options, Timeout);
+install_release(Repos, TargetErtsVsn, ReleasePackageArchiveOrDirPath, IsLocalBoot, Options, Timeout) ->
     case filelib:is_file(ReleasePackageArchiveOrDirPath) of
-	true  -> install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLocalBoot, Force, Timeout);
-	false -> install_latest_remote_release(Repos, TargetErtsVsn, ReleasePackageArchiveOrDirPath, IsLocalBoot, Force, Timeout)
+	true  -> install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLocalBoot, Options, Timeout);
+	false -> install_latest_remote_release(Repos, TargetErtsVsn, ReleasePackageArchiveOrDirPath, IsLocalBoot, Options, Timeout)
     end.
 				  
 %%--------------------------------------------------------------------
@@ -203,11 +206,10 @@ install_release(Repos, TargetErtsVsn, ReleasePackageArchiveOrDirPath, IsLocalBoo
 install_latest_remote_release(Repos, [_H|_] = TargetErtsVsn, RelName, IsLocalBoot, Options, Timeout) when is_integer(_H) ->
     install_latest_remote_release(Repos, [TargetErtsVsn], RelName, IsLocalBoot, Options, Timeout);
 install_latest_remote_release(Repos, TargetErtsVsns, RelName, IsLocalBoot, Options, Timeout) ->
-    Force      = fs_lists:get_val(force, Options),
     ErtsPrompt = fs_lists:get_val(erts_prompt, Options),
 
     Fun = fun(Repo, RelVsn, ErtsVsn) ->
-		  install_remote_release([Repo], ErtsVsn, RelName, RelVsn, IsLocalBoot, Force, Timeout)
+		  install_remote_release([Repo], ErtsVsn, RelName, RelVsn, IsLocalBoot, Options, Timeout)
 	  end,
     fax_util:execute_on_latest_package_version(Repos, TargetErtsVsns, RelName, Fun, releases, ErtsPrompt). 
 
@@ -225,24 +227,24 @@ install_latest_remote_release(Repos, TargetErtsVsns, RelName, IsLocalBoot, Optio
 %%     Options = options()
 %% @end
 %%--------------------------------------------------------------------
-install_remote_release(Repos, [_H|_] = TargetErtsVsn, RelName, RelVsn, IsLocalBoot, Force, Timeout) when is_integer(_H) ->
-    install_remote_release(Repos, [TargetErtsVsn], RelName, RelVsn, IsLocalBoot, Force, Timeout);
-install_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, IsLocalBoot, Force, Timeout) ->
-    ?INFO_MSG("(~p, ~p, ~p, ~p, ~p)~n", [Repos, TargetErtsVsns, RelName, RelVsn, IsLocalBoot]),
+install_remote_release(Repos, [_H|_] = TargetErtsVsn, RelName, RelVsn, IsLocalBoot, Options, Timeout) when is_integer(_H) ->
+    install_remote_release(Repos, [TargetErtsVsn], RelName, RelVsn, IsLocalBoot, Options, Timeout);
+install_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, IsLocalBoot, Options, Timeout) ->
+    ?INFO_MSG("(~p, ~p, ~p, ~p, ~p, ~p, ~p)~n", [Repos, TargetErtsVsns, RelName, RelVsn, IsLocalBoot, Options, Timeout]),
     ReleaseDir = epkg_installed_paths:installed_release_dir_path(RelName, RelVsn),
     case epkg_validation:is_package_a_release(ReleaseDir) of
 	false -> 
 	    io:format("~nInitiating Install for Remote Release ~s-~s~n", [RelName, RelVsn]),
 	    {ok, ReleasePackageDirPath} = fetch_release(Repos, TargetErtsVsns, RelName, RelVsn, Timeout),
-	    Res = install_from_local_release_package(Repos, ReleasePackageDirPath, IsLocalBoot, Force, Timeout),
+	    Res = install_from_local_release_package(Repos, ReleasePackageDirPath, IsLocalBoot, Options, Timeout),
 	    io:format("Installation of ~s-~s resulted in ~p~n", [RelName, RelVsn, Res]),
 	    Res;
 	true -> 
 	    epkg_util:overwrite_yes_no(
-	      fun() -> install_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, IsLocalBoot, Force, Timeout) end,  
+	      fun() -> install_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, IsLocalBoot, Options, Timeout) end,  
 	      fun() -> ok end, 
 	      ReleaseDir, 
-	      Force)
+	      Options)
     end.
 
 %%--------------------------------------------------------------------
@@ -306,6 +308,7 @@ fetch_remote_application(Repos, TargetErtsVsns, AppName, AppVsn, ToDir, Timeout)
 %%     TargetErtsVsns = target_erts_vsns()
 %%     RelName = string()
 %%     RelVsn = string() 
+%%     Options = options()
 %%     ToDir = string()
 %% @end
 %%--------------------------------------------------------------------
@@ -315,7 +318,7 @@ fetch_latest_remote_release(Repos, TargetErtsVsns, RelName, ToDir, Options, Time
     ErtsPrompt = fs_lists:get_val(erts_prompt, Options),
 
     Fun = fun(Repo, RelVsn, ErtsVsn) ->
-		  fetch_remote_release([Repo], ErtsVsn, RelName, RelVsn, ToDir, Timeout)
+		  fetch_remote_release([Repo], ErtsVsn, RelName, RelVsn, ToDir, Options, Timeout)
 	  end,
     fax_util:execute_on_latest_package_version(Repos, TargetErtsVsns, RelName, Fun, releases, ErtsPrompt). 
 
@@ -332,18 +335,21 @@ fetch_latest_remote_release(Repos, TargetErtsVsns, RelName, ToDir, Options, Time
 %%     ToDir = string()
 %% @end
 %%--------------------------------------------------------------------
-fetch_remote_release(Repos, [_H|_] = TargetErtsVsn, RelName, RelVsn, ToDir, Timeout) when is_integer(_H) ->
-    fetch_remote_release(Repos, [TargetErtsVsn], RelName, RelVsn, ToDir, Timeout);
-fetch_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Timeout) ->
+fetch_remote_release(Repos, [_H|_] = TargetErtsVsn, RelName, RelVsn, ToDir, Options, Timeout) when is_integer(_H) ->
+    fetch_remote_release(Repos, [TargetErtsVsn], RelName, RelVsn, ToDir, Options, Timeout);
+fetch_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Options, Timeout) ->
+    ErtsPolicy = fs_lists:get_val(erts_policy, Options),
     ?INFO_MSG("(~p, ~p, ~p, ~p)~n", [Repos, TargetErtsVsns, RelName, RelVsn]),
     io:format("~nFetching for Remote Release Package ~s-~s~n", [RelName, RelVsn]),
-    Res           = fetch_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Timeout),
-    RelDirPath    = ewl_package_paths:package_dir_path(ToDir, RelName, RelVsn),
-    RelFilePath   = ewl_package_paths:release_package_rel_file_path(RelDirPath, RelName, RelVsn),
-    RelLibDirPath = ewl_package_paths:release_package_library_path(RelDirPath),
-    TargetErtsVsn = epkg_util:consult_rel_file(erts_vsn, RelFilePath),
+    Res             = fetch_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Timeout),
+    RelDirPath      = ewl_package_paths:package_dir_path(ToDir, RelName, RelVsn),
+    RelFilePath     = ewl_package_paths:release_package_rel_file_path(RelDirPath, RelName, RelVsn),
+    RelLibDirPath   = ewl_package_paths:release_package_library_path(RelDirPath),
+    ReleaseErtsVsn  = epkg_util:consult_rel_file(erts_vsn, RelFilePath),
+    ReleaseErtsVsns = get_erts_vsns_to_search_in_release(ReleaseErtsVsn, ErtsPolicy),
+    ?INFO_MSG("looking for apps in erts vsns ~p~n", [ReleaseErtsVsns]),
     io:format("Fetching remote erts package (this may take a while) -> "),
-    case catch ewr_fetch:fetch_erts_package(Repos, TargetErtsVsn, RelDirPath, Timeout) of
+    case catch ewr_fetch:fetch_erts_package(Repos, ReleaseErtsVsn, RelDirPath, Timeout) of
 	ok     -> io:format("ok~n");
 	_Error -> io:format("can't pull down erts - skipping~n")
     end,
@@ -351,7 +357,7 @@ fetch_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Timeout) ->
     AppAndVsns    = get_app_and_vsns(RelFilePath),
     lists:foreach(fun({AppName, AppVsn}) ->
 			  io:format("Pulling down ~s-~s -> ", [AppName, AppVsn]),
-			  Res = fetch_remote_application(Repos, TargetErtsVsn, AppName, AppVsn, RelLibDirPath, Timeout),
+			  Res = fetch_remote_application(Repos, ReleaseErtsVsns, AppName, AppVsn, RelLibDirPath, Timeout),
 			  io:format("~p~n", [Res])
 		  end, AppAndVsns),
     %Res = fetch_from_local_release_package(Repos, ReleasePackageDirPath, ToDir, Timeout),
@@ -371,7 +377,9 @@ get_app_and_vsns(RelFilePath) ->
 %%      try again.
 %% @end
 %%--------------------------------------------------------------------
-install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLocalBoot, Force, Timeout) ->
+install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLocalBoot, Options, Timeout) ->
+    Force      = fs_lists:get_val(force, Options),
+    ErtsPolicy = fs_lists:get_val(erts_policy, Options),
     ReleasePackageDirPath   = epkg_util:unpack_to_tmp_if_archive(ReleasePackageArchiveOrDirPath),
     case epkg_validation:is_package_a_release(ReleasePackageDirPath) of
 	false ->
@@ -379,27 +387,35 @@ install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLoca
 	true ->
 	    {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ReleasePackageDirPath),
 	    RelFilePath             = ewl_package_paths:release_package_rel_file_path(ReleasePackageDirPath, RelName, RelVsn),
-	    TargetErtsVsn           = epkg_util:consult_rel_file(erts_vsn, RelFilePath),
+	    [ReleaseErtsVsn|_] = ReleaseErtsVsns =
+		get_erts_vsns_to_search_in_release(
+		  epkg_util:consult_rel_file(erts_vsn, RelFilePath),
+		  ErtsPolicy),
     
 	    case catch epkg:install_release(ReleasePackageDirPath) of
 		{error, {failed_to_install, AppAndVsns}} ->
 		    %% The release does not contain all the applications required.  Pull them down, install them, and try again.
 		    lists:foreach(fun({AppName, AppVsn}) ->
-					  install_remote_application(Repos, TargetErtsVsn, AppName, AppVsn, Force, Timeout)
+					  install_remote_application(Repos, ReleaseErtsVsns, AppName, AppVsn, Force, Timeout)
 				  end, AppAndVsns),
-		    install_from_local_release_package(Repos, ReleasePackageDirPath, IsLocalBoot, Force, Timeout);
+		    install_from_local_release_package(Repos, ReleasePackageDirPath, IsLocalBoot, Options, Timeout);
 		
 		{error, badly_formatted_or_missing_erts_package} ->
 		    %% The release package does not contain the appropriate erts package, and it is 
 		    %% not already installed, pull it down install it and try again.
-		    ok = install_remote_erts(Repos, TargetErtsVsn, Timeout),
-		    install_from_local_release_package(Repos, ReleasePackageDirPath, IsLocalBoot, Force, Timeout);
+		    ok = install_remote_erts(Repos, ReleaseErtsVsn, Timeout),
+		    install_from_local_release_package(Repos, ReleasePackageDirPath, IsLocalBoot, Options, Timeout);
 		
 		Other ->
 		    ?INFO_MSG("exited release install on a local package with ~p~n", [Other]),
 		    Other
 	    end
     end.
+
+get_erts_vsns_to_search_in_release(TargetErtsVsn, strict) ->
+    [TargetErtsVsn];
+get_erts_vsns_to_search_in_release(TargetErtsVsn, loose) ->
+    epkg_util:erts_series(TargetErtsVsn).
 
 %%====================================================================
 %% Internal functions
@@ -413,7 +429,14 @@ install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLoca
 %%--------------------------------------------------------------------
 fetch_app_to_tmp(Repos, TargetErtsVsns, AppName, AppVsn, Timeout) ->
     {ok, TmpPackageDir} = epkg_util:create_unique_tmp_dir(),
-    case fetch_remote_application(Repos, TargetErtsVsns, AppName, AppVsn, TmpPackageDir, Timeout) of
+    Resp = 
+	fs_lists:do_until(
+	  fun(ErtsVsn) ->
+		  (catch ewr_fetch:fetch_binary_package(Repos, ErtsVsn, AppName, AppVsn, TmpPackageDir, Timeout))
+	  end,
+	  ok,
+	  TargetErtsVsns),
+    case Resp of
 	ok ->
 	    AppPackageDirPath = ewl_package_paths:package_dir_path(TmpPackageDir, AppName, AppVsn),
 	    case epkg_validation:verify_app_erts_vsn(AppPackageDirPath) of

@@ -19,6 +19,7 @@
 -export([
 	 install_erts/2,
 	 install_application/2,
+	 install_application/3,
 	 install_release/3,
 	 install_sinan_release/3,
 	 create_script_and_boot/4
@@ -58,31 +59,49 @@ install_sinan_release(CWD, InstallationPath, IsLocalBoot) ->
 %%--------------------------------------------------------------------
 %% @doc Install an application from a complte local application package. 
 %% @spec install_application(AppPackageDirOrArchive, InstallationPath) -> ok | {error, Reason}
-%% where
-%%  Reason = badly_formatted_or_missing_app_package
 %% @end
 %%--------------------------------------------------------------------
 install_application(AppPackageDirOrArchive, InstallationPath) ->
+    AppPackageDirPath        = epkg_util:unpack_to_tmp_if_archive(AppPackageDirOrArchive), 
+    {ok, {AppName, _AppVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(AppPackageDirPath),
+    case epkg_validation:verify_app_erts_vsn(AppPackageDirPath) of
+	{ok, ErtsVsn} ->
+	    install_application(AppPackageDirOrArchive, ErtsVsn, InstallationPath);
+	Error ->
+	    ?ERROR_MSG("bad app ~p beams compiled with an unsuppored erts vsn. Error ~p~n", [AppName, Error]),
+	    Error
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc Install an application from a complte local application package. 
+%% @spec install_application(AppPackageDirOrArchive, ErtsVsn, InstallationPath) -> ok | {error, Reason}
+%% @end
+%%--------------------------------------------------------------------
+install_application(AppPackageDirOrArchive, ErtsVsn, InstallationPath) ->
     AppPackageDirPath       = epkg_util:unpack_to_tmp_if_archive(AppPackageDirOrArchive), 
     {ok, {AppName, AppVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(AppPackageDirPath),
     ?INFO_MSG("Installing Application ~s-~s to ~p~n", [AppName, AppVsn, AppPackageDirPath]),
+
+    {_, ActualErtsVsn} = epkg_validation:verify_app_erts_vsn(AppPackageDirPath),
+    print_erts_warning(AppName, ActualErtsVsn, ErtsVsn),
+	    
     Res = 
 	case epkg_validation:is_package_an_app(AppPackageDirPath) of
 	    false -> 
 		{error, badly_formatted_or_missing_app_package};
 	    true  -> 
-		case epkg_validation:verify_app_erts_vsn(AppPackageDirPath) of
-		    {ok, ErtsVsn} ->
-			AppInstallationPath     = ewl_installed_paths:application_container_path(InstallationPath, ErtsVsn),
-			InstalledPackageDir     = ewl_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn),
-			install_non_release_package(AppPackageDirPath, InstalledPackageDir, AppInstallationPath);
-		    Error ->
-			?ERROR_MSG("bad app ~p beams compiled with an unsuppored erts vsn. Error ~p~n", [AppName, Error]),
-			Error
-		end
+		AppInstallationPath     = ewl_installed_paths:application_container_path(InstallationPath, ErtsVsn),
+		InstalledPackageDir     = ewl_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn),
+		install_non_release_package(AppPackageDirPath, InstalledPackageDir, AppInstallationPath)
 	end,
     ?INFO_MSG("returned ~p~n", [Res]), 
     Res.
+
+print_erts_warning(_AppName, ErtsVsn, ErtsVsn) ->
+    ok;
+print_erts_warning(AppName, ActualErtsVsn, ErtsVsn) ->
+    ?INFO_MSG("Forcing install of ~p with actual erts vsn of ~p under erts vsn ~p~n", [AppName, ActualErtsVsn, ErtsVsn]).
+    
 
 %%--------------------------------------------------------------------
 %% @doc Install an erts package. 

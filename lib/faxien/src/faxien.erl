@@ -13,6 +13,10 @@
 %%%   Example: http://www.erlware.org/stable   
 %%%  @type repo_suffix() = string(). Contains ErtsVsn/Area/Application/Vsn/TarFile.
 %%%  @type timeout() = integer() | infinity. Timeouts are specified in milliseconds.
+%%%  @type options() = [Option]
+%%%  where
+%%%   Options = {force, force()} | {erts_prompt, erts_prompt()} | {erts_policy, ErtsPolicy}
+%%%    ErtsPolicy = strict | loose
 %%%
 %%% @author Martin Logan
 %%% @copyright 2007 Erlware
@@ -390,7 +394,9 @@ install_release(Repos, ReleaseName, ReleaseVsn)  ->
     {ok, IsLocalBoot}   = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     TargetErtsVsns      = epkg_util:all_erts_vsns(TargetErtsVsn),
-    fax_install:install_remote_release(Repos, TargetErtsVsns, A, B, IsLocalBoot, false, ?REQUEST_TIMEOUT).
+    {ok, ErtsPolicy}    = gas:get_env(faxien, erts_policy, loose),
+    Options             = [{force, false}, {erts_policy, ErtsPolicy}], 
+    fax_install:install_remote_release(Repos, TargetErtsVsns, A, B, IsLocalBoot, Options, ?REQUEST_TIMEOUT).
 
 %% @spec install_release(ReleaseName, ReleaseVsn) -> ok | {error, Reason}
 %% @equiv install_release(ERLWARE, ReleaseName, ReleaseVsn)
@@ -417,7 +423,8 @@ install_release(ReleaseNameOrPath) ->
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     TargetErtsVsns      = epkg_util:all_erts_vsns(TargetErtsVsn),
     {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
-    Options             = [{force, false}, {erts_prompt, ErtsPrompt}], 
+    {ok, ErtsPolicy}    = gas:get_env(faxien, erts_policy, loose),
+    Options             = [{force, false}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
     fax_install:install_release(Repos, TargetErtsVsns, ReleaseNameOrPath, IsLocalBoot, Options, ?REQUEST_TIMEOUT).
 	
 %%--------------------------------------------------------------------
@@ -458,7 +465,9 @@ fetch_release(Repos, ReleaseName, ReleaseVsn, ToDir)  ->
     [A,B,C]             = epkg_util:if_atom_or_integer_to_string([ReleaseName, ReleaseVsn, ToDir]),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     TargetErtsVsns      = epkg_util:all_erts_vsns(TargetErtsVsn),
-    fax_install:fetch_remote_release(Repos, TargetErtsVsns, A, B, C, ?REQUEST_TIMEOUT).
+    {ok, ErtsPolicy}    = gas:get_env(faxien, erts_policy, loose),
+    Options             = [{erts_policy, ErtsPolicy}], 
+    fax_install:fetch_remote_release(Repos, TargetErtsVsns, A, B, C, Options, ?REQUEST_TIMEOUT).
 
 %% @spec fetch_release(ReleaseName, ReleaseVsn, ToDir) -> ok | {error, Reason}
 %% @equiv fetch_release(ERLWARE, ReleaseName, ReleaseVsn, ToDir)
