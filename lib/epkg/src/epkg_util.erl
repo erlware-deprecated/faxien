@@ -12,6 +12,7 @@
 %% API
 %%--------------------------------------------------------------------
 -export([
+	 remove_tuple_dups/2,
 	 highest_vsn/1,
 	 get_current_release_version/1,
 	 is_string/1,
@@ -50,6 +51,25 @@
 %%====================================================================
 %% API
 %%====================================================================
+
+%%--------------------------------------------------------------------
+%% @TODO move this into fs_lists
+%% @doc Remove the duplicates in a list of sorted tuples based on a
+%% particular element in each tuple. 
+%% @spec (Element, TupleList]) -> NewList
+%% @end
+%%--------------------------------------------------------------------
+remove_tuple_dups(Element, [E1|T]) ->
+    case remove_tuple_dups(Element, T) of
+	[]                                                           -> E1;
+	[E2|_] = L when element(Element, E1) == element(Element, E2) -> L;
+	E2         when element(Element, E1) == element(Element, E2) -> E2;
+	L          when is_list(L)                                   -> [E1|L];
+	E2                                                           -> [E1, E2]
+    end;
+remove_tuple_dups(_Element, []) ->
+    [].
+    
 %%--------------------------------------------------------------------
 %% @doc given a list of versioned apps return a list of each app
 %%      with its highest found version.

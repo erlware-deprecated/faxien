@@ -269,8 +269,8 @@ fetch_latest_remote_application(Repos, [_H|_] = TargetErtsVsn, AppName, ToDir, O
 fetch_latest_remote_application(Repos, TargetErtsVsns, AppName, ToDir, Options, Timeout) ->
     ErtsPrompt = fs_lists:get_val(erts_prompt, Options),
 
-    Fun = fun(ManagedRepos, AppVsn, ErtsVsn) ->
-		  fetch_remote_application(ManagedRepos, ErtsVsn, AppName, AppVsn, ToDir, Timeout)
+    Fun = fun(Repo, AppVsn, ErtsVsn) ->
+		  fetch_remote_application([Repo], ErtsVsn, AppName, AppVsn, ToDir, Timeout)
 	  end,
     fax_util:execute_on_latest_package_version(Repos, TargetErtsVsns, AppName, Fun, lib, ErtsPrompt). 
 

@@ -490,7 +490,8 @@ fetch_release(ReleaseName, ToDir) ->
     TargetErtsVsns      = epkg_util:all_erts_vsns(TargetErtsVsn),
     [A,B]               = epkg_util:if_atom_or_integer_to_string([ReleaseName, ToDir]),
     {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
-    Options             = [{force, false}, {erts_prompt, ErtsPrompt}], 
+    {ok, ErtsPolicy}    = gas:get_env(faxien, erts_policy, loose),
+    Options             = [{force, false}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
     fax_install:fetch_latest_remote_release(Repos, TargetErtsVsns, A, B, Options, ?REQUEST_TIMEOUT).
 	
     
