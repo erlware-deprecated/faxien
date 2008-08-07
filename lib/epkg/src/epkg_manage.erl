@@ -53,13 +53,19 @@ list_lib(InstallationPath, [A|_] = TargetErtsVsn) when is_integer(A) ->
     list_lib(InstallationPath, [TargetErtsVsn]);
 list_lib(InstallationPath, TargetErtsVsns) ->
     ?INFO_MSG("listing lib dirs for erts vsns ~p~n", [TargetErtsVsns]),
-    Libs = sets:to_list(
-      sets:from_list(
-	epkg_util:remove_tuple_dups(
-	  1, 
-	  lists:sort(
-	    fun({N, _}, {N1, _}) -> N > N1 end,
-	    lists:flatten([lists:map(fun(ErtsVsn) -> list_lib_for_erts_vsn(InstallationPath, ErtsVsn) end, TargetErtsVsns)]))))).
+    lists:reverse(
+      ordsets:to_list(
+	ordsets:from_list(
+	  epkg_util:remove_tuple_dups(
+	    2, 
+	    lists:sort(
+	      fun({N, V}, {N, V1}) -> ewr_util:is_version_greater(V, V1);
+		 ({N, _}, {N1, _}) -> N > N1 end,
+	      lists:flatten([
+			     lists:map(
+			       fun(ErtsVsn) -> list_lib_for_erts_vsn(InstallationPath, ErtsVsn) end,
+			       TargetErtsVsns)
+			    ])))))).
 
 list_lib_for_erts_vsn(InstallationPath, ErtsVsn) ->
     LibDir       = ewl_installed_paths:application_container_path(InstallationPath, ErtsVsn),
@@ -94,18 +100,20 @@ list_releases(InstallationPath, [A|_] = TargetErtsVsn) when is_integer(A) ->
     list_releases(InstallationPath, [TargetErtsVsn]);
 list_releases(InstallationPath, TargetErtsVsns) ->
     ?INFO_MSG("listing lib dirs for erts vsns ~p~n", [TargetErtsVsns]),
-    sets:to_list(
-      sets:from_list(
+    lists:reverse(
+      ordsets:to_list(
+      ordsets:from_list(
 	epkg_util:remove_tuple_dups(
-	  1, 
+	  2, 
 	  lists:sort(
-	    fun({N, _}, {N1, _}) -> N > N1 end,
+	    fun({N, V}, {N, V1}) -> ewr_util:is_version_greater(V, V1);
+	       ({N, _}, {N1, _}) -> N > N1 end,
 	    lists:flatten([
 			   lists:map(
 			     fun(ErtsVsn) -> list_releases_for_erts_vsn(InstallationPath, ErtsVsn) end,
 			     TargetErtsVsns)
 			  ])
-	   )))).
+	   ))))).
 
 list_releases_for_erts_vsn(InstallationPath, ErtsVsn) ->
     RelDir = ewl_installed_paths:release_container_path(InstallationPath),
