@@ -132,7 +132,7 @@ publish2(erts, Repos, ErtsDirPath, Timeout) ->
 publish2(Type, Repos, AppDirPath, Timeout) when Type == binary; Type == generic -> 
     {ok, {AppName, AppVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(AppDirPath),
     {ok, AppFileBinary}     = file:read_file(ewl_file:join_paths(AppDirPath, "ebin/" ++ AppName ++ ".app")),
-    case epkg_validate:verify_app_erts_vsn(AppDirPath) of
+    case epkg_validation:verify_app_erts_vsn(AppDirPath) of
 	{ok, ErtsVsn} ->
 	    %% @todo make this transactional - if .app file put fails run a delete.
 	    fax_put:put_dot_app_file(Repos, ErtsVsn, AppName, AppVsn, AppFileBinary, Timeout), 

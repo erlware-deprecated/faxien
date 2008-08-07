@@ -96,8 +96,8 @@ install(PackageDirOrArchive, RawInstallationPath) ->
 	Error   -> Error
     end.
 
-%% @spec install(RelPackagePath, ErtsVsn) -> ok | {error, Reason}
-%% @equiv install(RelPackagePath, ErtsVsn, InstallationPath) 
+%% @spec install(RelPackagePath) -> ok | {error, Reason}
+%% @equiv install(RelPackagePath, InstallationPath) 
 install(PackageDirOrArchive) -> 
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),
     install(PackageDirOrArchive, InstallationPath).

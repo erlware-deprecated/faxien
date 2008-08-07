@@ -240,11 +240,12 @@ install_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, IsLocalBoot, Opti
 	    io:format("Installation of ~s-~s resulted in ~p~n", [RelName, RelVsn, Res]),
 	    Res;
 	true -> 
+	    Force = fs_lists:get_val(force, Options),
 	    epkg_util:overwrite_yes_no(
 	      fun() -> install_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, IsLocalBoot, Options, Timeout) end,  
 	      fun() -> ok end, 
 	      ReleaseDir, 
-	      Options)
+	      Force)
     end.
 
 %%--------------------------------------------------------------------
@@ -325,8 +326,9 @@ fetch_latest_remote_release(Repos, TargetErtsVsns, RelName, ToDir, Options, Time
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Install a release package from a repository. 
-%%  IsLocalBoot indicates whether a local specific boot file is to be created or not. See the systools docs for more information.
-%% @spec fetch_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Timeout) -> ok | {error, Reason} | exit()
+%%  IsLocalBoot indicates whether a local specific boot file is to
+%%  be created or not. See the systools docs for more information.
+%% @spec fetch_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Options, Timeout) -> ok | {error, Reason} | exit()
 %% where
 %%     Repos = string()
 %%     TargetErtsVsns = target_erts_vsns()

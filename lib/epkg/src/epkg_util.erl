@@ -56,7 +56,7 @@
 %% @TODO move this into fs_lists
 %% @doc Remove the duplicates in a list of sorted tuples based on a
 %% particular element in each tuple. 
-%% @spec (Element, TupleList]) -> NewList
+%% @spec (Element, TupleList) -> NewList
 %% @end
 %%--------------------------------------------------------------------
 remove_tuple_dups(Element, [E1|T]) ->

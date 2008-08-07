@@ -200,9 +200,11 @@ upgrade_app(Repo, AppName) when is_atom(Repo) ->
 upgrade_app(Repos, AppName) -> 
     A = epkg_util:if_atom_or_integer_to_string(AppName),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    TargetErtsVsns      = epkg_util:all_erts_vsns(TargetErtsVsn),
     {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
-    Options             = [{force, false}, {erts_prompt, ErtsPrompt}], 
-    fax_manage:upgrade_application(Repos, TargetErtsVsn, A, Options, ?REQUEST_TIMEOUT).
+    {ok, ErtsPolicy}    = gas:get_env(faxien, erts_policy, loose),
+    Options             = [{force, false}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
+    fax_manage:upgrade_application(Repos, TargetErtsVsns, A, Options, ?REQUEST_TIMEOUT).
 
 %% @spec upgrade_app(AppName) -> ok | {error, Reason}
 %% @equiv upgrade_app(Repos, AppName)
@@ -235,9 +237,11 @@ upgrade_all_apps(Repo) when is_atom(Repo) ->
     upgrade_all_apps([atom_to_list(Repo)]);
 upgrade_all_apps(Repos) ->
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    TargetErtsVsns      = epkg_util:all_erts_vsns(TargetErtsVsn),
     {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
-    Options             = [{force, false}, {erts_prompt, ErtsPrompt}], 
-    fax_manage:upgrade_applications(Repos, TargetErtsVsn, Options, ?REQUEST_TIMEOUT).
+    {ok, ErtsPolicy}    = gas:get_env(faxien, erts_policy, loose),
+    Options             = [{force, false}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
+    fax_manage:upgrade_applications(Repos, TargetErtsVsns, Options, ?REQUEST_TIMEOUT).
 
 upgrade_all_apps() -> 
     {ok, Repos} = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
@@ -260,10 +264,11 @@ outdated_releases(Repo) when is_atom(Repo) ->
     outdated_releases([atom_to_list(Repo)]);
 outdated_releases(Repos) ->
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    TargetErtsVsns      = epkg_util:all_erts_vsns(TargetErtsVsn),
     lists:foreach(fun({Name, CurrentVsn, UpgradeVsn}) ->
 			  io:format("The ~s release has an available upgrade from ~s to ~s~n", [Name, CurrentVsn, UpgradeVsn])
 		  end, 
-		  fax_manage:outdated_releases(Repos, TargetErtsVsn, ?REQUEST_TIMEOUT)).
+		  fax_manage:outdated_releases(Repos, TargetErtsVsns, ?REQUEST_TIMEOUT)).
 
 %% @spec outdated_releases()-> {ok, OutdatedReleases}
 %% @equiv outdated_releases(Repos)
@@ -287,10 +292,11 @@ outdated_apps(Repo) when is_atom(Repo) ->
     outdated_apps([atom_to_list(Repo)]);
 outdated_apps(Repos) ->
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    TargetErtsVsns      = epkg_util:all_erts_vsns(TargetErtsVsn),
     lists:foreach(fun({Name, CurrentVsn, UpgradeVsn}) ->
 			  io:format("The ~s application has an available upgrade from ~s to ~s~n", [Name, CurrentVsn, UpgradeVsn])
 		  end, 
-		  fax_manage:outdated_applications(Repos, TargetErtsVsn, ?REQUEST_TIMEOUT)).
+		  fax_manage:outdated_applications(Repos, TargetErtsVsns, ?REQUEST_TIMEOUT)).
 
 %% @spec outdated_apps()-> {ok, OutdatedApps}
 %% @equiv outdated_apps(Repos)
@@ -323,9 +329,11 @@ upgrade_release(Repos, RelName) ->
     A                   = epkg_util:if_atom_or_integer_to_string(RelName),
     {ok, IsLocalBoot}   = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    TargetErtsVsns      = epkg_util:all_erts_vsns(TargetErtsVsn),
     {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
-    Options             = [{force, false}, {erts_prompt, ErtsPrompt}], 
-    fax_manage:upgrade_release(Repos, TargetErtsVsn, A, IsLocalBoot, Options, ?REQUEST_TIMEOUT).
+    {ok, ErtsPolicy}    = gas:get_env(faxien, erts_policy, loose),
+    Options             = [{force, false}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
+    fax_manage:upgrade_release(Repos, TargetErtsVsns, A, IsLocalBoot, Options, ?REQUEST_TIMEOUT).
 
 %% @spec upgrade_release(RelName) -> ok | {error, Reason}
 %% @equiv upgrade_release(Repos, RelName)
@@ -356,9 +364,11 @@ upgrade_all_releases(Repo) when is_atom(Repo) ->
 upgrade_all_releases(Repos) ->
     {ok, IsLocalBoot}   = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
+    TargetErtsVsns      = epkg_util:all_erts_vsns(TargetErtsVsn),
     {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
-    Options             = [{force, false}, {erts_prompt, ErtsPrompt}], 
-    fax_manage:upgrade_releases(Repos, TargetErtsVsn, IsLocalBoot, Options, ?REQUEST_TIMEOUT).
+    {ok, ErtsPolicy}    = gas:get_env(faxien, erts_policy, loose),
+    Options             = [{force, false}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
+    fax_manage:upgrade_releases(Repos, TargetErtsVsns, IsLocalBoot, Options, ?REQUEST_TIMEOUT).
 
 %% @spec upgrade_all_releases() -> ok | {error, Reason}
 %% @equiv upgrade_all_releases(Repos)
@@ -395,7 +405,8 @@ install_release(Repos, ReleaseName, ReleaseVsn)  ->
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     TargetErtsVsns      = epkg_util:all_erts_vsns(TargetErtsVsn),
     {ok, ErtsPolicy}    = gas:get_env(faxien, erts_policy, loose),
-    Options             = [{force, false}, {erts_policy, ErtsPolicy}], 
+    {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, true),
+    Options             = [{force, false}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
     fax_install:install_remote_release(Repos, TargetErtsVsns, A, B, IsLocalBoot, Options, ?REQUEST_TIMEOUT).
 
 %% @spec install_release(ReleaseName, ReleaseVsn) -> ok | {error, Reason}

@@ -304,24 +304,23 @@ upgrade_releases(Repos, TargetErtsVsns, IsLocalBoot, Options, Timeout) ->
 upgrade_release(Repos, [_H|_] = TargetErtsVsn, ReleaseName, IsLocalBoot, Options, Timeout) when is_integer(_H) -> 
     upgrade_release(Repos, [TargetErtsVsn], ReleaseName, IsLocalBoot, Options, Timeout);
 upgrade_release(Repos, [TargetErtsVsn|_] = TargetErtsVsns, ReleaseName, IsLocalBoot, Options, Timeout) -> 
-    Force      = fs_lists:get_val(force, Options),
     ErtsPrompt = fs_lists:get_val(erts_prompt, Options),
     ?INFO_MSG("fax_manage:upgrade_release(~p, ~p)~n", [Repos, ReleaseName]),
     case is_outdated_release(Repos, TargetErtsVsns, ReleaseName, Timeout) of
 	{ok, {lower, HighestLocalVsn, HighestRemoteVsn, TargetErtsVsn}} ->
 	    handle_upgrade_release(Repos, TargetErtsVsn, ReleaseName, HighestLocalVsn,
-				   HighestRemoteVsn, IsLocalBoot, Force,Timeout);
+				   HighestRemoteVsn, IsLocalBoot, Options,Timeout);
 	{ok, {lower, HighestLocalVsn, HighestRemoteVsn, RemoteErtsVsn}} when ErtsPrompt == true ->
-	    case fax_util:ask_about_switching_target_ertsVsns(ReleaseName, HighestRemoteVsn, TargetErtsVsn, RemoteErtsVsn) of
+	    case fax_util:ask_about_switching_target_erts_vsns(ReleaseName, HighestRemoteVsn, TargetErtsVsn, RemoteErtsVsn) of
 		true  ->
 		    handle_upgrade_release(Repos, RemoteErtsVsn, ReleaseName, HighestLocalVsn,
-					   HighestRemoteVsn, IsLocalBoot, Force, Timeout);
+					   HighestRemoteVsn, IsLocalBoot, Options, Timeout);
 		false -> 
 		    ok
 	    end;
 	{ok, {lower, HighestLocalVsn, HighestRemoteVsn, RemoteErtsVsn}} ->
 	    handle_upgrade_release(Repos, RemoteErtsVsn, ReleaseName, HighestLocalVsn,
-				   HighestRemoteVsn, IsLocalBoot, Force, Timeout);
+				   HighestRemoteVsn, IsLocalBoot, Options, Timeout);
 	{ok, {_, HighestLocalVsn}} ->
 	    io:format("~s at version ~s is up to date~n", [ReleaseName, HighestLocalVsn]);
 	Error ->
@@ -330,9 +329,9 @@ upgrade_release(Repos, [TargetErtsVsn|_] = TargetErtsVsns, ReleaseName, IsLocalB
     end.
 
 
-handle_upgrade_release(Repos, TargetErtsVsns, ReleaseName, HighestLocalVsn, HighestRemoteVsn, IsLocalBoot, Force, Timeout) ->
+handle_upgrade_release(Repos, TargetErtsVsns, ReleaseName, HighestLocalVsn, HighestRemoteVsn, IsLocalBoot, Options, Timeout) ->
     io:format("Upgrading from version ~s of ~s to version ~s~n", [HighestLocalVsn, ReleaseName, HighestRemoteVsn]),
-    fax_install:install_remote_release(Repos,TargetErtsVsns,ReleaseName,HighestRemoteVsn,IsLocalBoot,Force,Timeout), 
+    fax_install:install_remote_release(Repos,TargetErtsVsns,ReleaseName,HighestRemoteVsn,IsLocalBoot,Options,Timeout), 
     handle_config_on_upgrade(ReleaseName, HighestRemoteVsn, HighestLocalVsn).
     
 
@@ -391,7 +390,7 @@ outdated_applications(Repos, TargetErtsVsns, Timeout) ->
 %%--------------------------------------------------------------------
 %% @doc upgrade all applications on the install path.
 %% @type erts_prompt() = bool(). indicate whether or not to prompt upon finding a package outside of the target erts vsn.
-%% @spec upgrade_applications(Repos, TargetErtsVsns, Force, Timeout) -> ok | {error, Reason}
+%% @spec upgrade_applications(Repos, TargetErtsVsns, Options, Timeout) -> ok | {error, Reason}
 %%  where
 %%   Repos = [string()]
 %%   TargetErtsVsns = target_erts_vsns()
