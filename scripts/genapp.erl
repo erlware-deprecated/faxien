@@ -51,7 +51,7 @@ ensure_app(Base, AppDir) ->
             %% Now that we have at least one  beam file, check for a .app file; if it doesn't exist,
             %% create it
             AppData = app_template(AppName, AppVsn, Beams),
-            ok = file:write_file(DotAppFile, list_to_binary(io_lib:format("~p", [AppData])))
+            ok = file:write_file(DotAppFile, list_to_binary(io_lib:format("~p.\n", [AppData])))
     end.
 
 
