@@ -109,7 +109,7 @@ apply_from_commandline(Mod, Func, Args) ->
    catch 
 	_Class:exit ->
 	    ?INFO_MSG("fatal exit exception sent - halting now~n", []),
-	    init:stop();
+           halt(1);
 	_Class:Exception ->
 	    ?ERROR_MSG("full exception is ~p with stack trace ~p~n", [Exception,erlang:get_stacktrace()]),
 	    sanitize_exception(Exception)
