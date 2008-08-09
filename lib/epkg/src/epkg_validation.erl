@@ -24,6 +24,14 @@
 %%--------------------------------------------------------------------
 -define(BINARY_FILE_EXTENSIONS, ["cmx","py","c","bat","exe","so"]).
 
+%% List of regexs that are compared against the output of the "file" command to determine if a
+%% given file is a "binary" file or not
+-define(BINARY_FILE_REGEX, [ "executable",
+                             "shell script",
+                             "shared object",
+                             "dynamically linked" ]).
+
+
 %%--------------------------------------------------------------------
 %% Include files
 %%--------------------------------------------------------------------
@@ -138,7 +146,12 @@ is_package_a_binary_app(PackageDir) ->
 		    []    -> false;
 		    [_|_] -> true
 		end
-	end
+	end,
+
+        fun(PackageDir_) ->
+                Files = filelib:wildcard(PackageDir_ ++ "/priv/*/*"),
+                lists:any(fun is_binary_file/1, Files)
+        end
     ]).
 		
 is_package_a_release(PackageDir) ->
@@ -312,3 +325,17 @@ fetch_vsn(AppDirPath, Module) ->
 %% Internal functions
 %%====================================================================
 
+%% Predicate that uses the O/S supplied "file" command to determine if a given filename is an
+%% executable
+is_binary_file(Filename) ->
+    FileType = os:cmd(io_lib:format("file -b ~s", [Filename])),
+    lists:any(fun(Regex) ->
+                      case regexp:match(FileType, Regex) of
+                          nomatch -> false;
+                          {match, _, _} -> true
+                      end
+              end, ?BINARY_FILE_REGEX).
+                              
+
+
+                           
