@@ -22,7 +22,6 @@ app_template(AppName, AppVsn, Beams) ->
 ensure_app(Base, "hipe-" ++ AppVsn) ->
     %% Special case handling for HIPE -- we need to add a flag to the .app so that
     %% faxien knows to publish it as a binary, despite the fact that it's only beams
-    io:format("Special hipe!\n"),
     Dir = filename:join([Base, "hipe-" ++ AppVsn, "ebin"]),
     DotAppFile = filename:join([Dir, "hipe.app"]),
     {ok, [{application, hipe, Keys}]} = file:consult(DotAppFile),
@@ -36,7 +35,6 @@ ensure_app(Base, "hipe-" ++ AppVsn) ->
 
 ensure_app(Base, AppDir) ->
     [AppName, AppVsn] = string:tokens(AppDir, "-"),
-    io:format("."),
     Dir = filename:join([Base, AppDir, "ebin"]),
 
     %% First check for one or more .beam files -- if none exist, create one
