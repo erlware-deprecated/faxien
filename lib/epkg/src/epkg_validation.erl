@@ -151,6 +151,10 @@ is_package_a_binary_app(PackageDir) ->
         fun(PackageDir_) ->
                 Files = filelib:wildcard(PackageDir_ ++ "/priv/*/*"),
                 lists:any(fun is_binary_file/1, Files)
+        end,
+
+        fun(PackageDir_) ->
+                has_binary_override_entry(PackageDir_)
         end
     ]).
 		
@@ -299,10 +303,20 @@ get_compiler_vsn(AppDirPath) ->
     end.
 
 get_compiler_vsn(AppDirPath, [Module|Modules], undefined) ->
-    CompilerVsn = fetch_vsn(AppDirPath, Module),
-    get_compiler_vsn(AppDirPath, Modules, CompilerVsn);
+    case fetch_vsn(AppDirPath, Module) of
+        missing_module ->
+            get_compiler_vsn(AppDirPath, Modules, undefined);
+        CompilerVsn ->
+            get_compiler_vsn(AppDirPath, Modules, CompilerVsn)
+    end;
 get_compiler_vsn(AppDirPath, [Module|Modules], CompilerVsn) ->
     case catch fetch_vsn(AppDirPath, Module) of
+        missing_module ->
+            %% Module was missing, no compiler info available, but since the file doesn't
+            %% exist, the compiler info is irrelevant; log a warning but continue on
+            ?INFO_MSG("WARNING: ~p beam file listed in .app, but doesn't actually exist!",
+                       [Module]),
+            get_compiler_vsn(AppDirPath, Modules, CompilerVsn);
 	CompilerVsn ->
 	    get_compiler_vsn(AppDirPath, Modules, CompilerVsn);
 	Error ->
@@ -313,12 +327,23 @@ get_compiler_vsn(_AppDirPath, [], CompilerVsn) ->
 	
 fetch_vsn(AppDirPath, Module) ->
     BeamPath  = AppDirPath ++ "/ebin/" ++ atom_to_list(Module),
-    {ok, {Module, [{compile_info, CompileInfo}]}} = beam_lib:chunks(BeamPath, [compile_info]),
-    case fs_lists:get_val(version, CompileInfo) of
-	undefined ->
-	    {error, {no_compiler_vsn_found, BeamPath}};
-	Vsn ->
-	    Vsn
+    case beam_lib:chunks(BeamPath, [compile_info]) of
+        {ok, {Module, [{compile_info, CompileInfo}]}} ->
+            case fs_lists:get_val(version, CompileInfo) of
+                undefined ->
+                    {error, {no_compiler_vsn_found, BeamPath}};
+                Vsn ->
+                    Vsn
+            end;
+        {error, beam_lib, {file_error, _, enoent}} ->
+            %% Arguably, if a .beam is listed in a .app, it shouldn't cause the 
+            %% entire publish to fail. We know of at least one case in the core Erlang
+            %% distribution (hipe) where modules are listed that actually live within
+            %% the VM. Therefore, notify the caller that the module doesn't exist
+            %% but don't make everything blow up.
+            missing_module;
+        Error ->
+            Error
     end.
 
 %%====================================================================
@@ -337,5 +362,20 @@ is_binary_file(Filename) ->
               end, ?BINARY_FILE_REGEX).
                               
 
+%% Predicate that checks the application file for an override flag which will force the
+%% app to be published as a "binary" app
+has_binary_override_entry(PackageDir) ->
+    case filelib:wildcard(PackageDir ++ "/ebin/*.app") of
+        [File] ->
+            case file:consult(File) of
+                {ok, [{application, _, Keys}]} ->
+                    proplists:get_bool(force_binary_app, Keys);
+                Other ->
+                    false
+            end;
+        _ ->
+            false
+    end.
+                        
 
                            

@@ -19,8 +19,24 @@ app_template(AppName, AppVsn, Beams) ->
 %%
 %% Make certain that a given app directory has at least one .beam and that a .app file exists
 %%
+ensure_app(Base, "hipe-" ++ AppVsn) ->
+    %% Special case handling for HIPE -- we need to add a flag to the .app so that
+    %% faxien knows to publish it as a binary, despite the fact that it's only beams
+    io:format("Special hipe!\n"),
+    Dir = filename:join([Base, "hipe-" ++ AppVsn, "ebin"]),
+    DotAppFile = filename:join([Dir, "hipe.app"]),
+    {ok, [{application, hipe, Keys}]} = file:consult(DotAppFile),
+    case lists:member({force_binary_app, true}, Keys) of
+        true ->
+            ok;
+        false ->
+            AppData = {application, hipe, Keys ++ [{force_binary_app, true}]},
+            ok = file:write_file(DotAppFile, list_to_binary(io_lib:format("~p.\n", [AppData])))
+    end;
+
 ensure_app(Base, AppDir) ->
     [AppName, AppVsn] = string:tokens(AppDir, "-"),
+    io:format("."),
     Dir = filename:join([Base, AppDir, "ebin"]),
 
     %% First check for one or more .beam files -- if none exist, create one
