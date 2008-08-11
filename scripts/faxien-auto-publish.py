@@ -470,7 +470,7 @@ def get_published_apps():
     return apps
 
 
-BINARY_FILE_EXTENSIONS = ["cmx", "py", "c", "bat", "exe", "so"]
+BINARY_FILE_EXTENSIONS = ["cmx", "py", "bat", "exe", "so"]
 
 def is_binary_lib(app_dir):
     """Is the application binary? (i.e., has hardware specific code).

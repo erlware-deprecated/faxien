@@ -22,7 +22,7 @@
 %%--------------------------------------------------------------------
 %% Macros
 %%--------------------------------------------------------------------
--define(BINARY_FILE_EXTENSIONS, ["cmx","py","c","bat","exe","so"]).
+-define(BINARY_FILE_EXTENSIONS, ["cmx","py","bat","exe","so"]).
 
 %% List of regexs that are compared against the output of the "file" command to determine if a
 %% given file is a "binary" file or not
