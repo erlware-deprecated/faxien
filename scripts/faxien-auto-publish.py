@@ -471,6 +471,13 @@ def get_published_apps():
 
 
 BINARY_FILE_EXTENSIONS = ["cmx", "py", "bat", "exe", "so"]
+BINARY_FILE_REGEX = [ ".* executable .*", 
+                      ".* shared object .*", 
+                      ".* dynamically linked .*" ]
+
+def get_file_type(filename):
+    from subprocess import Popen, PIPE
+    return Popen(["file", "-b", filename], stdout=PIPE).communicate()[0].strip()
 
 def is_binary_lib(app_dir):
     """Is the application binary? (i.e., has hardware specific code).
@@ -483,22 +490,37 @@ def is_binary_lib(app_dir):
         if name.endswith('_src'):
             return True
 
-    for _, _, files in os.walk(app_dir):
+    for root, _, files in os.walk(app_dir):
         for name in files:
             if os.path.splitext(name)[1][1:] in BINARY_FILE_EXTENSIONS:
                 return True
+
+            # Check the "file -b" command against each file name and see if it returns
+            # a value that matches one of a list of regexs
+            file_type = get_file_type(os.path.join(root, name))
+            for r in BINARY_FILE_REGEX:
+                if re.match(r, file_type):
+                    return True
+
+    # Finally, check .ebin file and see if there is a {force_binary_app, true} present
+    (app, vsn) = os.path.basename(app_dir).split("-")
+    app_file = os.path.join(app_dir, "ebin", "%s.app" % (app))
+    if os.path.exists(app_file):
+        app_data = str(open(app_file, "r").readlines())
+        if re.match(".*{\s*force_binary_app\s*,\s*true}.*", app_data):
+            return True
 
     return False
 
 def remove_shell_scripts(erts_dir):
     """ Remove any shell scripts found within the erts_dir; we provide our own within erlware """
     bin_dir = os.path.join(erts_dir, "bin")
-    for _, _, files in os.walk(bin_dir):
+    for root, _, files in os.walk(bin_dir):
         for name in files:
-            from subprocess import Popen, PIPE
-            file_type = Popen(["file", "-b", name], cwd = bin_dir, stdout=PIPE).communicate()[0].strip()
+            filename = os.path.join(root, name)
+            file_type = get_file_type(filename)
             if file_type.find("shell script text") != -1:
-                os.remove(os.path.join(bin_dir, name))
+                os.remove(filename)
 
 def clone_bootstrap(working_dir, log_dir):
     """Clone the bootstrap repo into the working directory."""
