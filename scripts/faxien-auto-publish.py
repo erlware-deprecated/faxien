@@ -490,6 +490,15 @@ def is_binary_lib(app_dir):
 
     return False
 
+def remove_shell_scripts(erts_dir):
+    """ Remove any shell scripts found within the erts_dir; we provide our own within erlware """
+    bin_dir = os.path.join(erts_dir, "bin")
+    for _, _, files in os.walk(bin_dir):
+        for name in files:
+            from subprocess import Popen, PIPE
+            file_type = Popen(["file", "-b", name], cwd = bin_dir, stdout=PIPE).communicate()[0].strip()
+            if file_type.find("shell script text") != -1:
+                os.remove(os.path.join(bin_dir, name))
 
 def clone_bootstrap(working_dir, log_dir):
     """Clone the bootstrap repo into the working directory."""
@@ -645,6 +654,9 @@ def main():
             sys.exit(0)
 
         set_target_erts_version(erts_version)
+
+    # Remove shell scripts from bin/ dir in ERTS package
+    remove_shell_scripts(erts_dir)
 
     publish_dirs = get_application_dirs(erlang_dir)
 
