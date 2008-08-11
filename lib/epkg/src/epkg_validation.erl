@@ -27,7 +27,6 @@
 %% List of regexs that are compared against the output of the "file" command to determine if a
 %% given file is a "binary" file or not
 -define(BINARY_FILE_REGEX, [ "executable",
-                             "shell script",
                              "shared object",
                              "dynamically linked" ]).
 
@@ -370,7 +369,7 @@ has_binary_override_entry(PackageDir) ->
             case file:consult(File) of
                 {ok, [{application, _, Keys}]} ->
                     proplists:get_bool(force_binary_app, Keys);
-                Other ->
+                _Other ->
                     false
             end;
         _ ->
