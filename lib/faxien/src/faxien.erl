@@ -171,7 +171,7 @@
 %%--------------------------------------------------------------------
 cmdln_apply([_Mod]) ->
     faxien:help(),
-    halt(0);
+    init:stop(0);
 cmdln_apply([Mod, RawFunc|Args]) ->
     ?INFO_MSG("mod:func ~p:~p with raw args from commandline: ~w~n", [Mod, RawFunc, Args]),
     Func = list_to_atom(

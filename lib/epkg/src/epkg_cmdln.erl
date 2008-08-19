@@ -113,7 +113,7 @@ apply_from_commandline(Mod, Func, Args) ->
    catch 
 	_Class:exit ->
 	    ?INFO_MSG("fatal exit exception sent - halting now~n", []),
-           halt(1);
+           init:stop(1);
 	_Class:Exception ->
 	    ?ERROR_MSG("full exception is ~p with stack trace ~p~n", [Exception,erlang:get_stacktrace()]),
 	    sanitize_exception(Exception)
@@ -126,19 +126,19 @@ apply_from_commandline(Mod, Func, Args) ->
 %%--------------------------------------------------------------------
 handle_apply_result(ok) ->
     io:format("ok~n"),
-    halt(0);
+    init:stop(0);
 handle_apply_result({ok, Result}) ->
     case epkg_util:is_string(Result) of
 	true  -> io:format("~s~n", [Result]);
 	false -> io:format("~p~n", [Result])
     end,
-    halt(0);
+    init:stop(0);
 handle_apply_result({error, PrintableError}) ->
     io:format("~p~n", [PrintableError]),
     io:format("~nSuggestions:~n"),
     print_error_specific_error_msg(PrintableError),
     print_logfile_info(),
-    halt(1).
+    init:stop(1).
 
 
 %%----------------------------------------------------------------------------
