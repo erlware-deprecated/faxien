@@ -12,6 +12,7 @@
 %% API
 %%--------------------------------------------------------------------
 -export([
+	 md5/1,
 	 remove_tuple_dups/2,
 	 highest_vsn/1,
 	 get_current_release_version/1,
@@ -39,6 +40,8 @@
 	 ask_about_string_in_list/2,
 	 collect_name_and_high_vsn_pairs/1
 	]).
+
+-include("eunit.hrl").
 
 %%--------------------------------------------------------------------
 %% Include files
@@ -491,6 +494,26 @@ extract_rel_value(app_specs, {release, _, _, AppSpecs}) ->
 extract_rel_value(_, _Junk) ->
     {error, badly_formatted_rel_file}.
     
+%%-------------------------------------------------------------------
+%% @doc return the hex encoded md5 string for a binary
+%% @spec (List) -> string()
+%% @end
+%%-------------------------------------------------------------------
+md5(List) -> hex(binary_to_list(erlang:md5(List))).
+
+hex(L) when list (L) -> lists:flatten([hex(I) || I <- L]);
+hex(I) when I > 16#f -> [hex0((I band 16#f0) bsr 4), hex0((I band 16#0f))];
+hex(I)               -> [$0, hex0(I)].
+
+hex0(10) -> $a;
+hex0(11) -> $b;
+hex0(12) -> $c;
+hex0(13) -> $d;
+hex0(14) -> $e;
+hex0(15) -> $f;
+hex0(I) ->  $0 + I.
+
+
 %%====================================================================
 %% Internal functions
 %%====================================================================
@@ -504,6 +527,9 @@ is_string_test() ->
     ?assertMatch(false, is_string({})),
     ?assertMatch(true, is_string("hell]o")),
     ?assertMatch(true, is_string("hello")).
+
+md5_test() ->
+    ?assertMatch("b1946ac92492d2347c6235b4d2611184", md5("hello\n")).
 
     
 			       

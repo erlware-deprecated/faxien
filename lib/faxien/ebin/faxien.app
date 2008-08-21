@@ -5,12 +5,11 @@
   {description, "The erlang package management tool."},
 
   % The version of the applicaton
-  {vsn, "0.33.0.0"},
+  {vsn, "0.34.0.0"},
 
   % All modules used by the application. 
   {modules,
    [
-    fax_cmdln,
     faxien,
     fax_install,
     fax_manage,

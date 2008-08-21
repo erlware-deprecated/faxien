@@ -16,8 +16,11 @@
 	 put_release_control_file/6,
 	 put_dot_rel_file/6,
 	 put_signature_file/7,
-	 put_erts_signature_file/4
+	 put_erts_signature_file/4,
+	 put_checksum_file/7,
+	 put_erts_checksum_file/4
 	]).
+
 
 %%====================================================================
 %% API
@@ -125,6 +128,33 @@ put_erts_signature_file(Repos, ErtsVsn, Payload, Timeout) when is_binary(Payload
     Suffix = ewr_repo_paths:erts_signature_file_suffix(ErtsVsn, Area),
     repos_put(Repos, Suffix, Payload, Timeout).
 
+%%--------------------------------------------------------------------
+%% @doc put a checksum file onto a remote repository.
+%% @spec put_checksum_file(Repos, ErtsVsn, Side, PackageName, PackageVsn, Payload, Timeout) -> {ok, Urls} | {error, Reason}
+%% where
+%%  Timeout = Milliseonds::integer()
+%% @end 
+%%--------------------------------------------------------------------
+put_checksum_file(Repos, ErtsVsn, Side, PackageName, PackageVsn, Payload, Timeout) when is_binary(Payload) -> 
+    Suffix   = ewr_repo_paths:checksum_file_suffix(ErtsVsn, Side, PackageName, PackageVsn),
+    MD5      = epkg_util:md5(Payload), 
+    Checksum = list_to_binary(io_lib:fwrite("~s", [MD5])),
+    repos_put(Repos, Suffix, Checksum, Timeout).
+
+%%--------------------------------------------------------------------
+%% @doc put a checksum file for an erts package onto a remote repository.
+%% @spec put_erts_checksum_file(Repos, ErtsVsn, Payload, Timeout) -> {ok, Urls} | {error, Reason}
+%% where
+%%  Timeout = Milliseonds::integer()
+%% @end 
+%%--------------------------------------------------------------------
+put_erts_checksum_file(Repos, ErtsVsn, Payload, Timeout) when is_binary(Payload) -> 
+    Area     = ewr_util:system_info(),
+    Suffix   = ewr_repo_paths:erts_checksum_file_suffix(ErtsVsn, Area),
+    MD5      = epkg_util:md5(Payload), 
+    Checksum = list_to_binary(io_lib:fwrite("~s", [MD5])),
+    repos_put(Repos, Suffix, Checksum, Timeout).
+
 %%====================================================================
 %% Internal functions
 %%====================================================================
@@ -180,3 +210,4 @@ payloads_put(Repos, PayloadFun) ->
 	{Success, Failure} -> {error, {publish_partial_failure, {publish_success, Success}, {publish_failure, Failure}}}
     end.
 			   
+
