@@ -145,7 +145,8 @@ publish2(Type, Repos, AppDirPath, Timeout) when Type == binary; Type == generic 
 		    generic -> fax_put:put_generic_app_package(Repos, ErtsVsn, AppName, AppVsn, Binary, Timeout); 
 		    binary  -> fax_put:put_binary_app_package(Repos, ErtsVsn, AppName, AppVsn, Binary, Timeout)
 		end,
-	    fax_put:put_checksum_file(Repos, ErtsVsn, "lib", AppName, AppVsn, Binary, Timeout);
+	    fax_put:put_checksum_file(Repos, ErtsVsn, "lib", AppName, AppVsn, Binary, Timeout),
+	    Result;
 	Error ->
 	    ?ERROR_MSG("beams compiled with an unsuppored erts vsn. Error ~p~n", [Error]),
 	    Error
