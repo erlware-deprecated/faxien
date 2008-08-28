@@ -128,9 +128,9 @@ publish2(erts, Repos, ErtsDirPath, Timeout) ->
     {ok, {"erts", ErtsVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ErtsDirPath),
     fax_put:put_erts_signature_file(Repos, ErtsVsn, create_signature(ErtsVsn), Timeout),
     Binary = pack(ErtsDirPath),
+    Res = fax_put:put_erts_package(Repos, ErtsVsn, Binary, Timeout), 
     fax_put:put_erts_checksum_file(Repos, ErtsVsn, Binary, Timeout),
-    fax_put:put_erts_package(Repos, ErtsVsn, Binary, Timeout); 
-
+    Res;
 publish2(Type, Repos, AppDirPath, Timeout) when Type == binary; Type == generic -> 
     {ok, {AppName, AppVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(AppDirPath),
     {ok, AppFileBinary}     = file:read_file(ewl_file:join_paths(AppDirPath, "ebin/" ++ AppName ++ ".app")),
@@ -140,11 +140,12 @@ publish2(Type, Repos, AppDirPath, Timeout) when Type == binary; Type == generic 
 	    fax_put:put_dot_app_file(Repos, ErtsVsn, AppName, AppVsn, AppFileBinary, Timeout), 
 	    fax_put:put_signature_file(Repos, ErtsVsn, "lib", AppName, AppVsn, create_signature(AppVsn), Timeout),
 	    Binary = pack(AppDirPath),
-	    fax_put:put_checksum_file(Repos, ErtsVsn, "lib", AppName, AppVsn, Binary, Timeout),
-	    case Type of
-		generic -> fax_put:put_generic_app_package(Repos, ErtsVsn, AppName, AppVsn, Binary, Timeout); 
-		binary  -> fax_put:put_binary_app_package(Repos, ErtsVsn, AppName, AppVsn, Binary, Timeout)
-	    end;
+	    Result = 
+		case Type of
+		    generic -> fax_put:put_generic_app_package(Repos, ErtsVsn, AppName, AppVsn, Binary, Timeout); 
+		    binary  -> fax_put:put_binary_app_package(Repos, ErtsVsn, AppName, AppVsn, Binary, Timeout)
+		end,
+	    fax_put:put_checksum_file(Repos, ErtsVsn, "lib", AppName, AppVsn, Binary, Timeout);
 	Error ->
 	    ?ERROR_MSG("beams compiled with an unsuppored erts vsn. Error ~p~n", [Error]),
 	    Error
@@ -161,10 +162,10 @@ publish2(release, Repos, RelDirPath, Timeout) ->
     fax_put:put_signature_file(Repos, ErtsVsn, "releases", RelName, RelVsn, create_signature(RelVsn), Timeout),
     FilesToBeIgnored = ["erts-" ++ ErtsVsn, "lib", "install.sh"],
     Binary = pack(ignore_files_in_release(RelDirPath, FilesToBeIgnored)), 
+    Res = fax_put:put_release_package(Repos, ErtsVsn, RelName, RelVsn, Binary, Timeout),
     fax_put:put_checksum_file(Repos, ErtsVsn, "releases", RelName, RelVsn, Binary, Timeout),
-    fax_put:put_release_package(Repos, ErtsVsn, RelName, RelVsn, Binary, Timeout).
+    Res.
 	
-    
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Packs up a package and returns a binary of the archive.
