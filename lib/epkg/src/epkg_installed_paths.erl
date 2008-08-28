@@ -167,13 +167,7 @@ list_app_vsns(ErtsVsn, AppName) ->
 %% @end
 %%--------------------------------------------------------------------
 list_erts_vsns(InstallationPath) ->
-    ErtsContainerPath = ewl_installed_paths:erts_container_path(InstallationPath),
-    lists:map(
-      fun(Path) ->
-	      {ok, {_Name, Vsn}} = package_dir_to_name_and_vsn(Path),
-	      Vsn
-      end,
-      filelib:wildcard(ErtsContainerPath ++ "/*")).
+    lists:map(fun(Path) -> filename:basename(Path) end, filelib:wildcard(InstallationPath ++ "/packages/*")).
 
 %%--------------------------------------------------------------------
 %% @doc return a list of erts versions currently installed that are lower than the supplied version. 
@@ -273,7 +267,7 @@ get_installation_path() ->
 find_config_file_path(RelName, RelVsn) -> 
     {ok, InstallationPath} = get_installation_path(),
     RelDirPath             = ewl_installed_paths:release_file_container_path(InstallationPath, RelName, RelVsn),
-    case ewl_file:find(RelDirPath, ".*config") of
+    case ewl_file:find(RelDirPath, ".*config$") of
 	[]                -> throw({error, no_erlang_config_file_found});
 	RelConfigFilePath -> RelConfigFilePath
     end.
