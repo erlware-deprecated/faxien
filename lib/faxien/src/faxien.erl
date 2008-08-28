@@ -13,6 +13,10 @@
 %%%   Example: http://www.erlware.org/stable   
 %%%  @type repo_suffix() = string(). Contains ErtsVsn/Area/Application/Vsn/TarFile.
 %%%  @type timeout() = integer() | infinity. Timeouts are specified in milliseconds.
+%%%  @type erts_policy() = strict | loose. Strict erts policy means only apps of strictly the same erts version
+%%%                                        as specified with in a release will be installed for that release. Loose
+%%%                                        indicates that if needed minor version compatible apps can be used
+%%%                                        i.e 5.6.1 for 5.6.2
 %%%  @type options() = [Option]
 %%%  where
 %%%   Options = {force, force()} | {erts_prompt, erts_prompt()} | {erts_policy, ErtsPolicy}
@@ -562,7 +566,10 @@ install_app(AppNameOrPath) ->
     case filelib:is_file(AppNameOrPath) of
 	true  -> 
 	    AppDirPath = epkg_util:unpack_to_tmp_if_archive(AppNameOrPath),
-	    epkg:install_app(AppDirPath);
+	    case epkg:install_app(AppDirPath) of
+		{ok, _ErtsVsn} -> ok;
+		Error          -> Error
+	    end;
 	false -> 
 	    {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
 	    TargetErtsVsns      = epkg_util:all_erts_vsns(TargetErtsVsn),
@@ -600,7 +607,9 @@ fetch_app(Repos, AppName, AppVsn, ToDir)  ->
     [A,B,C]         = epkg_util:if_atom_or_integer_to_string([AppName, AppVsn, ToDir]),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     TargetErtsVsns      = epkg_util:all_erts_vsns(TargetErtsVsn),
-    fax_install:fetch_remote_application(Repos, TargetErtsVsns, A, B, C, ?REQUEST_TIMEOUT).
+    {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
+    Options             = [{force, false}, {erts_prompt, ErtsPrompt}], 
+    fax_install:fetch_remote_application(Repos, TargetErtsVsns, A, B, C, Options, ?REQUEST_TIMEOUT).
 
 %% @spec fetch_app(AppName, AppVsn, ToDir) -> ok | {error, Reason}
 %% @equiv fetch_app(ERLWARE, AppName, AppVsn, ToDir)

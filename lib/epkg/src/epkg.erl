@@ -78,7 +78,7 @@ cmdln_apply([Mod, RawFunc|Args]) ->
 %% @doc 
 %%  Determine the type of a package and then install it appropriately. You must specify the erts vsn the package was created
 %%  with or for. 
-%% @spec install(RelPackagePath, InstallationPath) -> ok | {error, Reason}
+%% @spec install(RelPackagePath, InstallationPath) -> ok | {ok, ErtsVsn} | {error, Reason}
 %% where
 %%  ErtsVsn = string()
 %%  Reason = badly_formatted_or_missing_package | {failed_to_install, [{AppName, AppVsn}]}
@@ -147,7 +147,7 @@ install_release_help() ->
 %% @doc 
 %%  Install an application package or package archive. Including the erts vsn means that this should be installed for use
 %%  with erts vsn X no matter the erts vsn this was compiled with. 
-%% @spec install_app(AppPackagePath, ErtsVsn, InstallationPath) -> ok | {error, Reason}
+%% @spec install_app(AppPackagePath, ErtsVsn, InstallationPath) -> {ok, ErtsVsn} | {error, Reason}
 %% where
 %%  Reason = badly_formatted_or_missing_app_package
 %% @end
@@ -158,7 +158,7 @@ install_app(AppPackagePath, ErtsVsn, InstallationPath) ->
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Install an application package or package archive. The erts version will be determined automatically.
-%% @spec install_app(AppPackagePath, InstallationPath) -> ok | {error, Reason}
+%% @spec install_app(AppPackagePath, InstallationPath) -> {ok, ErtsVsn} | {error, Reason}
 %% where
 %%  Reason = badly_formatted_or_missing_app_package
 %% @end
@@ -166,7 +166,7 @@ install_app(AppPackagePath, ErtsVsn, InstallationPath) ->
 install_app(AppPackagePath, InstallationPath) -> 
     epkg_install:install_application(AppPackagePath, epkg_util:if_atom_or_integer_to_string(InstallationPath)).
 
-%% @spec install_app(AppPackagePath) -> ok | {error, Reason}
+%% @spec install_app(AppPackagePath) -> {ok, ErtsVsn} | {error, Reason}
 %% @equiv install_app(AppPackagePath, InstallationPath) 
 install_app(AppPackagePath) -> 
     {ok, InstallationPath} = epkg_installed_paths:get_installation_path(),

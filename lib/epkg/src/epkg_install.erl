@@ -58,7 +58,7 @@ install_sinan_release(CWD, InstallationPath, IsLocalBoot) ->
     
 %%--------------------------------------------------------------------
 %% @doc Install an application from a complte local application package. 
-%% @spec install_application(AppPackageDirOrArchive, InstallationPath) -> ok | {error, Reason}
+%% @spec install_application(AppPackageDirOrArchive, InstallationPath) -> {ok, ErtsVsn} | {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
 install_application(AppPackageDirOrArchive, InstallationPath) ->
@@ -73,8 +73,8 @@ install_application(AppPackageDirOrArchive, InstallationPath) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc Install an application from a complte local application package. 
-%% @spec install_application(AppPackageDirOrArchive, ErtsVsn, InstallationPath) -> ok | {error, Reason}
+%% @doc Install an application from a complete local application package. 
+%% @spec install_application(AppPackageDirOrArchive, ErtsVsn, InstallationPath) -> {ok, ErtsVsn} | {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
 install_application(AppPackageDirOrArchive, ErtsVsn, InstallationPath) ->
@@ -94,8 +94,12 @@ install_application(AppPackageDirOrArchive, ErtsVsn, InstallationPath) ->
 		InstalledPackageDir     = ewl_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn),
 		install_non_release_package(AppPackageDirPath, InstalledPackageDir, AppInstallationPath)
 	end,
-    ?INFO_MSG("returned ~p~n", [Res]), 
-    Res.
+
+    case Res of
+	ok    -> {ok, ActualErtsVsn};
+	Error -> Error
+    end.
+	    
 
 print_erts_warning(_AppName, ErtsVsn, ErtsVsn) ->
     ok;

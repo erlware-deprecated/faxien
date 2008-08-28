@@ -40,7 +40,7 @@
 	 fetch_latest_remote_release/6,
 	 fetch_remote_release/7,
 	 fetch_latest_remote_application/6,
-	 fetch_remote_application/6
+	 fetch_remote_application/7
 	]).
 
 %%====================================================================
@@ -104,14 +104,21 @@ install_remote_application(Repos, [TargetErtsVsn|_] = TargetErtsVsns, AppName, A
     AppDir = epkg_installed_paths:installed_app_dir_path(hd(TargetErtsVsns), AppName, AppVsn),
     case epkg_validation:is_package_an_app(AppDir) of
 	false -> 
-	    io:format("Pulling down ~s-~s -> ", [AppName, AppVsn]),
+	    io:format("Pulling down ~s-~s ", [AppName, AppVsn]),
 	    {ok, AppPackageDirPath} = fetch_app_to_tmp(Repos, TargetErtsVsns, AppName, AppVsn, Timeout),
 	    %% XXX Get rid of installation path here
 	    {ok, InstallationPath}  = epkg_installed_paths:get_installation_path(),
 	    Res                     = epkg:install_app(AppPackageDirPath, TargetErtsVsn, InstallationPath),
 	    ok                      = ewl_file:delete_dir(AppPackageDirPath),
-	    io:format("~p~n", [Res]),
-	    Res;
+	    case Res of
+		{ok, ActualErtsVsn} ->
+		    {ok, ErlangVersion} = faxien:translate_version(erts, erlang, ActualErtsVsn),
+		    io:format("for ~s -> ok~n", [ErlangVersion]),
+		    ok;
+		Error ->
+		    io:format("~p~n", [Error]),
+		    Error
+	    end;
 	true -> 
 	    epkg_util:overwrite_yes_no(
 	      fun() -> install_remote_application(Repos, TargetErtsVsns, AppName, AppVsn, Force, Timeout) end,  
@@ -235,7 +242,7 @@ install_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, IsLocalBoot, Opti
     case epkg_validation:is_package_a_release(ReleaseDir) of
 	false -> 
 	    io:format("~nInitiating Install for Remote Release ~s-~s~n", [RelName, RelVsn]),
-	    {ok, ReleasePackageDirPath} = fetch_release(Repos, TargetErtsVsns, RelName, RelVsn, Timeout),
+	    {ok, ReleasePackageDirPath} = fetch_release(Repos, TargetErtsVsns, RelName, RelVsn, Options, Timeout),
 	    Res = install_from_local_release_package(Repos, ReleasePackageDirPath, IsLocalBoot, Options, Timeout),
 	    io:format("Installation of ~s-~s resulted in ~p~n", [RelName, RelVsn, Res]),
 	    Res;
@@ -271,18 +278,19 @@ fetch_latest_remote_application(Repos, TargetErtsVsns, AppName, ToDir, Options, 
     ErtsPrompt = fs_lists:get_val(erts_prompt, Options),
 
     Fun = fun(Repo, AppVsn, ErtsVsn) ->
-		  fetch_remote_application([Repo], ErtsVsn, AppName, AppVsn, ToDir, Timeout)
+		  fetch_remote_application([Repo], ErtsVsn, AppName, AppVsn, ToDir, Options, Timeout)
 	  end,
     fax_util:execute_on_latest_package_version(Repos, TargetErtsVsns, AppName, Fun, lib, ErtsPrompt). 
 
 %%--------------------------------------------------------------------
 %% @doc pull down an application from a repo into the ToDir
-%% @spec fetch_remote_application(Repos, TargetErtsVsns::target_erts_vsns(), AppName, AppVsn, ToDir, Timeout) -> ok | {error, Reason}
+%% @spec fetch_remote_application(Repos, TargetErtsVsns::target_erts_vsns(), AppName, AppVsn, ToDir, Options, Timeout) ->
+%%         ok | {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
-fetch_remote_application(Repos, [_H|_] = TargetErtsVsn, AppName, AppVsn, ToDir, Timeout) when is_integer(_H) ->
-    fetch_remote_application(Repos, [TargetErtsVsn], AppName, AppVsn, ToDir, Timeout);
-fetch_remote_application(Repos, TargetErtsVsns, AppName, AppVsn, ToDir, Timeout) ->
+fetch_remote_application(Repos, [_H|_] = TargetErtsVsn, AppName, AppVsn, ToDir, Options, Timeout) when is_integer(_H) ->
+    fetch_remote_application(Repos, [TargetErtsVsn], AppName, AppVsn, ToDir, Options, Timeout);
+fetch_remote_application(Repos, TargetErtsVsns, AppName, AppVsn, ToDir, Options, Timeout) ->
     try
 	fetch_package_interactively(
 	  AppName,
@@ -290,7 +298,8 @@ fetch_remote_application(Repos, TargetErtsVsns, AppName, AppVsn, ToDir, Timeout)
 	  TargetErtsVsns, 
 	  fun(ErtsVsn) ->
 		  ewr_fetch:fetch_binary_package(Repos, ErtsVsn, AppName, AppVsn, ToDir, Timeout)
-	  end)
+	  end,
+	  Options)
     catch
 	_Class:_Exception = {badmatch, {error, _} = Error} ->
 	    Error
@@ -343,7 +352,7 @@ fetch_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Options, Tim
     ErtsPolicy = fs_lists:get_val(erts_policy, Options),
     ?INFO_MSG("(~p, ~p, ~p, ~p)~n", [Repos, TargetErtsVsns, RelName, RelVsn]),
     io:format("~nFetching for Remote Release Package ~s-~s~n", [RelName, RelVsn]),
-    Res             = fetch_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Timeout),
+    Res             = fetch_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Options, Timeout),
     RelDirPath      = ewl_package_paths:package_dir_path(ToDir, RelName, RelVsn),
     RelFilePath     = ewl_package_paths:release_package_rel_file_path(RelDirPath, RelName, RelVsn),
     RelLibDirPath   = ewl_package_paths:release_package_library_path(RelDirPath),
@@ -359,7 +368,8 @@ fetch_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Options, Tim
     AppAndVsns    = get_app_and_vsns(RelFilePath),
     lists:foreach(fun({AppName, AppVsn}) ->
 			  io:format("Pulling down ~s-~s -> ", [AppName, AppVsn]),
-			  Res = fetch_remote_application(Repos, ReleaseErtsVsns, AppName, AppVsn, RelLibDirPath, Timeout),
+			  Res = fetch_remote_application(Repos, ReleaseErtsVsns, AppName, AppVsn,
+							 RelLibDirPath, Options, Timeout),
 			  io:format("~p~n", [Res])
 		  end, AppAndVsns),
     %Res = fetch_from_local_release_package(Repos, ReleasePackageDirPath, ToDir, Timeout),
@@ -393,6 +403,8 @@ install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLoca
 		get_erts_vsns_to_search_in_release(
 		  epkg_util:consult_rel_file(erts_vsn, RelFilePath),
 		  ErtsPolicy),
+	    {ok, ErlangVersion} = faxien:translate_version(erts, erlang, ReleaseErtsVsn),
+	    io:format("Release compiled for ~s~n", [ErlangVersion]),
     
 	    case catch epkg:install_release(ReleasePackageDirPath) of
 		{error, {failed_to_install, AppAndVsns}} ->
@@ -477,16 +489,16 @@ fetch_erts(Repos, ErtsVsn, Timeout) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc pull down a release from a repo.
-%% @spec fetch_release(Repos, TargetErtsVsns, RelName, RelVsn, Timeout) -> {ok, ReleasePackageDirPath} | {error, Reason}
+%% @spec fetch_release(Repos, TargetErtsVsns, RelName, RelVsn, Options, Timeout) -> {ok, ReleasePackageDirPath} | {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
-fetch_release(Repos, [_H|_] = TargetErtsVsn, RelName, RelVsn, Timeout) when is_integer(_H) ->
-    fetch_release(Repos, [TargetErtsVsn], RelName, RelVsn, Timeout);
-fetch_release(Repos, TargetErtsVsns, RelName, RelVsn, Timeout) ->
+fetch_release(Repos, [_H|_] = TargetErtsVsn, RelName, RelVsn, Options, Timeout) when is_integer(_H) ->
+    fetch_release(Repos, [TargetErtsVsn], RelName, RelVsn, Options, Timeout);
+fetch_release(Repos, TargetErtsVsns, RelName, RelVsn, Options, Timeout) ->
     ReleaseDirPath      = epkg_installed_paths:installed_release_dir_path(RelName, RelVsn),
     ok                  = ewl_file:delete_dir(ReleaseDirPath),
     {ok, TmpPackageDir} = epkg_util:create_unique_tmp_dir(),
-    case fetch_release(Repos, TargetErtsVsns, RelName, RelVsn, TmpPackageDir, Timeout) of
+    case fetch_release(Repos, TargetErtsVsns, RelName, RelVsn, TmpPackageDir, Options, Timeout) of
 	ok ->
 	    ReleasePackageDirPath = ewl_package_paths:package_dir_path(TmpPackageDir, RelName, RelVsn),
 	    {ok, ReleasePackageDirPath};
@@ -494,7 +506,7 @@ fetch_release(Repos, TargetErtsVsns, RelName, RelVsn, Timeout) ->
 	    Error
     end.
 
-fetch_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Timeout) ->
+fetch_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Options, Timeout) ->
     try
 	fetch_package_interactively(
 	  RelName,
@@ -502,17 +514,19 @@ fetch_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Timeout) ->
 	  TargetErtsVsns,
 	  fun(ErtsVsn) ->
 		  ewr_fetch:fetch_release_package(Repos, ErtsVsn, RelName, RelVsn, ToDir, Timeout)
-	  end)
+	  end,
+	  Options)
     catch
 	_Class:_Exception = {badmatch, {error, _} = Error} ->
 	    Error
     end.
 
-fetch_package_interactively(PackageName, PackageVsn, [TargetErtsVsn|_] = TargetErtsVsns, Fun) ->
+fetch_package_interactively(PackageName, PackageVsn, [TargetErtsVsn|_] = TargetErtsVsns, Fun, Options) ->
+    ErtsPrompt = fs_lists:get_val(erts_prompt, Options),
     fs_lists:do_until(
       fun(ErtsVsn) when ErtsVsn /= TargetErtsVsn ->
 	      case fax_util:ask_about_switching_target_erts_vsns(PackageName, PackageVsn, TargetErtsVsn, ErtsVsn) of
-		  true ->
+		  true when ErtsPrompt == false ->
 		      case catch Fun(ErtsVsn) of
 			  ok ->
 			      ok;
@@ -520,7 +534,7 @@ fetch_package_interactively(PackageName, PackageVsn, [TargetErtsVsn|_] = TargetE
 			      io:format("~nerror - ~p~n", [Error]),
 			      Error
 		      end;
-		  false ->
+		  _ ->
 		      ok = Fun(TargetErtsVsn),
 		      ok
 	      end;
