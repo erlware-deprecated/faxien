@@ -236,7 +236,7 @@ execute_release_installation_steps(ReleasePackageDirPath, InstallationPath, IsLo
     catch
 	Class:Exception = {badmatch, ActualError} ->
 	    ?ERROR_MSG("Caught exception ~p of class ~p ~p~n", [Exception, Class, erlang:get_stacktrace()]), 
-	    {error, ActualError};
+	    ActualError;
 	Class:Exception ->
 	    ?ERROR_MSG("Caught exception ~p of class ~p ~p~n", [Exception, Class, erlang:get_stacktrace()]), 
 	    {error, Exception}

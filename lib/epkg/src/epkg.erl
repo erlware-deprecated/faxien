@@ -224,7 +224,12 @@ list_lib() ->
     {ok, TargetErtsVsn}    = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     Series                 = epkg_util:all_erts_vsns(TargetErtsVsn),
     NameVsnsPairs          = collect_dups(epkg_manage:list_lib(InstallationPath, Series)),
-    io:format("~nInstalled Applications for ERTS versions between ~s and ~s:~n", [hd(Series), hd(lists:reverse(Series))]),
+    case Series of
+	[TargetErtsVsn, HighErtsVsn|_] ->
+	    io:format("~nInstalled Applications for ERTS versions between ~s and ~s:~n", [TargetErtsVsn, HighErtsVsn]);
+	_ ->
+	    io:format("~nInstalled Applications:~n")
+    end,
     print_installed(NameVsnsPairs).
 
 %%--------------------------------------------------------------------
@@ -238,8 +243,13 @@ list_releases() ->
     {ok, TargetErtsVsn}    = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     Series                 = epkg_util:all_erts_vsns(TargetErtsVsn),
     NameVsnsPairs          = collect_dups(epkg_manage:list_releases(InstallationPath, Series)),
-    io:format("~nInstalled Releases (Erlang standalone services) for ERTS versions between ~s and ~s:~n",
-	      [hd(Series), hd(lists:reverse(Series))]),
+    case Series of
+	[TargetErtsVsn, HighErtsVsn|_] ->
+	    io:format("~nInstalled Releases (Erlang standalone services) for ERTS versions between ~s and ~s:~n",
+		      [TargetErtsVsn, HighErtsVsn]);
+	_ ->
+	    io:format("~nInstalled Releases (Erlang standalone services):~n")
+    end,
     print_installed(NameVsnsPairs).
 
 %%--------------------------------------------------------------------
