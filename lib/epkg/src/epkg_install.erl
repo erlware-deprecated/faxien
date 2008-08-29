@@ -128,7 +128,7 @@ install_erts(ErtsPackageDirOrArchive, InstallationPath) ->
 	{false, true}  -> 
 	    {ok, {_, ErtsVsn}}   = epkg_installed_paths:package_dir_to_name_and_vsn(ErtsPackageDirPath),
 	    InstalledPackageDir  = ewl_installed_paths:installed_erts_path(InstallationPath, ErtsVsn),
-	    ErtsInstallationPath = ewl_installed_paths:erts_container_path(InstallationPath),
+	    ErtsInstallationPath = ewl_installed_paths:erts_container_path(InstallationPath, ErtsVsn),
 	    install_non_release_package(ErtsPackageDirPath, InstalledPackageDir, ErtsInstallationPath),
 	    epkg_util:set_all_executable_perms(ewl_installed_paths:executable_container_path(InstalledPackageDir))
     end.
@@ -236,7 +236,7 @@ execute_release_installation_steps(ReleasePackageDirPath, InstallationPath, IsLo
     catch
 	Class:Exception = {badmatch, ActualError} ->
 	    ?ERROR_MSG("Caught exception ~p of class ~p ~p~n", [Exception, Class, erlang:get_stacktrace()]), 
-	    ActualError;
+	    {error, ActualError};
 	Class:Exception ->
 	    ?ERROR_MSG("Caught exception ~p of class ~p ~p~n", [Exception, Class, erlang:get_stacktrace()]), 
 	    {error, Exception}
@@ -310,9 +310,9 @@ install_each_app_from_appspecs(AppSpecs, ReleasePackagePath, InstallationPath, E
 				       epkg_validation:is_package_an_app(AppPackagePath)},
 			case Validations of
 			    {_, true} ->
-				case install_application(AppPackagePath, InstallationPath) of
-				    ok     -> Acc;
-				    _Error -> [{AppName, AppVsn}|Acc]
+				case install_application(AppPackagePath, ErtsVsn, InstallationPath) of
+				    {ok, _} -> Acc;
+				    _Error  -> [{AppName, AppVsn}|Acc]
 				end;
 			    {true, false} ->
 				Acc;

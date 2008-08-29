@@ -6,16 +6,19 @@ PREFIX=$(cd $(dirname $(dirname $PROG)); pwd)
 
 #### Fill in values for these variables ####
 REL_NAME=faxien
-REL_VSN=0.34.1.0
+REL_VSN=0.35.0.0
 ERTS_VSN=5.6.3
 INVOCATION_SUFFIX="-s epkg cmdln_apply epkg $@ -noshell -prefix $PREFIX"
 ###########################################
 
-export ROOTDIR=$PREFIX/application_packages/$ERTS_VSN
-export BINDIR=$PREFIX/erts_packages/erts-$ERTS_VSN/bin
+ROOTDIR=$PREFIX/packages/$ERTS_VSN
+ERTS_DIR=$ROOTDIR/erts-$ERTS_VSN
+
+export $ROOTDIR
+export BINDIR=$ERTS_DIR/bin
 export EMU=beam
 export PROGNAME=erl
-export LD_LIBRARY_PATH=$PREFIX/erts/$ERTS_VSN/lib
+export LD_LIBRARY_PATH=$ERTS_DIR/lib
 
 REL_DIR=$PREFIX/release_packages/$REL_NAME-$REL_VSN/release
 

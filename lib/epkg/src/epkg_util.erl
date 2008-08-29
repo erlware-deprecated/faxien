@@ -64,9 +64,8 @@
 %%--------------------------------------------------------------------
 remove_tuple_dups(Element, [E1|T]) ->
     case remove_tuple_dups(Element, T) of
-	[]                                                           -> E1;
+	[]                                                           -> [E1];
 	[E2|_] = L when element(Element, E1) == element(Element, E2) -> L;
-	E2         when element(Element, E1) == element(Element, E2) -> E2;
 	L          when is_list(L)                                   -> [E1|L];
 	E2                                                           -> [E1, E2]
     end;

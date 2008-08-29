@@ -100,27 +100,31 @@ list_releases(InstallationPath, [A|_] = TargetErtsVsn) when is_integer(A) ->
     list_releases(InstallationPath, [TargetErtsVsn]);
 list_releases(InstallationPath, TargetErtsVsns) ->
     ?INFO_MSG("listing lib dirs for erts vsns ~p~n", [TargetErtsVsns]),
-    lists:reverse(
-      ordsets:to_list(
-      ordsets:from_list(
-	epkg_util:remove_tuple_dups(
-	  2, 
-	  lists:sort(
-	    fun({N, V}, {N, V1}) -> ewr_util:is_version_greater(V, V1);
-	       ({N, _}, {N1, _}) -> N > N1 end,
-	    lists:flatten([
-			   lists:map(
-			     fun(ErtsVsn) -> list_releases_for_erts_vsn(InstallationPath, ErtsVsn) end,
-			     TargetErtsVsns)
-			  ])
-	   ))))).
+
+    ReleaseList = lists:flatten([
+				 lists:map(
+				   fun(ErtsVsn) -> list_releases_for_erts_vsn(InstallationPath, ErtsVsn) end,
+				   TargetErtsVsns)
+				]),
+
+    ?INFO_MSG("release list is ~p~n", [ReleaseList]),
+
+    SortedList = lists:sort(
+		   fun({N, V}, {N, V1}) -> ewr_util:is_version_greater(V, V1);
+		      ({N, _}, {N1, _}) -> N > N1 end,
+		   ReleaseList),
+
+    ?INFO_MSG("sorted list is ~p~n", [SortedList]),
+
+    lists:reverse(ordsets:to_list(ordsets:from_list(epkg_util:remove_tuple_dups(2, SortedList)))).
 
 list_releases_for_erts_vsn(InstallationPath, ErtsVsn) ->
     RelDir = ewl_installed_paths:release_container_path(InstallationPath),
     Paths  = filelib:wildcard(RelDir ++ "/*"),
     lists:filter(fun({RelName, RelVsn}) ->
 			 try
-			     RelFilePath = ewl_installed_paths:installed_release_rel_file_path(InstallationPath, RelName, RelVsn),
+			     RelFilePath = ewl_installed_paths:installed_release_rel_file_path(InstallationPath,
+											       RelName, RelVsn),
 			     ErtsVsn_    = epkg_util:consult_rel_file(erts_vsn, RelFilePath),
 			     ErtsVsn_ == ErtsVsn
 			 catch

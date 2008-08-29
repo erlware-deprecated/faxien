@@ -184,6 +184,7 @@ add_repo_to_fetch_from(Repo, ConfigFilePath) ->
 get_signature(ConfigFilePath) ->
     case gas:get_env(faxien, signature) of
 	undefined -> 
+	    ?INFO_MSG("no signature found, creating and writing one to ~s~n", [ConfigFilePath]),
 	    {ok, {{public_key, {N, E}}, {private_key, {N, D}}, {max_message_size, _Bytes}}} = cg_rsa:keygen(), 
 	    Sig = {{public_key, {N, E}}, {private_key, {N, D}}},
 	    gas:modify_config_file(ConfigFilePath, faxien, signature, Sig),
