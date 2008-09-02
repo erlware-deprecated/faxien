@@ -389,9 +389,9 @@ find_bad_control_categories(Categories) ->
 %% @end
 %%--------------------------------------------------------------------
 unpack_to_tmp(ArtifactFilePath) ->
-    {ok, TmpDirPath}   = create_unique_tmp_dir(),
+    {ok, TmpDirPath}    = create_unique_tmp_dir(),
     ArtifactFileName    = filename:basename(filename:absname(ArtifactFilePath)),
-    TmpArtifactFilePath = ewl_file:join_paths(TmpDirPath, ArtifactFileName),
+    TmpArtifactFilePath = filename:join(TmpDirPath, ArtifactFileName),
     {ok, _}            = file:copy(ArtifactFilePath, TmpArtifactFilePath),
     {ok, CWD}          = file:get_cwd(),
     ok                 = file:set_cwd(TmpDirPath),
