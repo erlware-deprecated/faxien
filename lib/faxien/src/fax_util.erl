@@ -36,7 +36,9 @@
 
 %%-------------------------------------------------------------------
 %% @doc
-%%  Manage finding the highest version of a particular package and executing on it. Terminate execution when the fun returns ok.
+%%  Manage finding the highest version of a particular package and
+%%  executing on it. Terminate execution when the fun returns ok.
+%% @todo get rid of erts prompt it is not used anymore
 %%
 %% <pre>
 %% Variables:

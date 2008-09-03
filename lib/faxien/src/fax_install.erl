@@ -305,9 +305,6 @@ fetch_remote_application(Repos, TargetErtsVsns, AppName, AppVsn, ToDir, Options,
 	    Error
     end.
 
-
-
-
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Fetch the latest version found of a release package from a repository and place it in the specified directory. 
@@ -368,11 +365,10 @@ fetch_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Options, Tim
     AppAndVsns    = get_app_and_vsns(RelFilePath),
     lists:foreach(fun({AppName, AppVsn}) ->
 			  io:format("Pulling down ~s-~s -> ", [AppName, AppVsn]),
-			  Res = fetch_remote_application(Repos, ReleaseErtsVsns, AppName, AppVsn,
+			  Res_ = fetch_remote_application(Repos, ReleaseErtsVsns, AppName, AppVsn,
 							 RelLibDirPath, Options, Timeout),
-			  io:format("~p~n", [Res])
+			  io:format("~p~n", [Res_])
 		  end, AppAndVsns),
-    %Res = fetch_from_local_release_package(Repos, ReleasePackageDirPath, ToDir, Timeout),
     io:format("Fetch on ~s-~s resulted in ~p~n Note* You may install the fetched package with 'faxien install ~s/~s-~s'~n", 
 	      [RelName, RelVsn, Res, ToDir, RelName, RelVsn]),
     Res.
@@ -406,7 +402,9 @@ install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLoca
 	    {ok, ErlangVersion} = faxien:translate_version(erts, erlang, ReleaseErtsVsn),
 	    io:format("Release compiled for ~s~n", [ErlangVersion]),
     
-	    case catch epkg:install_release(ReleasePackageDirPath) of
+	    try epkg:install_release(ReleasePackageDirPath) of
+		ok ->
+		    ok;
 		{error, {failed_to_install, AppAndVsns}} ->
 		    %% The release does not contain all the applications required.  Pull them down, install them, and try again.
 		    lists:foreach(fun({AppName, AppVsn}) ->
@@ -418,8 +416,8 @@ install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLoca
 		    %% The release package does not contain the appropriate erts package, and it is 
 		    %% not already installed, pull it down install it and try again.
 		    ok = install_remote_erts(Repos, ReleaseErtsVsn, Timeout),
-		    install_from_local_release_package(Repos, ReleasePackageDirPath, IsLocalBoot, Options, Timeout);
-		
+		    install_from_local_release_package(Repos, ReleasePackageDirPath, IsLocalBoot, Options, Timeout)
+	    catch
 		Other ->
 		    ?INFO_MSG("exited release install on a local package with ~p~n", [Other]),
 		    Other
@@ -446,7 +444,9 @@ fetch_app_to_tmp(Repos, TargetErtsVsns, AppName, AppVsn, Timeout) ->
     Resp = 
 	fs_lists:do_until(
 	  fun(ErtsVsn) ->
-		  (catch ewr_fetch:fetch_binary_package(Repos, ErtsVsn, AppName, AppVsn, TmpPackageDir, Timeout))
+		  try ewr_fetch:fetch_binary_package(Repos, ErtsVsn, AppName, AppVsn, TmpPackageDir, Timeout)
+		  catch _C:_E -> error
+		  end
 	  end,
 	  ok,
 	  TargetErtsVsns),
@@ -470,7 +470,7 @@ fetch_app_to_tmp(Repos, TargetErtsVsns, AppName, AppVsn, Timeout) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc pull down an erts package from a repo and return the path to the temp directory where the package was put locally.
-%% @spec fetch_erts(Repos, TargetErtsVsn, Timeout) -> ok | {error, Reason}
+%% @spec fetch_erts(Repos, TargetErtsVsn, Timeout) -> ok
 %% @end
 %%--------------------------------------------------------------------
 fetch_erts(Repos, ErtsVsn, Timeout) ->
@@ -482,8 +482,8 @@ fetch_erts(Repos, ErtsVsn, Timeout) ->
 	ErtsPackageDirPath  = ewl_package_paths:package_dir_path(TmpPackageDir, "erts", ErtsVsn),
 	{ok, ErtsPackageDirPath}
     catch
-	_Class:_Exception = {badmatch, {error, _} = Error} ->
-	    Error
+	_Class:_Exception = {badmatch, {error, Reason}} ->
+	    throw(Reason)
     end.
 
 %%--------------------------------------------------------------------
@@ -517,26 +517,23 @@ fetch_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Options, Timeout) -
 	  end,
 	  Options)
     catch
-	_Class:_Exception = {badmatch, {error, _} = Error} ->
-	    Error
+	_Class:_Exception = {badmatch, {error, Reason}} ->
+	    Reason
     end.
 
-fetch_package_interactively(PackageName, PackageVsn, [TargetErtsVsn|_] = TargetErtsVsns, Fun, Options) ->
+fetch_package_interactively(PackageName, PackageVsn, [TargetErtsVsn|_] = TargetErtsVsns, Fun, Options) when is_list(Options) ->
     ErtsPrompt = fs_lists:get_val(erts_prompt, Options),
+    fetch_package_interactively(PackageName, PackageVsn, [TargetErtsVsn|_] = TargetErtsVsns, Fun, ErtsPrompt);
+fetch_package_interactively(_PackageName, _PackageVsn, TargetErtsVsns, Fun, false) ->
+    fs_lists:do_until(fun(ErtsVsn) -> (catch Fun(ErtsVsn)) end, ok, TargetErtsVsns);
+fetch_package_interactively(PackageName, PackageVsn, [TargetErtsVsn|_] = TargetErtsVsns, Fun, true) ->
     fs_lists:do_until(
       fun(ErtsVsn) when ErtsVsn /= TargetErtsVsn ->
 	      case fax_util:ask_about_switching_target_erts_vsns(PackageName, PackageVsn, TargetErtsVsn, ErtsVsn) of
-		  true when ErtsPrompt == false ->
-		      case catch Fun(ErtsVsn) of
-			  ok ->
-			      ok;
-			  Error ->
-			      io:format("~nerror - ~p~n", [Error]),
-			      Error
-		      end;
-		  _ ->
-		      ok = Fun(TargetErtsVsn),
-		      ok
+		  true ->
+		      (catch Fun(ErtsVsn));
+		  false ->
+		      (catch Fun(TargetErtsVsn))
 	      end;
 	 (ErtsVsn) ->
 	      (catch Fun(ErtsVsn))

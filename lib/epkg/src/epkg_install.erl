@@ -215,14 +215,15 @@ create_script_and_boot(InstallationPath, RelName, RelVsn, IsLocalBoot) ->
 %%--------------------------------------------------------------------
 execute_release_installation_steps(ReleasePackageDirPath, InstallationPath, IsLocalBoot) ->
     ?INFO_MSG("execute_release_installation_steps(~p, ~p, ~p)~n", [ReleasePackageDirPath, InstallationPath, IsLocalBoot]),
-    try 
+    try
 	case install_apps_for_release(ReleasePackageDirPath, InstallationPath) of
 	    {error, _} = Error ->
 		?INFO_MSG("failed to install all apps for the local release package: ~p~n", [Error]),
 		Error;
 	    ok ->
 		{ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ReleasePackageDirPath),
-		PackageRelFilePath      = ewl_package_paths:release_package_rel_file_path(ReleasePackageDirPath, RelName, RelVsn),
+		PackageRelFilePath      = ewl_package_paths:release_package_rel_file_path(ReleasePackageDirPath,
+											  RelName, RelVsn),
 		ErtsVsn                 = epkg_util:consult_rel_file(erts_vsn, PackageRelFilePath),
 		PackageErtsPackagePath  = ewl_package_paths:release_package_erts_package_path(ReleasePackageDirPath, ErtsVsn),
 		lists:foreach(fun(Fun) -> Fun() end, 
@@ -320,8 +321,6 @@ install_each_app_from_appspecs(AppSpecs, ReleasePackagePath, InstallationPath, E
 				[{AppName, AppVsn}|Acc]
 			end
 		end, [], AppSpecs).
-    
-
 
 %%--------------------------------------------------------------------
 %% @private

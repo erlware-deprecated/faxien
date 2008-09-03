@@ -264,10 +264,12 @@ outdated_releases(Repos, [_H|_] = TargetErtsVsn, Timeout) when is_integer(_H) ->
 outdated_releases(Repos, TargetErtsVsns, Timeout) ->
     Releases      = epkg_installed_paths:list_releases(),
     lists:foldl(fun(ReleaseName, Acc) -> 
-			case catch is_outdated_release(Repos, TargetErtsVsns, ReleaseName, Timeout) of
-			    {ok, {lower, HighestLocalVsn, HighestRemoteVsn, _RemoteErtsVsn}} -> 
-				[{ReleaseName, HighestLocalVsn, HighestRemoteVsn}|Acc];
-			    _Other -> 
+			try
+			    {ok, {lower, HighestLocalVsn, HighestRemoteVsn, _RemoteErtsVsn}} =
+			    is_outdated_release(Repos, TargetErtsVsns, ReleaseName, Timeout),
+			    [{ReleaseName, HighestLocalVsn, HighestRemoteVsn}|Acc]
+			catch
+			    _Class:_Exception -> 
 				Acc
 			end
 		end, [], Releases).
@@ -307,7 +309,7 @@ upgrade_release(Repos, [_H|_] = TargetErtsVsn, ReleaseName, IsLocalBoot, Options
 upgrade_release(Repos, [TargetErtsVsn|_] = TargetErtsVsns, ReleaseName, IsLocalBoot, Options, Timeout) -> 
     ErtsPrompt = fs_lists:get_val(erts_prompt, Options),
     ?INFO_MSG("fax_manage:upgrade_release(~p, ~p)~n", [Repos, ReleaseName]),
-    case is_outdated_release(Repos, TargetErtsVsns, ReleaseName, Timeout) of
+    case catch is_outdated_release(Repos, TargetErtsVsns, ReleaseName, Timeout) of
 	{ok, {lower, HighestLocalVsn, HighestRemoteVsn, TargetErtsVsn}} ->
 	    handle_upgrade_release(Repos, TargetErtsVsn, ReleaseName, HighestLocalVsn,
 				   HighestRemoteVsn, IsLocalBoot, Options,Timeout);
@@ -324,9 +326,9 @@ upgrade_release(Repos, [TargetErtsVsn|_] = TargetErtsVsns, ReleaseName, IsLocalB
 				   HighestRemoteVsn, IsLocalBoot, Options, Timeout);
 	{ok, {_, HighestLocalVsn}} ->
 	    io:format("~s at version ~s is up to date~n", [ReleaseName, HighestLocalVsn]);
-	Error ->
-	    io:format("~p~n", [Error]),
-	    Error
+	{'EXIT', Reason} ->
+	    io:format("~p~n", [Reason]),
+	    {error, Reason}
     end.
 
 
@@ -379,10 +381,12 @@ outdated_applications(Repos, [_H|_] = TargetErtsVsn, Timeout) when is_integer(_H
 outdated_applications(Repos, TargetErtsVsns, Timeout) ->
     Apps = epkg_installed_paths:list_apps(TargetErtsVsns),
     lists:foldl(fun(AppName, Acc) -> 
-			case catch is_outdated_app(Repos, TargetErtsVsns, AppName, Timeout) of
-			    {ok, {lower, HighestLocalVsn, HighestRemoteVsn, _RemoteErtsVsn}} -> 
-				[{AppName, HighestLocalVsn, HighestRemoteVsn}|Acc];
-			    _Other -> 
+			try 
+			    {ok, {lower, HighestLocalVsn, HighestRemoteVsn, _RemoteErtsVsn}} =
+			    is_outdated_app(Repos, TargetErtsVsns, AppName, Timeout),
+			    [{AppName, HighestLocalVsn, HighestRemoteVsn}|Acc]
+			catch
+			    _Class:_Other -> 
 				Acc
 			end
 		end, [], Apps).
@@ -566,7 +570,7 @@ remove_from_config_list(Key, ValueToRemove, ConfigFilePath) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc A determine if a release has a lower version than what is available in the remote repositories.
-%% @spec is_outdated_release(Repos, TargetErtsVsns, ReleaseName, Timeout) -> {ok, Compare} | {error, Reason}
+%% @spec is_outdated_release(Repos, TargetErtsVsns, ReleaseName, Timeout) -> {ok, Compare}
 %%  where
 %%   Repos = [string()]
 %%   TargetErtsVsns = target_erts_vsns()
@@ -577,7 +581,7 @@ is_outdated_release(Repos, TargetErtsVsns, ReleaseName, _Timeout) ->
     {ok, {_Repo, HighestRemoteVsn, ErtsVsn}} = fax_util:find_highest_vsn(Repos, TargetErtsVsns, ReleaseName, releases),
     case epkg_manage:find_highest_local_release_vsn(ReleaseName) of
 	"" ->
-	    {error, release_not_found_locally};
+	    throw("release not found locally");
 	HighestLocalVsn ->
 	    case ewr_util:is_version_greater(HighestLocalVsn, HighestRemoteVsn) of
 		true ->
@@ -592,7 +596,7 @@ is_outdated_release(Repos, TargetErtsVsns, ReleaseName, _Timeout) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc A determine if an application has a lower version than what is available in the remote repositories.
-%% @spec is_outdated_app(Repos, TargetErtsVsns, AppName, Timeout) -> {ok, Compare} | {error, Reason}
+%% @spec is_outdated_app(Repos, TargetErtsVsns, AppName, Timeout) -> {ok, Compare}
 %%  where
 %%   Repos = [string()]
 %%   TargetErtsVsns = target_erts_vsns()
@@ -603,7 +607,7 @@ is_outdated_app(Repos, TargetErtsVsns, AppName, _Timeout) ->
     {ok, {_Repo, HighestRemoteVsn, RemoteErtsVsn}} = fax_util:find_highest_vsn(Repos, TargetErtsVsns, AppName, lib),
     case epkg_manage:find_highest_local_app_vsn(AppName, TargetErtsVsns) of
 	"" ->
-	    {error, app_not_found};
+	    throw("app not found on the local system");
 	HighestLocalVsn ->
 	    case ewr_util:is_version_greater(HighestLocalVsn, HighestRemoteVsn) of
 		true ->

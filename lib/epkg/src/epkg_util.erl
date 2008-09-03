@@ -389,18 +389,23 @@ find_bad_control_categories(Categories) ->
 %% @end
 %%--------------------------------------------------------------------
 unpack_to_tmp(ArtifactFilePath) ->
-    {ok, TmpDirPath}   = create_unique_tmp_dir(),
-    ArtifactFileName    = filename:basename(filename:absname(ArtifactFilePath)),
-    TmpArtifactFilePath = ewl_file:join_paths(TmpDirPath, ArtifactFileName),
-    {ok, _}            = file:copy(ArtifactFilePath, TmpArtifactFilePath),
-    {ok, CWD}          = file:get_cwd(),
-    ok                 = file:set_cwd(TmpDirPath),
-    ok                 = ewl_file:uncompress(ArtifactFileName),
-    ok                 = file:delete(ArtifactFileName),
-    ok                 = file:set_cwd(CWD),
-    case filelib:wildcard(TmpDirPath ++ "/*") of
-	[TmpArtifactPath]                                  -> TmpArtifactPath;
-	TmpArtifactPaths when length(TmpArtifactPaths) > 1 -> TmpArtifactPaths
+    try
+	{ok, TmpDirPath}   = create_unique_tmp_dir(),
+	ArtifactFileName    = filename:basename(filename:absname(ArtifactFilePath)),
+	TmpArtifactFilePath = ewl_file:join_paths(TmpDirPath, ArtifactFileName),
+	{ok, _}            = file:copy(ArtifactFilePath, TmpArtifactFilePath),
+	{ok, CWD}          = file:get_cwd(),
+	ok                 = file:set_cwd(TmpDirPath),
+	ok                 = ewl_file:uncompress(ArtifactFileName),
+	ok                 = file:delete(ArtifactFileName),
+	ok                 = file:set_cwd(CWD),
+	case filelib:wildcard(TmpDirPath ++ "/*") of
+	    [TmpArtifactPath]                                  -> TmpArtifactPath;
+	    TmpArtifactPaths when length(TmpArtifactPaths) > 1 -> TmpArtifactPaths
+	end
+    catch
+	_Class:Exception ->
+	    throw({"could not create tmp directory", Exception})
     end.
 
 %%--------------------------------------------------------------------
