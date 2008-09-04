@@ -1,8 +1,9 @@
 #!/bin/sh
 
 PROG=$0
+PROG_DIR=$(cd `dirname $0`; pwd)
 test -h $0 && PROG=$(readlink $0)
-PREFIX=$(cd $(dirname $(dirname $PROG)); pwd)
+PREFIX=$(dirname $PROG_DIR)
 
 #### Fill in values for these variables ####
 REL_NAME=faxien
