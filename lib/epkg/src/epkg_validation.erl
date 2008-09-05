@@ -28,7 +28,8 @@
 %% given file is a "binary" file or not
 -define(BINARY_FILE_REGEX, [ "executable",
                              "shared object",
-                             "dynamically linked" ]).
+                             "dynamically linked",
+                             "ar archive"]).
 
 
 %%--------------------------------------------------------------------
@@ -148,7 +149,7 @@ is_package_a_binary_app(PackageDir) ->
 	end,
 
         fun(PackageDir_) ->
-                Files = filelib:wildcard(PackageDir_ ++ "/priv/*/*"),
+                Files = ewl_file:find(PackageDir_, ".*"),
                 lists:any(fun is_binary_file/1, Files)
         end,
 
