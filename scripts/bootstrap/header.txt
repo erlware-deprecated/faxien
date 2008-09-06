@@ -1,0 +1,90 @@
+#!/bin/sh
+
+# create a directory to extract to.
+export PREFIX="/usr/local/erlware"
+if [ "$1" != "" ]; then
+  if [ "`basename $1`" = "erlware" ]; then
+    export PREFIX="$1"
+  else 
+    export PREFIX="$1/erlware"
+  fi
+else
+  echo ""
+  echo "Note* This bootstrapper may be executed with a prefix argument."
+  echo "example: faxien-bootstrapper-i386-Darwin-Leopard-1.4.sh /home/martinjlogan/erlware"
+  echo ""
+fi
+
+if [ -e $PREFIX ];then
+  echo "$PREFIX already exists"
+  echo "Would you like to delete it? Answer [y|N] $> \c"
+  read RESP
+
+  case "$RESP" in
+    "y")
+    	echo ""
+  	echo "    Are you sure? This will delete your entire previous Erlware install."
+        echo "    Please type \"yes\" to continue $> \c"
+  	read SURE_RESP
+	if [ "$SURE_RESP" != "yes" ];then
+	  echo ""
+	  echo "Keeping previous install, and aborting bootstrap."
+	  exit 0
+	fi
+	  echo ""
+	  echo "Removing previous install"
+      	  rm -rf $PREFIX
+      ;;
+    *)
+      echo "exiting faxien bootstrap process"
+      exit 1
+      ;;
+  esac
+
+fi
+
+SKIP=`awk '/^__ARCHIVE_FOLLOWS__/ { print NR + 1; exit 0; }' $0`
+
+echo "Extracting the erlware bootstrap"
+echo Creating target directory $PREFIX
+
+mkdir -p $PREFIX
+
+if [ $? != 0 ]; then
+echo "Error executing mkdir, do you have permission?"
+exit 1
+fi
+
+export PREFIX=$(cd $PREFIX; pwd)
+
+echo Untaring into $PREFIX
+
+# Take the TGZ portion of this file and pipe it to tar.
+tail -n +$SKIP $0 > $PREFIX/tmp.tar.gz
+(cd $PREFIX; tar -zxf tmp.tar.gz)
+rm $PREFIX/tmp.tar.gz
+
+if [ $? != 0 ]; then
+echo "Unable to untar bootstrap"
+exit 1
+fi
+
+echo ""
+echo "*** Faxien is now installed ***"
+echo ""
+echo "Checking repos for any upgrades"
+
+# execute the installation script
+wait && $PREFIX/bin/faxien upgrade-release faxien
+
+if [ $? -eq 0 ]; then
+    echo
+    echo Faxien is now installed. You may wish to add $PREFIX/bin to
+    echo your PATH so you can just type \'faxien\' at the command line.
+    echo
+    echo Run \"$PREFIX/bin/faxien help\" to get started.
+fi
+
+exit 0
+
+__ARCHIVE_FOLLOWS__
