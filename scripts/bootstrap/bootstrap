@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # -*- sh -*-
 
 ERTS_VSN=`erl -noshell -eval "io:format(\"~s\n\", [erlang:system_info(version)]), halt(0)."`
@@ -13,7 +13,7 @@ function compile()
     deps=""
     shift
     for d in $*; do deps="$deps working/src/$d";done
-    echo "Compiling $app...\c"
+    echo -n "Compiling $app..."
     ./compile working/src/$app working/erlware $deps 2>&1 >$LOG_DIR/$app.compile
     echo "done."
 }
@@ -23,7 +23,7 @@ function copy_core()
 {
     app=$1
     appdir=`erl -noshell -eval "io:format(\"~s\n\", [code:lib_dir($app)]), halt(0)."`
-    echo "Copying $app...\c"
+    echo -n "Copying $app..."
     cp -R $appdir working/erlware/packages/$ERTS_VSN/lib
     echo "done."
 }
@@ -53,15 +53,23 @@ pushdir working/src
 
 # Get eunit
 if [ ! -d eunit ]; then
-    echo "Downloading eunit...\c"
+    echo -n "Downloading eunit..."
     svn export -r242 http://svn.process-one.net/contribs/trunk/eunit 2>&1 >$LOG_DIR/svn.eunit
-    cat eunit/src/eunit.app.src |sed -e 's;%VSN%;2.0;' >eunit/ebin/eunit.app
+    {
+        # Ugh, eunit requires .beams to be compiled in particular order -- do a "pre-build" of eunit
+        pushdir eunit
+        make 2>&1 >>$LOG_DIR.svn.eunit
+        # Further ugliness -- the eunit build version is not OTP compliant -- fix it
+        cat src/eunit.app.src |sed -e 's;%VSN%;2.0;' >ebin/eunit.app
+        popdir
+    }
+    
     echo "done."
 fi
 
 # Get cryptographic, ewlib, ewrepo and gas
 if [ ! -d cryptographic ]; then
-    echo "Downloading cryptographic, ewlib, ewrepo and gas...\c"
+    echo -n "Downloading cryptographic, ewlib, ewrepo and gas..."
     git clone git://git.erlware.org/erlware erlware_git 2>&1 >$LOG_DIR/git.erlware.clone
     mv erlware_git/lib/* .
     rm -rf erlware_git
@@ -70,7 +78,7 @@ fi
 
 # Get faxien, epkg (do not delete the repo yet)
 if [ ! -d faxien_git ]; then
-    echo "Downloading epkg and faxien...\c"
+    echo -n "Downloading epkg and faxien..."
     git clone git://git.erlware.org/faxien faxien_git 2>&1 >$LOG_DIR/git.faxien.clone
     mv faxien_git/lib/* .
     echo "done."
@@ -78,7 +86,7 @@ fi
 
 # Get ibrowse
 if [ ! -d ibrowse ]; then
-    echo "Downloading ibrowse...\c"
+    echo -n "Downloading ibrowse..."
     git clone git://github.com/dizzyd/ibrowse.git ibrowse 2>&1 >$LOG_DIR/git.ibrowse.clone
     rm -rf ibrowse/.git
     echo "done."
@@ -86,7 +94,7 @@ fi
 
 # Get fslib
 if [ ! -d fslib ]; then
-    echo "Downloading fslib...\c"
+    echo -n "Downloading fslib..."
     git clone git://github.com/dizzyd/fslib.git fslib 2>&1 >$LOG_DIR/git.fslib.clone
     rm -rf fslib/.git
     echo "done."
@@ -113,7 +121,7 @@ copy_core sasl
 copy_core xmerl
 
 # Copy erts -- then remove any scripts from the bin dir
-echo "Adding erts $ERTS_VSN...\c"
+echo -n "Adding erts $ERTS_VSN..."
 cp -Rp $ROOT_DIR/erts-$ERTS_VSN working/erlware/packages/$ERTS_VSN
 pushdir working/erlware/packages/$ERTS_VSN/erts-$ERTS_VSN/bin
 rm `file *|grep shell|awk -F: '{print $1}'`
@@ -121,7 +129,7 @@ popdir
 echo "done."
 
 # Generate release file
-echo "Generating faxien release scripts...\c"
+echo -n "Generating faxien release scripts..."
 ./release working/erlware `find working/erlware/packages -name ebin -type d`
 echo "done."
 
@@ -142,10 +150,12 @@ chmod u+x $REL_DIR/bin/*
 
 # Determine what the appropriate name is for this installer
 MID=`./identify`
-FILENAME=faxien-installer-$MID.sh
+FILENAME=../faxien-installer-$MID.sh
 
 # Dump the installer header followed by a tarball into the target file
+echo -n "Generating installer...."
 pushdir working
 cat ../header.txt > $FILENAME
 (cd erlware && tar -czp *  >>../$FILENAME)
 popdir
+echo "done."

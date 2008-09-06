@@ -2,6 +2,10 @@
 %% -*- erlang -*-
 
 main([AppDir, TargetDir | Deps]) ->
+    %% Remove all but absolutely required apps from the path -- avoid hidden dependency pain
+    CorePaths = [code:lib_dir(A) || A <- [kernel, stdlib, compile, sasl, xmerl]],
+    code:set_path(CorePaths),
+
     %% Convert app directory into an atom 
     App = list_to_atom(filename:basename(AppDir)),
 
