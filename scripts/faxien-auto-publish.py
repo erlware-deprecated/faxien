@@ -471,9 +471,10 @@ def get_published_apps():
 
 
 BINARY_FILE_EXTENSIONS = ["cmx", "py", "bat", "exe", "so"]
-BINARY_FILE_REGEX = [ ".* executable .*", 
-                      ".* shared object .*", 
-                      ".* dynamically linked .*" ]
+BINARY_FILE_REGEX = ["executable", 
+                     "shared object", 
+                     "dynamically linked",
+                     "ar archive"]
 
 def get_file_type(filename):
     from subprocess import Popen, PIPE
@@ -499,7 +500,7 @@ def is_binary_lib(app_dir):
             # a value that matches one of a list of regexs
             file_type = get_file_type(os.path.join(root, name))
             for r in BINARY_FILE_REGEX:
-                if re.match(r, file_type):
+                if re.search(r, file_type):
                     return True
 
     # Finally, check .ebin file and see if there is a {force_binary_app, true} present
