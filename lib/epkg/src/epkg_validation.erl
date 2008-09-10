@@ -26,7 +26,7 @@
 
 %% List of regexs that are compared against the output of the "file" command to determine if a
 %% given file is a "binary" file or not
--define(BINARY_FILE_REGEX, [ "executable",
+-define(BINARY_FILE_REGEX, [ "ELF .* executable",
                              "shared object",
                              "dynamically linked",
                              "ar archive"]).
