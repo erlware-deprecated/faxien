@@ -157,5 +157,6 @@ echo -n "Generating installer...."
 pushdir working
 cat ../header.txt > $FILENAME
 (cd erlware && tar -czp *  >>../$FILENAME)
+chmod 755 $FILENAME
 popdir
 echo "done."
