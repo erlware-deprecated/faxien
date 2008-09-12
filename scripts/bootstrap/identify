@@ -1,0 +1,20 @@
+#!/bin/sh
+# -*- sh -*-
+
+BASE_VER=`uname -r`
+BASE_VER=${BASE_VER:0:1}
+
+MACHINE=`uname -m`
+
+case `uname -s` in
+    Linux)
+        echo "$MACHINE-linux"
+        ;;
+    Darwin)
+        echo "$MACHINE-darwin-$BASE_VER"
+        ;;
+    FreeBSD)
+        echo "$MACHINE-freebsd-$BASE_VER"
+        ;;
+esac
+

@@ -1,0 +1,63 @@
+#!/usr/bin/env escript
+%% -*- erlang -*-
+
+main([AppDir, TargetDir | Deps]) ->
+    %% Remove all but absolutely required apps from the path -- avoid hidden dependency pain
+    CorePaths = [code:lib_dir(A) || A <- [kernel, stdlib, compile, sasl, xmerl]],
+    code:set_path(CorePaths),
+
+    %% Convert app directory into an atom 
+    App = list_to_atom(filename:basename(AppDir)),
+
+    %% Load the application and extract the version
+    true = code:add_patha(filename:join([AppDir, "ebin"])),
+    ok = application:load(App),
+    {ok, Vsn} = application:get_key(App, vsn),
+
+    %% Get the erts version we are running/compiling with
+    ErtsVsn = erlang:system_info(version),
+    
+    %% Construct the destination directories
+    AppFullName = lists:concat([App, "-", Vsn]),
+    TargetAppDir = filename:join([TargetDir, "packages", ErtsVsn, "lib", AppFullName]),
+    
+    TargetEbinDir = mkdir(TargetAppDir, "ebin"),
+    TargetSrcDir = mkdir(TargetAppDir, "src"),
+    TargetIncDir = mkdir(TargetAppDir, "include"),
+
+    %% Add deps to code path (incase the compiler needs access to parse transforms)
+    [code:add_patha(filename:join(D, "ebin")) || D <- Deps],
+
+    %% Build compile options that adds dep include/ directories
+    BaseOpts = [{i, filename:join([D, "include"])} || D <- Deps],
+
+    %% Compile all .erl files in src -> target ebin/
+    filelib:fold_files(filename:join([AppDir, "src"]),
+                       ".*\.erl", false,
+                       fun(F, _) -> 
+                               Opts = BaseOpts ++ [{outdir, TargetEbinDir}, 
+                                                   {i, filename:join([AppDir, "include"])},
+                                                   report_errors],
+                               case compile:file(filename:rootname(F), Opts) of
+                                   {ok, _} ->
+                                       ok;
+                                   Other ->
+                                       io:format("Compilation of ~s failed: \n~p\n", [F, Other]),
+                                       halt(1)
+                               end
+                       end, []),
+    
+    %% Copy over rest of files
+    oscmd("cp -R ~s/* ~s", [filename:join([AppDir, "src"]), TargetSrcDir]),
+    oscmd("cp -R ~s/* ~s", [filename:join([AppDir, "include"]), TargetIncDir]),
+    oscmd("cp ~s ~s", [filename:join([AppDir, "ebin", filename:basename(AppDir) ++ ".app"]),
+                       TargetEbinDir]).
+
+
+oscmd(Fmt, Args) ->
+    os:cmd(lists:flatten(io_lib:format(Fmt, Args))).
+
+mkdir(Base, DirName) ->
+    Dir = filename:join([Base, DirName]),
+    ok = filelib:ensure_dir(filename:join([Dir, "placeholder"])),
+    Dir.

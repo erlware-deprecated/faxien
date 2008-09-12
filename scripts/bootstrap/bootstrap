@@ -1,0 +1,162 @@
+#!/bin/bash
+# -*- sh -*-
+
+ERTS_VSN=`erl -noshell -eval "io:format(\"~s\n\", [erlang:system_info(version)]), halt(0)."`
+ROOT_DIR=`erl -noshell -eval "io:format(\"~s\n\", [code:root_dir()]), halt(0)."`
+LOG_DIR=`pwd`/working/logs
+
+# Helper function to compile an erlang app.
+# compile <appname> [<dep1> <dep2>]
+function compile()
+{
+    app=$1
+    deps=""
+    shift
+    for d in $*; do deps="$deps working/src/$d";done
+    echo -n "Compiling $app..."
+    ./compile working/src/$app working/erlware $deps 2>&1 >$LOG_DIR/$app.compile
+    echo "done."
+}
+
+# Helper function to copy applications from the erlang install 
+function copy_core()
+{
+    app=$1
+    appdir=`erl -noshell -eval "io:format(\"~s\n\", [code:lib_dir($app)]), halt(0)."`
+    echo -n "Copying $app..."
+    cp -R $appdir working/erlware/packages/$ERTS_VSN/lib
+    echo "done."
+}
+
+# Helper function for silent pushd
+function pushdir()
+{
+    pushd $1 >/dev/null
+}
+
+# Helper function for silent popd
+function popdir()
+{
+    popd >/dev/null
+}
+
+
+# Bail if any script returns non-zero status
+set -o errexit
+
+# Wipe out previous work
+rm -rf working/erlware working/logs
+mkdir -p working/src working/logs
+
+# Step into src directory
+pushdir working/src
+
+# Get eunit
+if [ ! -d eunit ]; then
+    echo -n "Downloading eunit..."
+    svn export -r242 http://svn.process-one.net/contribs/trunk/eunit 2>&1 >$LOG_DIR/svn.eunit
+    {
+        # Ugh, eunit requires .beams to be compiled in particular order -- do a "pre-build" of eunit
+        pushdir eunit
+        make 2>&1 >>$LOG_DIR.svn.eunit
+        # Further ugliness -- the eunit build version is not OTP compliant -- fix it
+        cat src/eunit.app.src |sed -e 's;%VSN%;2.0;' >ebin/eunit.app
+        popdir
+    }
+    
+    echo "done."
+fi
+
+# Get cryptographic, ewlib, ewrepo and gas
+if [ ! -d cryptographic ]; then
+    echo -n "Downloading cryptographic, ewlib, ewrepo and gas..."
+    git clone git://git.erlware.org/erlware erlware_git 2>&1 >$LOG_DIR/git.erlware.clone
+    mv erlware_git/lib/* .
+    rm -rf erlware_git
+    echo "done."
+fi
+
+# Get faxien, epkg (do not delete the repo yet)
+if [ ! -d faxien_git ]; then
+    echo -n "Downloading epkg and faxien..."
+    git clone git://git.erlware.org/faxien faxien_git 2>&1 >$LOG_DIR/git.faxien.clone
+    mv faxien_git/lib/* .
+    echo "done."
+fi
+
+# Get ibrowse
+if [ ! -d ibrowse ]; then
+    echo -n "Downloading ibrowse..."
+    git clone git://github.com/dizzyd/ibrowse.git ibrowse 2>&1 >$LOG_DIR/git.ibrowse.clone
+    rm -rf ibrowse/.git
+    echo "done."
+fi
+
+# Get fslib
+if [ ! -d fslib ]; then
+    echo -n "Downloading fslib..."
+    git clone git://github.com/dizzyd/fslib.git fslib 2>&1 >$LOG_DIR/git.fslib.clone
+    rm -rf fslib/.git
+    echo "done."
+fi
+
+# Leave the working/src directory
+popdir
+
+# Now compile all the applications into erlware/packages/ERTS/lib
+compile eunit
+compile cryptographic
+compile ewlib eunit 
+compile ewrepo eunit
+compile gas
+compile ibrowse
+compile fslib eunit
+compile epkg fslib eunit ewrepo
+compile faxien epkg fslib
+
+# Copy core dependencies into place 
+copy_core kernel
+copy_core stdlib
+copy_core sasl
+copy_core xmerl
+
+# Copy erts -- then remove any scripts from the bin dir
+echo -n "Adding erts $ERTS_VSN..."
+cp -Rp $ROOT_DIR/erts-$ERTS_VSN working/erlware/packages/$ERTS_VSN
+pushdir working/erlware/packages/$ERTS_VSN/erts-$ERTS_VSN/bin
+rm `file *|grep shell|awk -F: '{print $1}'`
+popdir
+echo "done."
+
+# Generate release file
+echo -n "Generating faxien release scripts..."
+./release working/erlware `find working/erlware/packages -name ebin -type d`
+echo "done."
+
+# Determine the faxien release id
+REL_DIR=`find working/erlware/release_packages -name "faxien-*" -type d`
+REL_ID=`basename $REL_DIR`
+
+# Copy default configuration for faxien
+cp working/src/faxien_git/config/sys.config $REL_DIR/release
+
+# Copy epkg & faxien binary scripts into place
+mkdir -p working/erlware/bin
+cp working/src/faxien_git/bin/* working/erlware/bin
+chmod u+x working/erlware/bin/*
+mkdir -p $REL_DIR/bin
+cp working/src/faxien_git/bin/* $REL_DIR/bin
+chmod u+x $REL_DIR/bin/*
+
+# Determine what the appropriate name is for this installer
+MID=`./identify`
+FILENAME=../faxien-installer-$MID.sh
+
+# Dump the installer header followed by a tarball into the target file
+echo -n "Generating installer...."
+pushdir working
+cat ../header.txt > $FILENAME
+(cd erlware && tar -czp *  >>../$FILENAME)
+chmod 755 $FILENAME
+popdir
+echo "done."

@@ -1,0 +1,41 @@
+#!/usr/bin/env escript
+%% -*- erlang -*-
+
+main([TargetDir | EbinDirs]) ->
+    %% Initialize code path to only those ebin directories provided
+    code:set_path(EbinDirs),
+
+    %% Get faxien version
+    application:load(faxien),
+    {ok, FaxVsn} = application:get_key(faxien, vsn),
+
+    %% Construct list of apps faxien is dependent on
+    Deps = [kernel, stdlib, sasl, xmerl, eunit, cryptographic, ewlib, ewrepo, gas,
+            ibrowse, fslib, epkg, faxien],
+    
+    %% Construct release tuple
+    R = {release, {"faxien", FaxVsn}, {erts, erlang:system_info(version)},
+         [vsn_tuple(D) || D <- Deps]},
+    
+    %% Make the release_package directory and drop the .rel file into it
+    PkgDir = filename:join([TargetDir, "release_packages", "faxien-" ++ FaxVsn]),
+    Rel = filename:join([PkgDir, "release", "faxien.rel"]),
+    ok = filelib:ensure_dir(Rel),
+    ok = file:write_file(Rel, list_to_binary(io_lib:format("~p.\n", [R]))),
+    
+    %% Generate boot script for the release
+    case systools:make_script(filename:rootname(Rel), [no_module_tests]) of
+        ok ->
+            ok;
+        Error ->
+            io:format("Error generating boot script for ~s:\n~p\n", [Rel, Error]),
+            halt(1)
+    end.
+    
+
+vsn_tuple(App) ->
+    application:load(App),
+    {ok, Vsn} = application:get_key(App, vsn),
+    {App, Vsn}.
+
+
