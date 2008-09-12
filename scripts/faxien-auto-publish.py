@@ -471,10 +471,10 @@ def get_published_apps():
 
 
 BINARY_FILE_EXTENSIONS = ["cmx", "py", "bat", "exe", "so"]
-BINARY_FILE_REGEX = [ ".* ELF .* executable .*", 
-                      ".* shared object .*", 
-                      ".* dynamically linked .*",
-                      ".* ar archive .*"]
+BINARY_FILE_REGEX = ["ELF .* executable", 
+                     "shared object", 
+                     "dynamically linked",
+                     "ar archive"]
 
 def get_file_type(filename):
     from subprocess import Popen, PIPE
