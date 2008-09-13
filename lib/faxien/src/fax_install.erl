@@ -72,8 +72,8 @@ install_latest_remote_application(Repos, TargetErtsVsns, AppName, Options, Timeo
 
     %% XXX Could make this more efficient by using the erts vsn that coems back from this HOF.
     %%     The interactive check for going outside the target erts vsn could happen here. 
-    Fun = fun(Repo, AppVsn, _ErtsVsn) ->
-		  install_remote_application([Repo], TargetErtsVsns, AppName, AppVsn, Force, Timeout)
+    Fun = fun(Repo, AppVsn, ErtsVsn) ->
+		  install_remote_application([Repo], ErtsVsn, AppName, AppVsn, Force, Timeout)
 	  end,
     fax_util:execute_on_latest_package_version(Repos, TargetErtsVsns, AppName, Fun, lib, ErtsPrompt). 
 
