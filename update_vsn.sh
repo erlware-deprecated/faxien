@@ -1,13 +1,16 @@
 #!/bin/sh
 
 
-if [ $# != 1 ];then
-	echo "Usage $0 <new-vsn>"
-	exit 1
-fi
 
 CURRENT_VSN=$(grep vsn _build.cfg | awk '{print $3}' | sed -e 's/"//g')
-NEW_VSN=$1
+
+NEW_LAST_DIGIT=$(echo "$(echo $CURRENT_VSN | sed -e 's/.*\.\(.*\)/\1/') + 1" | bc -l)
+VSN_STEM=$(echo $CURRENT_VSN | sed -e 's/\(.*\)\..*/\1/')
+NEW_VSN="$VSN_STEM.$NEW_LAST_DIGIT"
+if [ $# != 0 ];then
+	NEW_VSN=$1
+fi
+
 FILES=$(find . -type f | xargs grep $CURRENT_VSN | awk -F: '{print $1}')
 
 echo "Changing version from $CURRENT_VSN to $NEW_VSN"
