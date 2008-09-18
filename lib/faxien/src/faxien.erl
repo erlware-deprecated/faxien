@@ -850,9 +850,12 @@ help(Command) when is_list(Command) ->
 %%   SearchString = string() | atom()
 %% @end
 %%--------------------------------------------------------------------
+search([H|_] = Repo, Side, SearchType, SearchString) when is_integer(H) -> 
+    search([Repo], Side, SearchType, SearchString);
 search(Repos, Side, SearchType, SearchString) when is_atom(SearchString) -> 
     search(Repos, Side, SearchType, atom_to_list(SearchString));
 search(Repos, Side, SearchType, SearchString) -> 
+    proceed_only_on_valid_repos(Repos),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     TargetErtsVsns      = epkg_util:all_erts_vsns(TargetErtsVsn),
     fax_manage:search(Repos, Side, SearchType, SearchString, TargetErtsVsns).
