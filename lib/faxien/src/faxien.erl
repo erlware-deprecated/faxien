@@ -203,6 +203,7 @@ cmdln_apply([Mod, RawFunc|Args]) ->
 upgrade_app(Repo, AppName) when is_atom(Repo) -> 
     upgrade_app([atom_to_list(Repo)], AppName);
 upgrade_app(Repos, AppName) -> 
+    proceed_only_on_valid_repos(Repos),
     A = epkg_util:if_atom_or_integer_to_string(AppName),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     TargetErtsVsns      = epkg_util:all_erts_vsns(TargetErtsVsn),
@@ -331,6 +332,7 @@ outdated_apps_help() ->
 upgrade_release(Repo, RelName) when is_atom(Repo) -> 
     upgrade_release([atom_to_list(Repo)], RelName);
 upgrade_release(Repos, RelName) -> 
+    proceed_only_on_valid_repos(Repos),
     A                   = epkg_util:if_atom_or_integer_to_string(RelName),
     {ok, IsLocalBoot}   = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
@@ -367,6 +369,7 @@ upgrade_release_help() ->
 upgrade_all_releases(Repo) when is_atom(Repo) ->
     upgrade_all_releases([atom_to_list(Repo)]);
 upgrade_all_releases(Repos) ->
+    proceed_only_on_valid_repos(Repos),
     {ok, IsLocalBoot}   = gas:get_env(faxien, is_local_boot, ?IS_LOCAL_BOOT),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     TargetErtsVsns      = epkg_util:all_erts_vsns(TargetErtsVsn),
@@ -402,6 +405,7 @@ upgrade_all_releases_help() ->
 install_release(Repos, ReleaseName, ReleaseVsn) when is_atom(Repos)  -> 
     install_release([atom_to_list(Repos)], ReleaseName, ReleaseVsn);
 install_release(Repos, ReleaseName, ReleaseVsn)  -> 
+    proceed_only_on_valid_repos(Repos),
     ?INFO_MSG("faxien:install_release(~p, ~p, ~p)~n", [Repos, ReleaseName, ReleaseVsn]),
     % Any atoms must be turned to strings.  Atoms are accepted because it makes
     % the invocation from the command line cleaner. 
@@ -536,6 +540,7 @@ fetch_release_help() ->
 install_app(Repos, AppName, AppVsn) when is_atom(Repos)  -> 
     install_app([atom_to_list(Repos)], AppName, AppVsn);
 install_app(Repos, AppName, AppVsn)  -> 
+    proceed_only_on_valid_repos(Repos),
     % Any atoms must be turned to strings.  Atoms are accepted because it makes
     % the invocation from the command line cleaner. 
     [A,B]               = epkg_util:if_atom_or_integer_to_string([AppName, AppVsn]),
@@ -845,9 +850,12 @@ help(Command) when is_list(Command) ->
 %%   SearchString = string() | atom()
 %% @end
 %%--------------------------------------------------------------------
+search([H|_] = Repo, Side, SearchType, SearchString) when is_integer(H) -> 
+    search([Repo], Side, SearchType, SearchString);
 search(Repos, Side, SearchType, SearchString) when is_atom(SearchString) -> 
     search(Repos, Side, SearchType, atom_to_list(SearchString));
 search(Repos, Side, SearchType, SearchString) -> 
+    proceed_only_on_valid_repos(Repos),
     {ok, TargetErtsVsn} = gas:get_env(epkg, target_erts_vsn, ewr_util:erts_version()),
     TargetErtsVsns      = epkg_util:all_erts_vsns(TargetErtsVsn),
     fax_manage:search(Repos, Side, SearchType, SearchString, TargetErtsVsns).
@@ -1300,3 +1308,14 @@ print_help_list(HelpList) ->
     lists:foreach(fun(HelpString) -> io:format("~s~n", [HelpString]) end, HelpList).
     
     
+proceed_only_on_valid_repos(Repo) when is_atom(Repo) ->
+    proceed_only_on_valid_repos(atom_to_list(Repo));
+proceed_only_on_valid_repos([H|_] = Repo) when is_integer(H) ->
+    case regexp:match(Repo, ":\/\/") of
+	{match, _, 3} -> true;
+	_             -> throw({error, "A valid repo string is required containing of the form <type>://<body>. The string '" ++ Repo ++ "' is invalid"})
+    end;
+proceed_only_on_valid_repos(Repos) when is_list(Repos) ->
+    lists:foreach(fun(Repo) -> proceed_only_on_valid_repos(Repo) end, Repos).
+
+	    
