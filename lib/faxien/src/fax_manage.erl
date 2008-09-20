@@ -328,6 +328,8 @@ upgrade_release(Repos, [TargetErtsVsn|_] = TargetErtsVsns, ReleaseName, IsLocalB
 				   HighestRemoteVsn, IsLocalBoot, Options, Timeout);
 	{ok, {_, HighestLocalVsn}} ->
 	    io:format("~s at version ~s is up to date~n", [ReleaseName, HighestLocalVsn]);
+	{error, {package_not_found, ReleaseName, _Exp}} ->
+	    io:format("~s was not found in the repos. It is considered up to date~n", [ReleaseName]);
 	{'EXIT', Reason} ->
 	    io:format("~p~n", [Reason]),
 	    {error, Reason}
@@ -580,19 +582,23 @@ remove_from_config_list(Key, ValueToRemove, ConfigFilePath) ->
 %% @end
 %%--------------------------------------------------------------------
 is_outdated_release(Repos, TargetErtsVsns, ReleaseName, _Timeout) ->
-    {ok, {_Repo, HighestRemoteVsn, ErtsVsn}} = fax_util:find_highest_vsn(Repos, TargetErtsVsns, ReleaseName, releases),
-    case epkg_manage:find_highest_local_release_vsn(ReleaseName) of
-	"" ->
-	    throw("release not found locally");
-	HighestLocalVsn ->
-	    case ewr_util:is_version_greater(HighestLocalVsn, HighestRemoteVsn) of
-		true ->
-		    {ok, {higher, HighestLocalVsn}};
-		false when HighestRemoteVsn == HighestLocalVsn ->
-		    {ok, {same, HighestLocalVsn}};
-		false ->
-		    {ok, {lower, HighestLocalVsn, HighestRemoteVsn, ErtsVsn}}
-	    end
+    case fax_util:find_highest_vsn(Repos, TargetErtsVsns, ReleaseName, releases) of
+	{ok, {_Repo, HighestRemoteVsn, ErtsVsn}} ->
+	    case epkg_manage:find_highest_local_release_vsn(ReleaseName) of
+		"" ->
+		    throw("release not found locally");
+		HighestLocalVsn ->
+		    case ewr_util:is_version_greater(HighestLocalVsn, HighestRemoteVsn) of
+			true ->
+			    {ok, {higher, HighestLocalVsn}};
+			false when HighestRemoteVsn == HighestLocalVsn ->
+			    {ok, {same, HighestLocalVsn}};
+			false ->
+			    {ok, {lower, HighestLocalVsn, HighestRemoteVsn, ErtsVsn}}
+		    end
+	    end;
+	{error, {package_not_found, _PackageName, _Exp}} = Error ->
+	    Error
     end.
 
 %%--------------------------------------------------------------------

@@ -155,6 +155,8 @@ suffixes(ErtsVsns, PackageName, Areas, Side) ->
 			Acc ++ ewr_util:gen_repo_stub_suffix(ErtsVsn, PackageName, Areas, Side)
 		end, [], ErtsVsns).
 
+find_highest_remote_vsn_under_threshold(_VsnThreshold, []) ->
+    {ok, "0"};
 find_highest_remote_vsn_under_threshold(VsnThreshold, VsnList) ->
     ?INFO_MSG("find_highest_vsn list of remote versions ~p with threshold of ~p~n", [VsnList, VsnThreshold]),
     case VsnThreshold of

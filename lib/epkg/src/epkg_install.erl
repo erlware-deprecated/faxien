@@ -226,6 +226,7 @@ execute_release_installation_steps(ReleasePackageDirPath, InstallationPath, IsLo
 										      RelName, RelVsn),
 	    ErtsVsn                 = epkg_util:consult_rel_file(erts_vsn, PackageRelFilePath),
 	    PackageErtsPackagePath  = ewl_package_paths:release_package_erts_package_path(ReleasePackageDirPath, ErtsVsn),
+	    try 
 	    lists:foreach(fun(Fun) -> Fun() end, 
 			  [
 			   fun() -> ok = install_erts(PackageErtsPackagePath, InstallationPath) end,
@@ -233,6 +234,9 @@ execute_release_installation_steps(ReleasePackageDirPath, InstallationPath, IsLo
 			   fun() -> ok = create_script_and_boot(InstallationPath, RelName, RelVsn, IsLocalBoot) end,
 			   fun() -> ok = create_executable_script(InstallationPath, RelName, RelVsn, ErtsVsn) end
 			  ])
+	    catch
+		_C:{badmatch, Error} -> Error
+	    end
     end.
 
 %%--------------------------------------------------------------------
