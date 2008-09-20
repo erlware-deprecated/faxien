@@ -1142,7 +1142,7 @@ environment_help() ->
 remove_repo(Repo) when is_atom(Repo)->
     remove_repo(atom_to_list(Repo));
 remove_repo(Repo) ->
-    fax_manage:remove_repo_to_fetch_from(Repo, epkg_installed_paths:installed_config_file_path()).
+    fax_manage:remove_repo_to_fetch_from(Repo, epkg_util:multi_config_paths()).
 
 %% @private
 remove_repo_help() ->
@@ -1160,7 +1160,7 @@ remove_repo_help() ->
 add_repo(Repo) when is_atom(Repo)->
     add_repo(atom_to_list(Repo));
 add_repo(Repo) ->
-    fax_manage:add_repo_to_fetch_from(Repo, epkg_installed_paths:installed_config_file_path()).
+    fax_manage:add_repo_to_fetch_from(Repo, epkg_util:multi_config_paths()).
     
 %% @private
 add_repo_help() ->
@@ -1190,9 +1190,9 @@ show_repos_help() ->
 %% @end
 %%--------------------------------------------------------------------
 set_request_timeout(infinity) ->
-    fax_manage:set_request_timeout(infinity, epkg_installed_paths:installed_config_file_path());
+    fax_manage:set_request_timeout(infinity, epkg_util:multi_config_paths());
 set_request_timeout(Timeout) when is_list(Timeout) ->
-    fax_manage:set_request_timeout(list_to_integer(Timeout), epkg_installed_paths:installed_config_file_path()).
+    fax_manage:set_request_timeout(list_to_integer(Timeout), epkg_util:multi_config_paths()).
 
 %% @private
 set_request_timeout_help() ->
@@ -1220,7 +1220,7 @@ show_request_timeout_help() ->
 %% @end
 %%--------------------------------------------------------------------
 set_target_erts_vsn(TargetErtsVsn) ->
-    fax_manage:set_target_erts_vsn(TargetErtsVsn, epkg_installed_paths:installed_config_file_path()).
+    fax_manage:set_target_erts_vsn(TargetErtsVsn, epkg_util:multi_config_paths()).
 
 %% @private
 set_target_erts_vsn_help() ->
@@ -1250,7 +1250,7 @@ show_target_erts_vsn_help() ->
 remove_publish_repo(Repo) when is_atom(Repo)->
     remove_repo(atom_to_list(Repo));
 remove_publish_repo(Repo) ->
-    fax_manage:remove_repo_to_publish_to(Repo, epkg_installed_paths:installed_config_file_path()).
+    fax_manage:remove_repo_to_publish_to(Repo, epkg_util:multi_config_paths()).
 
 %% @private
 remove_publish_repo_help() ->
@@ -1266,7 +1266,7 @@ remove_publish_repo_help() ->
 %% @end
 %%--------------------------------------------------------------------
 add_publish_repo(Repo) ->
-    fax_manage:add_repo_to_publish_to(Repo, epkg_installed_paths:installed_config_file_path()).
+    fax_manage:add_repo_to_publish_to(Repo, epkg_util:multi_config_paths()).
     
 %% @private
 add_publish_repo_help() ->

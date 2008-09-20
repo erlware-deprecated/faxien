@@ -268,8 +268,9 @@ find_config_file_path(RelName, RelVsn) ->
     {ok, InstallationPath} = get_installation_path(),
     RelDirPath             = ewl_installed_paths:release_file_container_path(InstallationPath, RelName, RelVsn),
     case ewl_file:find(RelDirPath, ".*config$") of
-	[]                -> throw({error, no_erlang_config_file_found});
-	RelConfigFilePath -> RelConfigFilePath
+	[]                  -> throw({error, no_erlang_config_file_found});
+	[RelConfigFilePath] -> RelConfigFilePath;
+	RelConfigFilePaths  -> RelConfigFilePaths
     end.
 
 %%%===================================================================

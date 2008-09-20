@@ -12,6 +12,7 @@
 %% API
 %%--------------------------------------------------------------------
 -export([
+	 multi_config_paths/0,
 	 md5/1,
 	 remove_tuple_dups/2,
 	 highest_vsn/1,
@@ -54,6 +55,17 @@
 %%====================================================================
 %% API
 %%====================================================================
+
+%%--------------------------------------------------------------------
+%% @doc return a list of faxiens config files in overide order
+%% @spec () -> string() | [string()]
+%% @end
+%%--------------------------------------------------------------------
+multi_config_paths() ->
+    case gas_override_config:home_filepath() of
+	undefined    -> epkg_installed_paths:installed_config_file_path();
+	HomeFilePath -> [HomeFilePath, epkg_installed_paths:installed_config_file_path()]
+    end.
 
 %%--------------------------------------------------------------------
 %% @TODO move this into fs_lists

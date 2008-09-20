@@ -351,10 +351,7 @@ diff_config_help() ->
 %% @end
 %%--------------------------------------------------------------------
 config_file_path(RelName, RelVsn) ->
-    case epkg_installed_paths:find_config_file_path(RelName, RelVsn) of
-	[Path] -> {ok, Path};
-	Paths  -> {ok, Paths}
-    end.
+    {ok, epkg_installed_paths:find_config_file_path(RelName, RelVsn)}.
 
 %%--------------------------------------------------------------------
 %% @doc Returns the path to a release config file for the highest version of the release found for the current erts vsn.

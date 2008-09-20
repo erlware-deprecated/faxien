@@ -166,30 +166,31 @@ describe_app(Repos, TargetErtsVsns, AppName, AppVsn, Timeout) ->
 
 %%--------------------------------------------------------------------
 %% @doc Add a repository to fetch from. 
-%% @spec add_repo_to_fetch_from(Repo, ConfigFilePath) -> ok | {error, Reason}
+%% @spec add_repo_to_fetch_from(Repo, ConfigFilePaths) -> ok | {error, Reason}
 %%  where
 %%   Repos = string()
-%%   ConfigFilePath = string()
+%%   ConfigFilePaths = [string()]
 %% @end
 %%--------------------------------------------------------------------
-add_repo_to_fetch_from(Repo, ConfigFilePath) ->
-    add_to_config_list(repos_to_fetch_from, Repo, ConfigFilePath).
+add_repo_to_fetch_from(Repo, ConfigFilePaths) ->
+    add_to_config_list(repos_to_fetch_from, Repo, ConfigFilePaths).
 
 %%--------------------------------------------------------------------
 %% @doc fetch and or create a signature for this instance of Faxien.
-%% @spec get_signature(ConfigFilePath) -> {ok, Sig}
+%% @spec get_signature(ConfigFilePaths) -> {ok, Sig}
 %%  where
-%%   ConfigFilePath = string()
+%%   ConfigFilePaths = [string()]
 %%   Sig = {{public_key, {Mod, ExpPub}}, {private_key, {Mod, ExpPriv}}}
 %% @end
 %%--------------------------------------------------------------------
-get_signature(ConfigFilePath) ->
+get_signature(ConfigFilePaths) ->
+    ?INFO_MSG("fetch signature", []),
     case gas:get_env(faxien, signature) of
 	undefined -> 
-	    ?INFO_MSG("no signature found, creating and writing one to ~s~n", [ConfigFilePath]),
+	    ?INFO_MSG("no signature found, creating and writing one to ~p~n", [ConfigFilePaths]),
 	    {ok, {{public_key, {N, E}}, {private_key, {N, D}}, {max_message_size, _Bytes}}} = cg_rsa:keygen(), 
 	    Sig = {{public_key, {N, E}}, {private_key, {N, D}}},
-	    gas:modify_config_file(ConfigFilePath, faxien, signature, Sig),
+	    gas:modify_config_file(ConfigFilePaths, faxien, signature, Sig),
 	    {ok, Sig};
 	{ok, Sig} ->
 	    {ok, Sig}
@@ -197,60 +198,60 @@ get_signature(ConfigFilePath) ->
 
 %%--------------------------------------------------------------------
 %% @doc Remove a repository to fetch from. 
-%% @spec remove_repo_to_fetch_from(Repo, ConfigFilePath) -> ok
+%% @spec remove_repo_to_fetch_from(Repo, ConfigFilePaths) -> ok
 %%  where
 %%   Repos = string()
-%%   ConfigFilePath = string()
+%%   ConfigFilePaths = [string()]
 %% @end
 %%--------------------------------------------------------------------
-remove_repo_to_fetch_from(Repo, ConfigFilePath) ->
-    remove_from_config_list(repos_to_fetch_from, Repo, ConfigFilePath).
+remove_repo_to_fetch_from(Repo, ConfigFilePaths) ->
+    remove_from_config_list(repos_to_fetch_from, Repo, ConfigFilePaths).
 
 %%--------------------------------------------------------------------
 %% @doc Add a repository to publish to. 
-%% @spec add_repo_to_publish_to(Repo, ConfigFilePath) -> ok | {error, Reason}
+%% @spec add_repo_to_publish_to(Repo, ConfigFilePaths) -> ok | {error, Reason}
 %%  where
 %%   Repos = string()
-%%   ConfigFilePath = string()
+%%   ConfigFilePaths = [string()]
 %% @end
 %%--------------------------------------------------------------------
-add_repo_to_publish_to(Repo, ConfigFilePath) ->
-    add_to_config_list(repos_to_publish_to, Repo, ConfigFilePath).
+add_repo_to_publish_to(Repo, ConfigFilePaths) ->
+    add_to_config_list(repos_to_publish_to, Repo, ConfigFilePaths).
 
 %%--------------------------------------------------------------------
 %% @doc Remove a repository to publish to. 
-%% @spec remove_repo_to_publish_to(Repo, ConfigFilePath) -> ok
+%% @spec remove_repo_to_publish_to(Repo, ConfigFilePaths) -> ok
 %%  where
 %%   Repos = string()
-%%   ConfigFilePath = string()
+%%   ConfigFilePaths = [string()]
 %% @end
 %%--------------------------------------------------------------------
-remove_repo_to_publish_to(Repo, ConfigFilePath) ->
-    remove_from_config_list(repos_to_publish_to, Repo, ConfigFilePath).
+remove_repo_to_publish_to(Repo, ConfigFilePaths) ->
+    remove_from_config_list(repos_to_publish_to, Repo, ConfigFilePaths).
 
 %%--------------------------------------------------------------------
 %% @doc Set the request timeout.
-%% @spec set_request_timeout(Timeout, ConfigFilePath) -> ok | {error, Reason}
+%% @spec set_request_timeout(Timeout, ConfigFilePaths) -> ok | {error, Reason}
 %%  where
 %%   Timeout = timeout()
-%%   ConfigFilePath = string()
+%%   ConfigFilePaths = [string()]
 %% @end
 %%--------------------------------------------------------------------
 %% @todo set up the gas functions so that they will insert a config entry if none exists.
-set_request_timeout(Timeout, ConfigFilePath) ->
-    gas:modify_config_file(ConfigFilePath, faxien, request_timeout, Timeout).
+set_request_timeout(Timeout, ConfigFilePaths) ->
+    gas:modify_config_file(ConfigFilePaths, faxien, request_timeout, Timeout).
 
 %%--------------------------------------------------------------------
 %% @doc Set the target erts vsn for Faxien to use. Basically this is the highest erts vsn it will try to pull for.
-%% @spec set_target_erts_vsn(TargetErtsVsn, ConfigFilePath) -> ok | {error, Reason}
+%% @spec set_target_erts_vsn(TargetErtsVsn, ConfigFilePaths) -> ok | {error, Reason}
 %%  where
 %%   Timeout = timeout()
-%%   ConfigFilePath = string()
+%%   ConfigFilePaths = [string()]
 %% @end
 %%--------------------------------------------------------------------
-set_target_erts_vsn(TargetErtsVsn, ConfigFilePath) ->
+set_target_erts_vsn(TargetErtsVsn, ConfigFilePaths) ->
     %% @todo - this should not modify the epkg config - when less tired make clean
-    gas:modify_config_file(ConfigFilePath, epkg, target_erts_vsn, TargetErtsVsn).
+    gas:modify_config_file(ConfigFilePaths, epkg, target_erts_vsn, TargetErtsVsn).
 
 %%--------------------------------------------------------------------
 %% @doc Display all currently installed releases that have available updates.
@@ -557,19 +558,19 @@ raw_list(Repos, Side, TargetErtsVsns) ->
 %%  Reason = no_such_config_entry
 %% @end
 %%--------------------------------------------------------------------
-add_to_config_list(Key, ValueToAdd, ConfigFilePath) ->
-    gas:modify_config_value(ConfigFilePath, faxien, Key, fun(Value) -> [ValueToAdd|Value] end).
+add_to_config_list(Key, ValueToAdd, ConfigFilePaths) ->
+    gas:modify_config_value(ConfigFilePaths, faxien, Key, fun(Value) -> [ValueToAdd|Value] end).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Remove an element to a config tuple whose value is a list.
-%% @spec remove_from_config_list(Key, ValueToRemove, ConfigFilePath) -> ok | {error, Reason}
+%% @spec remove_from_config_list(Key, ValueToRemove, ConfigFilePaths) -> ok | {error, Reason}
 %% where
 %%  Reason = no_such_config_entry
 %% @end
 %%--------------------------------------------------------------------
-remove_from_config_list(Key, ValueToRemove, ConfigFilePath) ->
-    gas:modify_config_value(ConfigFilePath, faxien, Key, fun(Value) -> lists:delete(ValueToRemove, Value) end).
+remove_from_config_list(Key, ValueToRemove, ConfigFilePaths) ->
+    gas:modify_config_value(ConfigFilePaths, faxien, Key, fun(Value) -> lists:delete(ValueToRemove, Value) end).
 
 %%--------------------------------------------------------------------
 %% @private

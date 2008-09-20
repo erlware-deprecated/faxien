@@ -226,9 +226,8 @@ handle_control(RelDirPath) ->
 %% @end
 %%--------------------------------------------------------------------
 create_signature(PackageVsn) ->
-    {ok, Vsn} = faxien:version(), 
-    ConfigFilePath = epkg_installed_paths:find_config_file_path(faxien, Vsn),
-    {ok, {{public_key, {Mod, ExpPub}}, {private_key, {Mod, ExpPriv}}}} = fax_manage:get_signature(ConfigFilePath),
+    ConfigFilePaths = epkg_util:multi_config_paths(),
+    {ok, {{public_key, {Mod, ExpPub}}, {private_key, {Mod, ExpPriv}}}} = fax_manage:get_signature(ConfigFilePaths),
     Signature = cg_rsa:encrypt(lists:foldl(fun(D, A) -> D + A end, 0, PackageVsn), Mod, ExpPriv),
     list_to_binary(io_lib:fwrite("~p.", [{signature, Signature, Mod, ExpPub}])).
 
@@ -299,3 +298,4 @@ publish_dist_tarball_from_sinan(Repos, ProjectRootDir, BuildFlavor, Timeout) ->
 	AlteredRelPaths -> 
 	    publish(Repos, AlteredRelPaths, Timeout)
     end.
+
