@@ -62,9 +62,9 @@
 %% @end
 %%--------------------------------------------------------------------
 multi_config_paths() ->
-    case gas_override_config:home_filepath() of
-	undefined    -> epkg_installed_paths:installed_config_file_path();
-	HomeFilePath -> [HomeFilePath, epkg_installed_paths:installed_config_file_path()]
+    case gas_override_config:override_file_path() of
+	undefined          -> epkg_installed_paths:installed_config_file_path();
+	{ok, HomeFilePath} -> [HomeFilePath, epkg_installed_paths:installed_config_file_path()]
     end.
 
 %%--------------------------------------------------------------------
