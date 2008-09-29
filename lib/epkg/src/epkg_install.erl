@@ -235,7 +235,8 @@ execute_release_installation_steps(ReleasePackageDirPath, InstallationPath, IsLo
 			   fun() -> ok = create_executable_script(InstallationPath, RelName, RelVsn, ErtsVsn) end
 			  ])
 	    catch
-		_C:{badmatch, Error} -> Error
+		_C:{badmatch, Error} -> Error;
+		_C:Error             -> Error
 	    end
     end.
 
