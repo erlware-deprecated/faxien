@@ -237,19 +237,26 @@ to_app_dirs(LibDirs) ->
     
 %%-------------------------------------------------------------------
 %% @doc
-%% Return a list of versions. 
+%% Return a the contents of a directory.
 %% @todo add ability to specifiy a timeout instead of relying on the default. 
 %% @spec repo_list(Url) -> {ok, DirContents} | {error, Reason}
 %%  where
 %%   DirContents = list()
 %% @end
 %%-------------------------------------------------------------------
-repo_list(Url) ->
+repo_list([$f,$i,$l,$e,$:,$/,$/|Path] = FullPath) ->
+    try
+	{ok, [filename:basename(E) || E <- filelib:wildcard(Path ++ "/*")]}
+    catch
+	_C:_E ->
+	    {error,{repo_list, FullPath}}
+    end;
+repo_list([$h,$t,$t,$p,$:,$/,$/|_] = Url) ->
     Opts = [{"Connection", "TE"},
 	    {"TE", "trailers"},
 	    {"Depth", "1"},
 	    {"Content-Type", "application/xml"}],
-    case ibrowse:send_req(Url, Opts, propfind, "") of
+    case catch ibrowse:send_req(Url, Opts, propfind, "") of
         {ok, "207", _, Body} -> 
 	    ?ERROR_MSG("repo_list(~p) -> ~p~n", [Url, "success:207"]),
 	    {ok, parse_out_package_versions(Body)};

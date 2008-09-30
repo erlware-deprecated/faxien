@@ -178,19 +178,7 @@ put_erts_checksum_file(Repos, ErtsVsn, Payload, Timeout) when is_binary(Payload)
 %% @end
 %%-------------------------------------------------------------------
 repos_put(Repos, Suffix, Payload, Timeout) ->
-    io:format("repos are ~p~n", [Repos]),
-    payloads_put(Repos,
-		 fun([$h,$t,$t,$p,$:,$/,$/|_] = Repo) ->
-			 ewr_repo_dav:repo_put(Repo, Suffix, Payload, Timeout);
-		    ([$f,$i,$l,$e,$:,$/,$/|Repo] = FullRepo) ->
-			 FilePath = ewl_file:join_paths(Repo, Suffix),
-			 io:format("write to ~s~n", [FilePath]),
-			 ewl_file:mkdir_p(filename:dirname(FilePath)),
-			 case file:write_file(FilePath, Payload) of
-			     ok    -> {ok, FullRepo};
-			     Error -> Error
-			 end
-		 end).
+    payloads_put(Repos, fun(Repo) -> ewr_repo_dav:repo_put(Repo, Suffix, Payload, Timeout) end).
 
 %%-------------------------------------------------------------------
 %% @private
