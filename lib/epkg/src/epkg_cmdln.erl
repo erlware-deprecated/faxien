@@ -197,6 +197,12 @@ sanitize_error(Error) ->
 %% @doc Print out a custom error message to the user based on a sanitized error term.
 %% @end
 %%----------------------------------------------------------------------------
+print_error_specific_error_msg(enoent) ->
+    io:format(" - There may be a permissions problem. Ensure that you have perms to write to the location you~n" ++
+	      "   have Erlware currently installed. To find out where you are installed run 'faxien env'~n");
+print_error_specific_error_msg(eacces) ->
+    io:format(" - There is a permissions problem. Ensure that you have perms to write to the location you~n" ++
+	      "   have Erlware currently installed. To find out where you are installed run 'faxien env'~n");
 print_error_specific_error_msg(no_publish_repos) ->
     io:format(" - No publish repos have been configured. Add publish repos with 'faxien add-publish-repo <repo-name>'~n" ++
 	      "   Suggested repos are http://repo.erlware.org/writable and http://repo.martinjlogan.com/writable~n");
