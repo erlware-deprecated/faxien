@@ -17,7 +17,7 @@ mkdir -p $TARGET_DIR/releases/$REL_VSN
 # Process template scripts
 for f in templates/*; do
     basef=`basename $f`
-    cat $f |sed 's/@ERTS_VSN@/$ERTS_VSN/g'|sed 's/@REL_VSN@/$REL_VSN/g' > $TARGET_DIR/bin/$basef
+    cat $f |sed "s/@ERTS_VSN@/$ERTS_VSN/g"|sed "s/@REL_VSN@/$REL_VSN/g" > $TARGET_DIR/bin/$basef
 done
 
 # Create the release file
