@@ -7,7 +7,11 @@ PREFIX=$(dirname $PROG_DIR)
 
 #### Fill in values for these variables ####
 REL_NAME=faxien
+<<<<<<< HEAD:bin/faxien
 REL_VSN=0.38.0.0
+=======
+REL_VSN=0.37.2.0
+>>>>>>> 4a84915857e87d149957d468742957fe6a1841df:bin/faxien
 ERTS_VSN=5.6.3
 INVOCATION_SUFFIX="-s faxien cmdln_apply faxien $@ -noshell -prefix $PREFIX"
 ###########################################

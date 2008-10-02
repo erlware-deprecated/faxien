@@ -1,0 +1,23 @@
+%% -*- erlang -*-
+
+main([RelVsn, TargetDir]) ->
+
+    %% Make sure pre-requisite apps are loaded
+    ok = application:load(compiler),
+
+    %% Construct the release tuple
+    RelTuple = {release, {"erl", RelVsn},
+                {erts, erlang:system_info(version)},
+                [app(kernel),
+                 app(stdlib),
+                 app(compiler)]},
+
+    %% Dump the tuple to disk
+    file:write_file(filename:join([TargetDir, "erl.rel"]),
+                    io_lib:format("~p.\n", [RelTuple])).
+
+
+%% Construct a {app, vsn} tuple, given an application atom
+app(App) ->
+    {ok, Vsn} = application:get_key(App, vsn),
+    {App, Vsn}.

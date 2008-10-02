@@ -1,0 +1,17 @@
+#!/bin/sh
+
+REL_NAME=erl
+REL_VSN=@REL_VSN@
+ERTS_VSN=@ERTS_VSN@
+
+PREFIX=$(cd $(dirname $(dirname $0)); pwd)
+
+export ROOTDIR=$PREFIX/packages/$ERTS_VSN
+export BINDIR=$ROOTDIR/erts-$ERTS_VSN/bin
+export EMU=beam
+export PROGNAME=erl
+export LD_LIBRARY_PATH=$ROOTDIR/erts-$ERTS_VSN/lib
+
+REL_DIR=$PREFIX/release_packages/$REL_NAME-$REL_VSN/release
+
+exec $BINDIR/erlexec -boot $REL_DIR/$REL_NAME -noshell -run escript start -extra ${1+"$@"}

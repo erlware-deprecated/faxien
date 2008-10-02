@@ -1,0 +1,9 @@
+#!/bin/sh
+
+APP_NAME=run_erl
+ERTS_VSN=@ERTS_VSN@
+
+PREFIX=$(cd $(dirname $(dirname $0)); pwd)
+
+exec $PREFIX/packages/$ERTS_VSN/erts-$ERTS_VSN/bin/$APP_NAME "$@"
+

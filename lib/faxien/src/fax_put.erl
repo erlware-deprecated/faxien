@@ -21,6 +21,7 @@
 	 put_erts_checksum_file/4
 	]).
 
+-macros("macros.hrl").
 
 %%====================================================================
 %% API
@@ -178,7 +179,6 @@ put_erts_checksum_file(Repos, ErtsVsn, Payload, Timeout) when is_binary(Payload)
 %%-------------------------------------------------------------------
 repos_put(Repos, Suffix, Payload, Timeout) ->
     payloads_put(Repos, fun(Repo) -> ewr_repo_dav:repo_put(Repo, Suffix, Payload, Timeout) end).
-				 
 
 %%-------------------------------------------------------------------
 %% @private
