@@ -3,8 +3,6 @@
 main([RelVsn, TargetDir]) ->
 
     Apps = [compiler, gs, hipe, dialyzer, typer],
-    %% Make sure pre-requisite apps are loaded
-    [ok = application:load(A) || A <- Apps],
 
     %% Construct the release tuple
     RelTuple = {release, {"erl", RelVsn},
@@ -19,5 +17,11 @@ main([RelVsn, TargetDir]) ->
 
 %% Construct a {app, vsn} tuple, given an application atom
 app(App) ->
+    case application:load(App) of
+        ok ->
+            ok;
+        {error, {already_loaded, App}} ->
+            ok
+    end,
     {ok, Vsn} = application:get_key(App, vsn),
     {App, Vsn}.
