@@ -132,28 +132,47 @@ find_highest_vsn2(Repos, TargetErtsVsns, PackageName, Side, VsnThreshold) ->
 	lists:flatten(
 	  lists:foldl(fun(Repo, Acc) -> 
 			      SysInfo  = ewr_util:system_info(),
-			      Suffixes = suffixes(TargetErtsVsns, PackageName, [SysInfo, "Generic"], Side),
-			      ?INFO_MSG("suffixes to check are ~p~n", [Suffixes]),
-			      lists:foldl(fun(Suf, Acc2) -> 
-						  ?INFO_MSG("Checking for highest version of ~p in ~s/~s~n", 
-							    [PackageName, Repo, Suf]),
-						  case repo_list(Repo ++ "/" ++ Suf) of
-						      {ok, Vsns} -> 
-							  ?INFO_MSG("found vsns ~p~n", [Vsns]),
-							  Elements = ewr_repo_paths:decompose_suffix(Suf),
-							  ErtsVsn  = fs_lists:get_val(erts_vsn, Elements),
-							  [[{Repo, Vsn, ErtsVsn} || Vsn <- lists:reverse(Vsns)]|Acc2]; 
-						      {error, _Reason} -> 
-							  Acc2
-						  end
-					  end, Acc, Suffixes)
+			      {Suffixes, BackupSuffixes} = 
+				  suffixes(TargetErtsVsns, PackageName, ["Generic"|ewr_util:create_system_info_series(SysInfo)], Side),
+			      ?INFO_MSG("suffixes to check are first ~p and if nothing then ~p~n", [Suffixes, BackupSuffixes]),
+			      case find_em(PackageName, Repo, Suffixes, Acc) of
+				  Acc  ->
+				      ?INFO_MSG("pulling from backup suffixes~n", []),
+				      find_em(PackageName, Repo, BackupSuffixes, Acc);
+				  NewAcc ->
+				      NewAcc
+			      end
 		      end, [], Repos)),
     find_highest_remote_vsn_under_threshold(VsnThreshold, VsnList).
 
-suffixes(ErtsVsns, PackageName, Areas, Side) ->
-    lists:foldr(fun(ErtsVsn, Acc) ->
+find_em(PackageName, Repo, Suffixes, Acc) ->
+    lists:foldr(fun(Suf, Acc2) -> 
+			?INFO_MSG("Checking for highest version of ~p in ~s/~s~n", 
+				  [PackageName, Repo, Suf]),
+			case repo_list(Repo ++ "/" ++ Suf) of
+			    {ok, Vsns} -> 
+				?INFO_MSG("found vsns ~p~n", [Vsns]),
+				Elements = ewr_repo_paths:decompose_suffix(Suf),
+				ErtsVsn  = fs_lists:get_val(erts_vsn, Elements),
+				[[{Repo, Vsn, ErtsVsn} || Vsn <- lists:reverse(Vsns)]|Acc2]; 
+			    {error, _Reason} -> 
+				Acc2
+			end
+		end, Acc, Suffixes).
+
+suffixes(ErtsVsns, PackageName, ["Generic", First, Second|Areas], Side) ->
+    FirstErtsVsns =
+	case ErtsVsns of
+	    [T,A,B|_] -> [T,A,B];
+	    ErtsVsns  -> ErtsVsns
+	end,
+    Suffixes = lists:foldl(fun(ErtsVsn, Acc) ->
+			Acc ++ ewr_util:gen_repo_stub_suffix(ErtsVsn, PackageName, ["Generic", First, Second], Side)
+		end, [], FirstErtsVsns),
+    BackupSuffixes = lists:foldl(fun(ErtsVsn, Acc) ->
 			Acc ++ ewr_util:gen_repo_stub_suffix(ErtsVsn, PackageName, Areas, Side)
-		end, [], ErtsVsns).
+		end, [], ErtsVsns),
+    {Suffixes, BackupSuffixes}.
 
 find_highest_remote_vsn_under_threshold(_VsnThreshold, []) ->
     {error, package_not_found};
