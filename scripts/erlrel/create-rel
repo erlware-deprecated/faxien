@@ -2,15 +2,15 @@
 
 main([RelVsn, TargetDir]) ->
 
+    Apps = [compiler, gs, hipe, dialyzer, typer],
     %% Make sure pre-requisite apps are loaded
-    ok = application:load(compiler),
+    [ok = application:load(A) || A <- Apps],
 
     %% Construct the release tuple
     RelTuple = {release, {"erl", RelVsn},
                 {erts, erlang:system_info(version)},
                 [app(kernel),
-                 app(stdlib),
-                 app(compiler)]},
+                 app(stdlib)] ++ [app(A) || A <- Apps]},
 
     %% Dump the tuple to disk
     file:write_file(filename:join([TargetDir, "erl.rel"]),
