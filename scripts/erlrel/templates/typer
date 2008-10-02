@@ -5,5 +5,11 @@ ERTS_VSN=@ERTS_VSN@
 
 PREFIX=$(cd $(dirname $(dirname $0)); pwd)
 
-exec $PREFIX/packages/$ERTS_VSN/erts-$ERTS_VSN/bin/$APP_NAME "$@"
+# Backwards compatibility pathing
+if [ -d "$PREFIX/packages" ]; then
+    BASEDIR="$PREFIX/packages/$ERTS_VSN"
+else
+    BASEDIR="$PREFIX/erts_packages"
+fi
 
+exec $BASEDIR/erts-$ERTS_VSN/bin/$APP_NAME "$@"
