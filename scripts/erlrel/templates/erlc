@@ -1,0 +1,131 @@
+#!/bin/sh
+
+# Find erl
+ERL=`which erl`
+if [ -z "$ERL" ]; then
+    echo "No erl executable found."
+    exit 1
+fi
+
+# Add basic params for emulator
+EMU_ARGS="-noinput -mode minimal -boot start_clean -s erl_compile compile_cmdline "
+
+# Always add @cwd to args
+EMU_ARGS+="@cwd `pwd` "
+
+# Helper function to deal with parameters; returns number of variables that
+# should be shifted off global $*
+process_opt()
+{
+    # First argument to this function is the erl_compile specific id, followed by $*
+    OPT=$1
+    shift
+
+    # If there are one or more characters immediately following the first argument,
+    # the options was given as -x<value>
+    if [ -n "${1:2}" ]; then
+        EMU_ARGS+="$OPT ${1:2} "
+        return 1
+    elif [ ! "$2" ] || [ '-' = "${2:0:1}" ]; then
+    # Otherwise, look at the next argument -- bail if none is given or next argument
+    # starts with dash
+        echo "No value given to $1 option"
+        exit 1
+    fi
+
+    EMU_ARGS+="$OPT $2 "
+    return 2
+}
+
+# Loop through arguments, parsing out those that we understand
+while [[ $# -gt 0 ]] && ( [ '-' = "${1:0:1}" ] || [ '+' = "${1:0:1}" ] ); do
+    case "$1" in
+        +*) # Argument for compiler VM (no space)
+            # @option Value
+            EMU_ARGS+="@option ${1:1} "
+            shift
+            ;;
+
+        --) # All following arguments should be passed as files
+            # @files Values...
+            shift
+            break
+            ;;
+
+        -b*) # Output type
+            # @output_type Type
+            process_opt "@output_type" $*
+            shift $?
+            ;;
+
+        -D) # Define (no space, may have =value)
+            # @d Name || @dv Name Value
+            shift
+            ;;
+
+        -I*) # Include (must have space-sep value)
+            # @i Value
+            process_opt "@i" $*
+            shift $?
+            ;;
+
+        -o) # Output directory (must have space-sep value)
+            # @outdir Value
+            process_opt "@outdir" $*
+            shift $?
+            ;;
+
+        -pa) # Append path to EMULATOR args
+             # -pa Value
+            EMU_ARGS=" -pa ${2} $EMU_ARGS "
+            shift 2
+            ;;
+
+        -pz) # Append path to EMULATOR args
+             # -pz Value
+            EMU_ARGS=" -pz ${2} $EMU_ARGS "
+            shift 2
+            ;;
+
+        -O*) # Optimization (default is 1, not space-sep value)
+            # @optimize Value
+            if [ -n "${1:2}" ]; then
+                EMU_ARGS+="@optimize ${1:2} "
+            else
+                EMU_ARGS+="@optimize 1 "
+            fi
+            shift
+            ;;
+
+        -v) # Set verbose flag
+            # @verbose true
+            EMU_ARGS+="@verbose true "
+            shift
+            ;;
+
+        -Wall) # Enable all warnings
+            EMU_ARGS+="@warn 999 "
+            shift
+            ;;
+
+        -W*) # Warning level (default is 1, not space-sep value, "all" = 999)
+            # @warn Value
+            if [ -n "${1:2}" ]; then
+                EMU_ARGS+="@warn ${1:2} "
+            else
+                EMU_ARGS+="@warn 1 "
+            fi
+            shift
+            ;;            
+        *) # Unknown -- bail
+            echo "Unknown option: $1"
+            exit 1
+    esac
+done    
+
+CMD="$ERL $EMU_ARGS @files $*"
+        
+# Only invoke erl if there are some files to compile
+if [ "$*" ]; then
+    $CMD
+fi
