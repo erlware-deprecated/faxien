@@ -5,11 +5,7 @@
   {description, "The erlang package management tool."},
 
   % The version of the applicaton
-<<<<<<< HEAD:lib/faxien/ebin/faxien.app
   {vsn, "0.38.0.0"},
-=======
-  {vsn, "0.37.2.0"},
->>>>>>> 4a84915857e87d149957d468742957fe6a1841df:lib/faxien/ebin/faxien.app
 
   % All modules used by the application. 
   {modules,
