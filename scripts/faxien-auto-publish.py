@@ -396,20 +396,6 @@ def get_target_erts_version():
     return out.strip()
 
 
-def set_target_erts_version(erts_version):
-    """Set the current target erts version of faxien."""
-
-    cmd = ['faxien', 'set-target-erts-vsn', erts_version]
-
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-
-    (out, _) = p.communicate()
-
-    if p.returncode != 0 or out.strip() != 'ok':
-        print 'Faxien call failed:', cmd
-        sys.exit(1)
-
-
 def publish(dir, log_dir):
     """Publish the given directory with faxien."""
 
@@ -664,20 +650,6 @@ def main():
 
     make_app_files(install_dir, log_dir)
 
-    # the version of erts we are publishing
-    erts_version = os.path.basename(erts_dir).split('-')[1]
-
-    target_erts_version = get_target_erts_version()
-
-    if erts_version != target_erts_version:
-        print 'The faxien target-erts-vsn must be changed to:', erts_version
-
-        ans = raw_input('Proceed? ([y]/n)')
-        if ans not in ('', 'y', 'Y'):
-            sys.exit(0)
-
-        set_target_erts_version(erts_version)
-
     # Remove shell scripts from bin/ dir in ERTS package
     remove_shell_scripts(erts_dir)
 
@@ -703,10 +675,6 @@ def main():
         else:
             publish(pub_dir, log_dir)
 
-    if erts_version != target_erts_version:
-        print 'The faxien target erts version was changed to:', erts_version
-        print 'To change it back, run:'
-        print '    faxien set-target-erts-vsn', target_erts_version
 
 
 if __name__ == '__main__':
