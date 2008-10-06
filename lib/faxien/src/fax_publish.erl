@@ -110,9 +110,11 @@ publish(Type, Repos, RawPackageDirPath, Timeout) when Type == generic; Type == b
     PackageDirPath = epkg_util:unpack_to_tmp_if_archive(RawPackageDirPath),
     case catch publish2(Type, Repos, PackageDirPath, Timeout) of
 	{error, _Reason} = Res ->
+	    io:format("publish error~n"), 
 	    ?INFO_MSG("publish(~p, ~p, ~p, ~p) -> ~p~n", [Type, Repos, PackageDirPath, Timeout, Res]),
 	    Res;
 	{'EXIT', Reason} = Res ->
+	    io:format("publish error~n"), 
 	    ?INFO_MSG("publish(~p, ~p, ~p, ~p) -> ~p~n", [Type, Repos, PackageDirPath, Timeout, Res]),
 	    {error, Reason};
 	{ok, URLS} ->
