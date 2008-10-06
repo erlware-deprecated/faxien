@@ -6,11 +6,34 @@ ERTS_VSN=@ERTS_VSN@
 
 PREFIX=$(cd $(dirname $(dirname $0)); pwd)
 
-export ROOTDIR=$PREFIX/packages/$ERTS_VSN
-export BINDIR=$ROOTDIR/erts-$ERTS_VSN/bin
+# Backwards compatibility pathing
+if [ -d "$PREFIX/packages" ]; then
+    export ROOTDIR="$PREFIX/packages/$ERTS_VSN"
+    export BINDIR="$ROOTDIR/erts-$ERTS_VSN/bin"
+    export LD_LIBRARY_PATH="$ROOTDIR/erts-$ERTS_VSN/lib:$LD_LIBRARY_PATH"
+
+    # Find all package/* dirs with ERTS_VSN below our patch level
+    BASEVER=${ERTS_VSN%.*}
+    for x in $PREFIX/packages/$BASEVER.*; do
+        VERS=`basename $x`
+        if [ -d $x ] && [[ "$VERS" < "$ERTS_VSN" ]]; then
+            ERL_LIBS="$ERL_LIBS:$x/lib"
+        fi
+    done
+
+    # Finally, make sure that ERL_LIBS doesn't have a colon on the beginning or end as 
+    # erl really doesn't like that
+    ERL_LIBS=${ERL_LIBS%:}
+    ERL_LIBS=${ERL_LIBS#:}
+    export ERL_LIBS
+else
+    export ROOTDIR="$PREFIX/application_packages/$ERTS_VSN"
+    export BINDIR="$PREFIX/erts_packages/erts-$ERTS_VSN/bin"
+    export LD_LIBRARY_PATH="$PREFIX/erts_packages/erts-$ERTS_VSN/lib:$LD_LIBRARY_PATH"
+fi
+
 export EMU=beam
 export PROGNAME=erl
-export LD_LIBRARY_PATH=$ROOTDIR/erts-$ERTS_VSN/lib
 
 REL_DIR=$PREFIX/release_packages/$REL_NAME-$REL_VSN/release
 

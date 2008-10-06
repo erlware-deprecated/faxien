@@ -5,5 +5,26 @@ ERTS_VSN=@ERTS_VSN@
 
 PREFIX=$(cd $(dirname $(dirname $0)); pwd)
 
-exec $PREFIX/packages/$ERTS_VSN/erts-$ERTS_VSN/bin/$APP_NAME "$@"
+# Backwards compatibility pathing
+if [ -d "$PREFIX/packages" ]; then
+    BASEDIR="$PREFIX/packages/$ERTS_VSN"
 
+    # Find all package/* dirs with ERTS_VSN below our patch level
+    BASEVER=${ERTS_VSN%.*}
+    for x in $PREFIX/packages/$BASEVER.*; do
+        VERS=`basename $x`
+        if [ -d $x ] && [[ "$VERS" < "$ERTS_VSN" ]]; then
+            ERL_LIBS="$ERL_LIBS:$x/lib"
+        fi
+    done
+
+    # Finally, make sure that ERL_LIBS doesn't have a colon on the beginning or end as 
+    # erl really doesn't like that
+    ERL_LIBS=${ERL_LIBS%:}
+    ERL_LIBS=${ERL_LIBS#:}
+    export ERL_LIBS
+else
+    BASEDIR="$PREFIX/erts_packages"
+fi
+
+exec $BASEDIR/erts-$ERTS_VSN/bin/$APP_NAME "$@"
