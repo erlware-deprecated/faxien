@@ -115,6 +115,7 @@ get_erts_vsns_gte_than(TargetErtsVsn, VsnThreshold) ->
 %% @end
 %%-------------------------------------------------------------------
 find_highest_vsn(Repos, TargetErtsVsns, PackageName, Side, VsnThreshold) ->
+    io:format("target erts vsns ~p~n", [TargetErtsVsns]),
     case catch find_highest_vsn2(Repos, TargetErtsVsns,  PackageName, Side, VsnThreshold) of
 	{ok, {_Repo, _HighVsn, _ErtsVsn}} = Reply -> Reply;
 	Exp                                       -> {error, {package_not_found, PackageName, Exp}}

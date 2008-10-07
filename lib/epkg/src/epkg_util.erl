@@ -30,6 +30,7 @@
 	 foreach_erts_vsn/2,
 	 all_erts_vsns/0,
 	 all_erts_vsns/1,
+	 all_erts_vsns/3,
 	 erts_series/2,
 	 erts_series/1,
 	 erts_lower_bound_from_target/1,
@@ -276,6 +277,25 @@ all_erts_vsns(LowBound) ->
     A = [ErtsVsn || ErtsVsn <- all_erts_vsns(), ewr_util:is_version_greater(ErtsVsn, LowBound) orelse LowBound == ErtsVsn],
     [H|T] = lists:reverse(A),
     [H|lists:reverse(T)].
+
+%%--------------------------------------------------------------------
+%% @doc return all known erts vsns in decending order where all
+%%      versions are are greater or equal to the LowBound less than or
+%%      equal to the HighBound but where the preferred version is
+%%      listed first.
+%% Example: ["5.6.1", "5.6.3", "5.6.2", "5.6"] =  all_erts_vsns("5.6", "5.6.3", "5.6.1").
+%% @spec (LowBound::string(), HighBound::string(), PreferredBound::string()) -> string()
+%% @end
+%%--------------------------------------------------------------------
+all_erts_vsns(LowBound, HighBound, PreferredVsn) ->
+    [PreferredVsn|
+     [ErtsVsn ||
+	 ErtsVsn <- all_erts_vsns(),
+	 (ewr_util:is_version_greater(ErtsVsn, LowBound) orelse LowBound == ErtsVsn),
+	 ((not ewr_util:is_version_greater(ErtsVsn, HighBound)) orelse HighBound == ErtsVsn),
+	 not (ErtsVsn == PreferredVsn)
+     ]
+    ].
 
 %%----------------------------------------------------------------------------
 %% @doc Checks to see if a list is a string.
@@ -548,4 +568,6 @@ md5_test() ->
     ?assertMatch("b1946ac92492d2347c6235b4d2611184", md5("hello\n")).
 
     
+all_erts_vsns_test() ->
+    ?assertMatch(["5.6.1", "5.6.3", "5.6.2", "5.6", "5.5.5"], all_erts_vsns("5.5.5", "5.6.3", "5.6.1")).
 			       

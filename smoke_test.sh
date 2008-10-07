@@ -16,8 +16,8 @@ faxien describe_app sinan #| head -n 5
 
 #(sleep 1; echo "yes") | 
 faxien rr sinan
-echo "setting target erts vsn to 5.5.5 for install"
-faxien stev 5.5.5
+echo "setting preferred erts vsn to 5.5.5 for install"
+faxien spev 5.5.5
 faxien install-release sinan 0.8.6
 
 echo "fetching the erl release and the tv app"

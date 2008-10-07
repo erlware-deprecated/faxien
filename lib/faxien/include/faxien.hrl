@@ -21,8 +21,8 @@
 		     {"apr",      "add-publish-repo"},
 		     {"spr",      "show-publish-repos"},
 		     {"rpr",      "remove-publish-repo"},
-		     {"stev",     "set-target-erts-vsn"},
-		     {"shtev",    "show-target-erts-vsn"},
+		     {"spev",     "set-preferred-erts-vsn"},
+		     {"shpev",    "show-preferred-erts-vsn"},
 		     {"or",       "outdated-releases"},
 		     {"rr",       "remove-release"},
 		     {"ra",       "remove-app"}
