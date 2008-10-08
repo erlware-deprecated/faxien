@@ -461,7 +461,6 @@ install_release(ReleaseNameOrPath) ->
     {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
     {ok, ErtsPolicy}    = gas:get_env(faxien, erts_policy, loose),
     Options             = [{force, false}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
-    io:format("target erts vsns ~p~n", [TargetErtsVsns]),
     fax_install:install_release(Repos, TargetErtsVsns, ReleaseNameOrPath, IsLocalBoot, Options, ?REQUEST_TIMEOUT).
 	
 %%--------------------------------------------------------------------
