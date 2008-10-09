@@ -20,6 +20,8 @@ echo "setting preferred erts vsn to 5.5.5 for install"
 faxien spev 5.5.5
 faxien install-release sinan 0.8.6
 
+faxien spev 5.6.3
+
 echo "fetching the erl release and the tv app"
 mkdir tmp
 faxien fr erl ./tmp
