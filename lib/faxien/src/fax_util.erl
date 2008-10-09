@@ -130,23 +130,36 @@ find_highest_vsn2(Repos, TargetErtsVsns, PackageName, Side, VsnThreshold) ->
     ?INFO_MSG("Target erts versions to search are ~p~n", [TargetErtsVsns]),
     VsnList =
 	lists:flatten(
-	  lists:foldl(fun(Repo, Acc) -> 
-			      SysInfo  = ewr_util:system_info(),
-			      {Suffixes, BackupSuffixes} = 
-				  suffixes(TargetErtsVsns, PackageName, ["Generic"|ewr_util:create_system_info_series(SysInfo)], Side),
-			      ?INFO_MSG("suffixes to check are first ~p and if nothing then ~p~n", [Suffixes, BackupSuffixes]),
-			      case find_em(PackageName, Repo, Suffixes, Acc) of
-				  Acc  ->
-				      ?INFO_MSG("pulling from backup suffixes~n", []),
-				      find_em(PackageName, Repo, BackupSuffixes, Acc);
-				  NewAcc ->
-				      NewAcc
-			      end
-		      end, [], Repos)),
+	  lists:foldl(
+	    fun(Repo, Acc) -> 
+		    SysInfo  = ewr_util:system_info(),
+		    {GenericSuffixes, ArchSuffixes, BackupSuffixes} = 
+			all_suffixes(TargetErtsVsns,
+				     PackageName,
+				     ["Generic"|ewr_util:create_system_info_series(SysInfo)],
+				     Side),
+		    find_em_in_order(PackageName, Repo, GenericSuffixes, ArchSuffixes, BackupSuffixes, Acc)
+	    end,
+	    [],
+	    Repos)),
     find_highest_remote_vsn_under_threshold(VsnThreshold, VsnList).
 
+find_em_in_order(PackageName, Repo, GenericSuffixes, ArchSuffixes, BackupSuffixes, Acc) ->
+    ?INFO_MSG("suffixes to check are first ~p~n if nothing found then ~p~n and if nothing then finally ~p~n",
+	      [GenericSuffixes, ArchSuffixes, BackupSuffixes]),
+    find_em_in_order(PackageName, Repo, [GenericSuffixes, ArchSuffixes, BackupSuffixes], Acc).
+
+find_em_in_order(PackageName, Repo, [Suffixes|Rest], Acc) ->
+    case find_em(PackageName, Repo, Suffixes, Acc) of
+	Acc  ->
+	    ?INFO_MSG("Nothing found, moving to next suffix group~n", []),
+	    find_em(PackageName, Repo, Rest, Acc);
+	NewAcc ->
+	    NewAcc
+    end.
+    
 find_em(PackageName, Repo, Suffixes, Acc) ->
-    lists:foldr(fun(Suf, Acc2) -> 
+    lists:foldl(fun(Suf, Acc2) -> 
 			?INFO_MSG("Checking for highest version of ~p in ~s/~s~n", 
 				  [PackageName, Repo, Suf]),
 			case repo_list(Repo ++ "/" ++ Suf) of
@@ -160,20 +173,24 @@ find_em(PackageName, Repo, Suffixes, Acc) ->
 			end
 		end, Acc, Suffixes).
 
-suffixes(ErtsVsns, PackageName, ["Generic", First, Second|Areas], Side) ->
-    FirstErtsVsns =
+all_suffixes(ErtsVsns, PackageName, ["Generic", One, Two|Areas] = AllAreas, Side) ->
+    {CoreVsns, RestVsns} = 
 	case ErtsVsns of
-	    [T,A,B|_] -> [T,A,B];
-	    ErtsVsns  -> ErtsVsns
+	    [T,N,L|Rest] -> {[T,N,L], Rest};
+	    ErtsVsns     -> {ErtsVsns, []}
 	end,
-    Suffixes = lists:foldl(fun(ErtsVsn, Acc) ->
-			Acc ++ ewr_util:gen_repo_stub_suffix(ErtsVsn, PackageName, ["Generic", First, Second], Side)
-		end, [], FirstErtsVsns),
-    BackupSuffixes = lists:foldl(fun(ErtsVsn, Acc) ->
+    GenericSuffixes = suffixes(CoreVsns, PackageName, ["Generic"], Side),
+    ArchSuffixes    = suffixes(CoreVsns, PackageName, [One, Two], Side),
+    BackupSuffixes  = suffixes(CoreVsns, PackageName, Areas, Side) ++ suffixes(RestVsns, PackageName, AllAreas, Side),
+    {GenericSuffixes, ArchSuffixes, BackupSuffixes};
+all_suffixes(ErtsVsns, PackageName, Areas, Side) ->
+    {suffixes(ErtsVsns, PackageName, Areas, Side), [], []}.
+    
+suffixes(ErtsVsns, PackageName, Areas, Side) ->
+    lists:foldl(fun(ErtsVsn, Acc) ->
 			Acc ++ ewr_util:gen_repo_stub_suffix(ErtsVsn, PackageName, Areas, Side)
-		end, [], ErtsVsns),
-    {Suffixes, BackupSuffixes}.
-
+		end, [], ErtsVsns).
+    
 find_highest_remote_vsn_under_threshold(_VsnThreshold, []) ->
     {error, package_not_found};
 find_highest_remote_vsn_under_threshold(VsnThreshold, VsnList) ->
