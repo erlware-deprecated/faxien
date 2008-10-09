@@ -418,9 +418,9 @@ install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLoca
 		    ok = install_remote_erts(Repos, ReleaseErtsVsn, Timeout),
 		    install_from_local_release_package(Repos, ReleasePackageDirPath, IsLocalBoot, Options, Timeout)
 	    catch
-		Other ->
-		    ?INFO_MSG("exited release install on a local package with ~p~n", [Other]),
-		    Other
+		_C:Ex ->
+		    ?INFO_MSG("exited release install on a local package with ~p~n", [Ex]),
+		    Ex
 	    end
     end.
 

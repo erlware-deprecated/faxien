@@ -116,6 +116,7 @@ install_help() ->
 %% @end
 %%--------------------------------------------------------------------
 install_release(RelPackagePath, InstallationPath) -> 
+    ?INFO_MSG("~p into ~p~n", [RelPackagePath, InstallationPath]),
     epkg_install:install_release(RelPackagePath, epkg_util:if_atom_or_integer_to_string(InstallationPath), false).
 
 %% @spec install_release(RelPackagePath) -> ok | {error, Reason}

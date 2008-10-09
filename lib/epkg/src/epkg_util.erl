@@ -377,8 +377,11 @@ set_executable_perms(Filename) ->
 	SysArch ->
 	    ?INFO_MSG("epkg_util:set_executable_perms(~p) SysArch was ~p~n", [Filename, SysArch]),
 	    case os:cmd("chmod a+x " ++ Filename) of
-		[]    -> ok;
-		Error -> {error, Error}
+		[]    ->
+		    ok;
+		Error ->
+		    ?ERROR_MSG("got the following result when setting executable perms ~p~n", [Error]),
+		    {error, Error}
 	    end
     end.
 
@@ -395,8 +398,11 @@ set_all_executable_perms(Dir) ->
 	SysArch ->
 	    ?INFO_MSG("epkg_util:set_executable_perms(~p) SysArch was ~p~n", [Dir, SysArch]),
 	    case os:cmd("chmod -R a+x " ++ Dir) of
-		[]    -> ok;
-		Error -> {error, Error}
+		[]    ->
+		    ok;
+		Error ->
+		    ?ERROR_MSG("got the following result when setting executable perms ~p~n", [Error]),
+		    {error, Error}
 	    end
     end.
 
