@@ -177,7 +177,8 @@ cmdln_apply([_Mod]) ->
     faxien:help(),
     init:stop(0);
 cmdln_apply([Mod, RawFunc|Args]) ->
-    ?INFO_MSG("mod:func ~p:~p with raw args from commandline: ~w~n", [Mod, RawFunc, Args]),
+    {ok, Vsn} = version(),
+    ?INFO_MSG("Faxien-~s running mod:func ~p:~p with raw args from commandline: ~w~n", [Vsn, Mod, RawFunc, Args]),
     Func = list_to_atom(
 	     epkg_cmdln:resolve_alias(
 	     epkg_cmdln:translate_dash_to_underscore(epkg_cmdln:resolve_alias(atom_to_list(RawFunc), ?ALIAS_LIST)),
