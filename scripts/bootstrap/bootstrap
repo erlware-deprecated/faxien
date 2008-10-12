@@ -1,9 +1,17 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # -*- sh -*-
 
 ERTS_VSN=`erl -noshell -eval "io:format(\"~s\n\", [erlang:system_info(version)]), halt(0)."`
 ROOT_DIR=`erl -noshell -eval "io:format(\"~s\n\", [code:root_dir()]), halt(0)."`
 LOG_DIR=`pwd`/working/logs
+
+# Select the appropriate version of make when on FreeBSD
+SYS=`uname -s`
+if [ "$SYS" == "FreeBSD" ]; then
+   MAKE=gmake
+else
+   MAKE=make
+fi 
 
 # Helper function to compile an erlang app.
 # compile <appname> [<dep1> <dep2>]
@@ -58,7 +66,7 @@ if [ ! -d eunit ]; then
     {
         # Ugh, eunit requires .beams to be compiled in particular order -- do a "pre-build" of eunit
         pushdir eunit
-        make 2>&1 >>$LOG_DIR.svn.eunit
+        $MAKE 2>&1 >>$LOG_DIR.svn.eunit
         # Further ugliness -- the eunit build version is not OTP compliant -- fix it
         cat src/eunit.app.src |sed -e 's;%VSN%;2.0;' >ebin/eunit.app
         popdir
@@ -156,7 +164,7 @@ FILENAME=../faxien-installer-$MID.sh
 echo -n "Generating installer...."
 pushdir working
 cat ../header.txt > $FILENAME
-(cd erlware && tar -czp *  >>../$FILENAME)
+(cd erlware && tar -cpf - * |gzip -c >>../$FILENAME)
 chmod 755 $FILENAME
 popdir
 echo "done."
