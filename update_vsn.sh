@@ -34,3 +34,6 @@ for FILE in $FILES;do
 	sed -e "s/$CURRENT_VSN/$NEW_VSN/" $FILE > $TMP_FILE
 	mv $TMP_FILE $FILE
 done
+
+rm Binary file matches
+exit
