@@ -1,16 +1,13 @@
 #!/bin/sh
 
-REL_NAME=erl
-REL_VSN=@REL_VSN@
+APP_NAME=dialyzer
 ERTS_VSN=@ERTS_VSN@
 
 PREFIX=$(cd $(dirname $(dirname $0)); pwd)
 
 # Backwards compatibility pathing
 if [ -d "$PREFIX/packages" ]; then
-    export ROOTDIR="$PREFIX/packages/$ERTS_VSN"
-    export BINDIR="$ROOTDIR/erts-$ERTS_VSN/bin"
-    export LD_LIBRARY_PATH="$ROOTDIR/erts-$ERTS_VSN/lib:$LD_LIBRARY_PATH"
+    BASEDIR="$PREFIX/packages/$ERTS_VSN"
 
     # Find all package/* dirs with ERTS_VSN below our patch level
     BASEVER=${ERTS_VSN%.*}
@@ -27,14 +24,8 @@ if [ -d "$PREFIX/packages" ]; then
     ERL_LIBS=${ERL_LIBS#:}
     export ERL_LIBS
 else
-    export ROOTDIR="$PREFIX/application_packages/$ERTS_VSN"
-    export BINDIR="$PREFIX/erts_packages/erts-$ERTS_VSN/bin"
-    export LD_LIBRARY_PATH="$PREFIX/erts_packages/erts-$ERTS_VSN/lib:$LD_LIBRARY_PATH"
+    BASEDIR="$PREFIX/erts_packages"
 fi
 
-export EMU=beam
-export PROGNAME=erl
+exec $BASEDIR/erts-$ERTS_VSN/bin/$APP_NAME "$@"
 
-REL_DIR=$PREFIX/release_packages/$REL_NAME-$REL_VSN/release
-
-exec $BINDIR/erlexec -boot $REL_DIR/$REL_NAME ${1+"$@"}
