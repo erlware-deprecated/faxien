@@ -1,3 +1,4 @@
+
 %%%-------------------------------------------------------------------
 %%% @author Martin Logan <martinjlogan@erlware.org>
 %%% @copyright 2007 Erlware
@@ -142,6 +143,7 @@ find_highest_vsn2(Repos, TargetErtsVsns, PackageName, Side, VsnThreshold) ->
 	    end,
 	    [],
 	    Repos)),
+    ?INFO_MSG("vsns from ~p are ~p~n", [Repos, VsnList]),
     find_highest_remote_vsn_under_threshold(VsnThreshold, VsnList).
 
 find_em_in_order(PackageName, Repo, GenericSuffixes, ArchSuffixes, BackupSuffixes, Acc) ->
@@ -149,16 +151,19 @@ find_em_in_order(PackageName, Repo, GenericSuffixes, ArchSuffixes, BackupSuffixe
 	      [GenericSuffixes, ArchSuffixes, BackupSuffixes]),
     find_em_in_order(PackageName, Repo, [GenericSuffixes, ArchSuffixes, BackupSuffixes], Acc).
 
+find_em_in_order(_PackageName, _Repo, [], Acc) ->
+    Acc;
 find_em_in_order(PackageName, Repo, [Suffixes|Rest], Acc) ->
     case find_em(PackageName, Repo, Suffixes, Acc) of
 	Acc  ->
 	    ?INFO_MSG("Nothing found, moving to next suffix group~n", []),
-	    find_em(PackageName, Repo, Rest, Acc);
+	    find_em_in_order(PackageName, Repo, Rest, Acc);
 	NewAcc ->
 	    NewAcc
     end.
     
 find_em(PackageName, Repo, Suffixes, Acc) ->
+    ?INFO_MSG("searching the following block of suffixes: ~p~n", [Suffixes]),
     lists:foldl(fun(Suf, Acc2) -> 
 			?INFO_MSG("Checking for highest version of ~p in ~s/~s~n", 
 				  [PackageName, Repo, Suf]),

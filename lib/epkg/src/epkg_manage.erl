@@ -279,19 +279,42 @@ find_highest_local_app_vsn(AppName, TargetErtsVsn) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc Diff two config files
-%% @spec diff_config(RelName, RelVsn1, RelVsn2) -> {ok, Diff}
+%% @doc Diff all the config files shared by two releases. 
+%% @spec diff_config(RelName, RelVsn1, RelVsn2) -> Diffs
+%% where
+%%  Diffs = [{ConfigFilePath1, ConfigFilePath2, DiffTerms}]
 %% @end
 %%--------------------------------------------------------------------
 diff_config(RelName, RelVsn1, RelVsn2) -> 
     try
-	Rel1ConfigFilePath = epkg_installed_paths:find_config_file_path(RelName, RelVsn1),
-	Rel2ConfigFilePath = epkg_installed_paths:find_config_file_path(RelName, RelVsn2),
-	ewl_config_diff:config_files(Rel1ConfigFilePath, Rel2ConfigFilePath)
+	Rel1ConfigFilePaths = fs_lists:make_list_if_not(epkg_installed_paths:find_config_file_path(RelName, RelVsn1)),
+	Rel2ConfigFilePaths = fs_lists:make_list_if_not(epkg_installed_paths:find_config_file_path(RelName, RelVsn2)),
+	lists:foldl(fun(Rel1Path, Acc) ->
+			    case basename_member(Rel1Path, Rel2ConfigFilePaths) of
+				false ->
+				    Acc;
+				Rel2Path ->
+				    [{Rel1Path, Rel2Path, ewl_config_diff:config_files(Rel1Path, Rel2Path)}|Acc]
+			    end
+		    end,
+		    [],
+		    Rel1ConfigFilePaths)
     catch
-	_Type:_Exception ->
+	_Type:Ex ->
+	    ?ERROR_MSG("error on config diff ~p~n", [Ex]),
 	    []
     end.
+    
+basename_member(Target, [Path|T]) ->
+    Basename = filename:basename(Path),
+    case filename:basename(Target) of
+	Basename -> Path;
+	_        -> basename_member(Target, T)
+    end;
+basename_member(_Target, []) ->
+    false.
+		   
+	
     
     
 %%====================================================================

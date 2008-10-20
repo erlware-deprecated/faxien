@@ -347,20 +347,20 @@ handle_config_on_upgrade(ReleaseName, HighestRemoteVsn, HighestLocalVsn) ->
     case epkg:diff_config(ReleaseName, HighestRemoteVsn, HighestLocalVsn) of
 	{ok, []} ->
 	    ok;
-	{ok, Diff} ->
-	    io:format("Faxien has found the following differences in config " ++
-		      "files when upgrading from ~s to ~s:~n~n~p~n",
-		      [HighestLocalVsn, HighestRemoteVsn, Diff]),
-	    prompt_for_config_policy(ReleaseName, HighestRemoteVsn, HighestLocalVsn)
+	{ok, Diffs} ->
+	    lists:foreach(fun({Rel1ConfigFilePath, Rel2ConfigFilePath, Diff}) ->
+				  io:format("~nFaxien has found the following differences in config " ++
+					    "files when upgrading\nfrom ~s to ~s:~n~n~p~n~n",
+					    [HighestLocalVsn, HighestRemoteVsn, Diff]),
+				  prompt_for_config_policy(ReleaseName, Rel1ConfigFilePath, Rel2ConfigFilePath)
+			  end, Diffs)
     end.
-	    
-prompt_for_config_policy(RelName, HighestRemoteVsn, HighestLocalVsn) ->
-    Prompt = "Differences between the latest config and the past faxien config file have been found. " ++
-	     "Do you want to use the (o)ld or (n)ew file [o|n]",
+
+prompt_for_config_policy(RelName, Rel1ConfigFilePath, Rel2ConfigFilePath) ->
+    Prompt = "Differences have been found between the past and the latest version of config in\n" ++ Rel1ConfigFilePath ++
+	"\nDo you want to use the (o)ld or (n)ew file [o|n]",
     case ewl_talk:ask([Prompt]) of 
 	"o" ->
-	    Rel1ConfigFilePath = epkg_installed_paths:find_config_file_path(RelName, HighestRemoteVsn),
-	    Rel2ConfigFilePath = epkg_installed_paths:find_config_file_path(RelName, HighestLocalVsn),
 	    ?INFO_MSG("replacing ~p with ~p~n", [Rel2ConfigFilePath, Rel1ConfigFilePath]),
 	    file:copy(Rel2ConfigFilePath, Rel1ConfigFilePath),
 	    ok;
@@ -369,7 +369,7 @@ prompt_for_config_policy(RelName, HighestRemoteVsn, HighestLocalVsn) ->
 	Error ->
 	    ?INFO_MSG("user entered \"~p\"~n", [Error]),
 	    io:format("Please enter \"o\" or \"p\"~n"),
-	    prompt_for_config_policy(RelName, HighestRemoteVsn, HighestLocalVsn)
+	    prompt_for_config_policy(RelName, Rel1ConfigFilePath, Rel2ConfigFilePath)
     end.
 
 %%--------------------------------------------------------------------

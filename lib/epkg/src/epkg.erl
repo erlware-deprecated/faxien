@@ -333,8 +333,10 @@ remove_all_help() ->
      "Example: remove-all sinan - removes all versions of the sinan release that are currently installed."].
 
 %%--------------------------------------------------------------------
-%% @doc Diff two config files
-%% @spec diff_config(RelName, RelVsn1, RelVsn2) -> {ok, Diff}
+%% @doc Diff all the config files shared by two releases. 
+%% @spec diff_config(RelName, RelVsn1, RelVsn2) -> {ok, Diffs}
+%% where
+%%  Diffs = [{ConfigFilePath1, ConfigFilePath2, DiffTerms}]
 %% @end
 %%--------------------------------------------------------------------
 diff_config(RelName, RelVsn1, RelVsn2) -> 
