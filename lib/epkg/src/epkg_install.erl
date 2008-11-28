@@ -90,8 +90,8 @@ install_application(AppPackageDirOrArchive, ErtsVsn, InstallationPath) ->
 	    false -> 
 		{error, badly_formatted_or_missing_app_package};
 	    true  -> 
-		AppInstallationPath     = ewl_installed_paths:application_container_path(InstallationPath, ErtsVsn),
-		InstalledPackageDir     = ewl_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn),
+		AppInstallationPath = ewl_installed_paths:application_container_path(InstallationPath, ErtsVsn),
+		InstalledPackageDir = ewl_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn),
 		install_non_release_package(AppPackageDirPath, InstalledPackageDir, AppInstallationPath)
 	end,
 
@@ -380,32 +380,6 @@ build_if_build_file(InstalledPackagePath) ->
 %% @end
 %%--------------------------------------------------------------------
 create_executable_script(InstallationPath, RelName, RelVsn, ErtsVsn) ->
-    create_executable_script_use_cmdr(InstallationPath, RelName, RelVsn, ErtsVsn),
-    create_executable_script_use_bin(InstallationPath, RelName, RelVsn, ErtsVsn).
-    
-create_executable_script_use_cmdr(InstallationPath, RelName, RelVsn, ErtsVsn) ->
-    CmdsDirPath = ewl_installed_paths:installed_release_cmds_dir_path(InstallationPath, RelName, RelVsn),
-    LauncherTemplateFiles = filelib:wildcard(CmdsDirPath ++ "/*"),
-    lists:foreach(fun(TemplateFile) -> 
-			  TemplateName = filename:basename(filename:absname(TemplateFile)),
-			  case regexp:match(TemplateFile, ".*\.tmpl") of
-			      {match, _, _} ->
-				  ExecutableFile = lists:flatten([InstallationPath,
-								  "/bin/",
-								  string:substr(TemplateName, 1, length(TemplateName) - 5)]),
-				  ok = remove_existing_executable_script(ExecutableFile), 
-				  ok = write_executable_file(ExecutableFile, 
-							     InstallationPath, 
-							     RelName, 
-							     RelVsn, 
-							     ErtsVsn, 
-							     TemplateName);
-			      _Error ->
-				  ?INFO_MSG("A non template file ~p found - skipping~n", [TemplateFile])
-			  end
-		  end, LauncherTemplateFiles). 
-
-create_executable_script_use_bin(InstallationPath, RelName, RelVsn, ErtsVsn) ->
     BinDirPath   = ewl_installed_paths:installed_release_bin_dir_path(InstallationPath, RelName, RelVsn),
     BinFilePaths = filelib:wildcard(BinDirPath ++ "/*"),
     ?INFO_MSG("bindir path ~p~nbin file paths ~p~n", [BinDirPath, BinFilePaths]),
@@ -443,30 +417,3 @@ remove_existing_executable_script(ExecutableFile) ->
 	false  ->
 	    ok
     end.
-
-%% 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Handle different os's when writing the executable file.
-%% @todo This needs Windows support. 
-%% @end
-%%--------------------------------------------------------------------
-write_executable_file(ExecutableFile, InstallationPath, RelName, RelVsn, ErtsVsn, TemplateName) ->
-    case erlang:system_info(system_architecture) of
-	"win32" ->
-	    ?INFO_MSG("SysArch was win32~n", []),
-	    io:format("Win 32 is not yet supported.~n");
-	SysArch ->
-	    ?INFO_MSG("SysArch was ~p~n", [SysArch]),
-	    Contents = lists:flatten(["#!/bin/sh\n",
-                                      "PROG_PATH=`dirname $0`\n",
-                                      "$PROG_PATH/faxien_launcher -t ", TemplateName, " -p ", InstallationPath, " -x ", RelName, " -v ", RelVsn, " -e ", 
-				      ErtsVsn, " -- $@"]),
-	    ?INFO_MSG("executable script contents ~p~n", [Contents]),
-	    Res = file:write_file(ExecutableFile, Contents),
-	    ?INFO_MSG("Writing executable file to ~s is ~p~n", [ExecutableFile, Res]),
-	    epkg_util:set_executable_perms(ExecutableFile),
-	    Res
-    end.
-
-

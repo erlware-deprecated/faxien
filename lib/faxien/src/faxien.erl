@@ -851,10 +851,8 @@ commands_help() ->
      "                        remote repositories",
      "show-request-timeout    display the timeout faxien uses for requests to",
      "                        remote repositories",
-     "set-target-erts-vsn     set the highest erts vsn faxien will interact",
-     "                        with without explicit instruction",
-     "show-target-erts-vsn    display the highest erts vsn faxien will",
-     "                        interact with without explicit instruction"
+     "set-preferred-erts-vsn  set the erts vsn faxien will search first",
+     "show-preferred-erts-vsn display the erts vsn faxien will search first"
     ].
 
 %%--------------------------------------------------------------------
@@ -889,6 +887,7 @@ search(Repos, Side, SearchType, SearchString) ->
     {ok, HighErtsVsn}      = gas:get_env(epkg, high_erts_vsn, ewr_util:erts_version()),
     {ok, PreferredErtsVsn} = gas:get_env(epkg, preferred_erts_vsn, HighErtsVsn),
     TargetErtsVsns      = epkg_util:all_erts_vsns(LowErtsVsn, HighErtsVsn, PreferredErtsVsn),
+    ?INFO_MSG("Searching the following erts vsns ~p~n", [TargetErtsVsns]),
     fax_manage:search(Repos, Side, SearchType, SearchString, TargetErtsVsns).
 
 %% @spec search(SearchType, SearchString) -> string()
@@ -1111,7 +1110,7 @@ describe_app_help() ->
 %%   RelVsn = string() | atom() | integer()
 %% @end
 %%--------------------------------------------------------------------
-%% @todo need to bring this into the target erts vsns fold
+%% @todo need to bring this into the preferred erts vsns fold
 describe_release(RelName, RelVsn) ->
     [A, B]              = epkg_util:if_atom_or_integer_to_string([RelName, RelVsn]),
     {ok, PreferrredErtsVsn} = gas:get_env(epkg, preferred_erts_vsn, ewr_util:erts_version()),
@@ -1126,7 +1125,7 @@ describe_release(RelName, RelVsn) ->
 %%   RelName = string() | atom()
 %% @end
 %%--------------------------------------------------------------------
-%% @todo need to bring this into the target erts vsns fold
+%% @todo need to bring this into the preferred erts vsns fold
 describe_release(RelName) ->
     [A]                 = epkg_util:if_atom_or_integer_to_string([RelName]),
     {ok, PreferrredErtsVsn} = gas:get_env(epkg, preferred_erts_vsn, ewr_util:erts_version()),
@@ -1250,7 +1249,7 @@ show_request_timeout_help() ->
      "Usage: show-request-timeout - will display the current timeout value for all remote requests.\n"].
 
 %%--------------------------------------------------------------------
-%% @doc Set the target erts vsn for Faxien.  This is the highest erts vsn faxien will interact with automatically.
+%% @doc Set the preferred erts vsn for Faxien.  This is the highest erts vsn faxien will interact with automatically.
 %% @spec set_preferred_erts_vsn(PreferrredErtsVsn) -> ok | {error, Reason}
 %%  where
 %%   Repo = string() | atom()
@@ -1261,11 +1260,11 @@ set_preferred_erts_vsn(PreferrredErtsVsn) ->
 
 %% @private
 set_preferred_erts_vsn_help() ->
-    ["\nHelp for set-target-erts-vsn\n",
-     "Usage: set-target-erts-vsn <erts-vsn> - will set a new target erts vsn. This is the highest erts vsn faxien will interact with automatically.\n"].
+    ["\nHelp for set-preferred-erts-vsn\n",
+     "Usage: set-preferred-erts-vsn <erts-vsn> - will set a new preferred erts vsn. This is the highest erts vsn faxien will interact with automatically.\n"].
 
 %%--------------------------------------------------------------------
-%% @doc Set the target erts vsn for Faxien.  
+%% @doc Set the preferred erts vsn for Faxien.  
 %% @spec show_preferred_erts_vsn() -> {ok, timeout()} | {error, no_preferred_erts_vsn}
 %% @end
 %%--------------------------------------------------------------------

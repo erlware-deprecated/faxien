@@ -445,7 +445,7 @@ fetch_app_to_tmp(Repos, TargetErtsVsns, AppName, AppVsn, Timeout) ->
 	fs_lists:do_until(
 	  fun(ErtsVsn) ->
 		  try ewr_fetch:fetch_binary_package(Repos, ErtsVsn, AppName, AppVsn, TmpPackageDir, Timeout)
-		  catch _C:_E -> error
+		  catch _C:E -> {error, E}
 		  end
 	  end,
 	  ok,
@@ -465,7 +465,6 @@ fetch_app_to_tmp(Repos, TargetErtsVsns, AppName, AppVsn, Timeout) ->
 	Error ->
 	    Error
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
