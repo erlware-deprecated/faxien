@@ -56,6 +56,7 @@
 -export([
 	 cmdln_apply/1,
 	 
+	 search/5,
 	 search/4,
 	 search/2,
 	 search/1,
@@ -869,7 +870,7 @@ help(Command) when is_list(Command) ->
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Returns a list of packages.
-%% @spec search(Repos, Side, SearchType, SearchString) -> string()
+%% @spec search(Repos, TargetErtsVsns, Side, SearchType, SearchString) -> string()
 %%  where
 %%   Repos = list()
 %%   Side = lib | releases | both
@@ -877,41 +878,47 @@ help(Command) when is_list(Command) ->
 %%   SearchString = string() | atom()
 %% @end
 %%--------------------------------------------------------------------
-search([H|_] = Repo, Side, SearchType, SearchString) when is_integer(H) -> 
-    search([Repo], Side, SearchType, SearchString);
-search(Repos, Side, SearchType, SearchString) when is_atom(SearchString) -> 
-    search(Repos, Side, SearchType, atom_to_list(SearchString));
-search(Repos, Side, SearchType, SearchString) -> 
+search([H|_] = Repo, TargetErtsVsns, Side, SearchType, SearchString) when is_integer(H) -> 
+    search([Repo], TargetErtsVsns, Side, SearchType, SearchString);
+search(Repos, [H|_] = TargetErtsVsn, Side, SearchType, SearchString) when is_integer(H) -> 
+    case translate_version(erlang, erts, TargetErtsVsn) of
+	{ok, TranslatedVsn} -> search(Repos, [TranslatedVsn], Side, SearchType, SearchString);
+	error               -> search(Repos, [TargetErtsVsn], Side, SearchType, SearchString)
+    end;
+search(Repos, TargetErtsVsns, Side, SearchType, SearchString) when is_atom(SearchString) -> 
+    search(Repos, TargetErtsVsns, Side, SearchType, atom_to_list(SearchString));
+search(Repos, TargetErtsVsns, Side, SearchType, SearchString) -> 
     proceed_only_on_valid_repos(Repos),
-    {ok, LowErtsVsn}       = gas:get_env(epkg, low_erts_vsn, ewr_util:erts_version()),
-    {ok, HighErtsVsn}      = gas:get_env(epkg, high_erts_vsn, ewr_util:erts_version()),
-    {ok, PreferredErtsVsn} = gas:get_env(epkg, preferred_erts_vsn, HighErtsVsn),
-    TargetErtsVsns      = epkg_util:all_erts_vsns(LowErtsVsn, HighErtsVsn, PreferredErtsVsn),
-    ?INFO_MSG("Searching the following erts vsns ~p~n", [TargetErtsVsns]),
+    ?INFO_MSG("Searching for ~p the following erts vsns ~p on the following repos ~p~n", [SearchString,TargetErtsVsns,Repos]),
     fax_manage:search(Repos, Side, SearchType, SearchString, TargetErtsVsns).
 
-%% @spec search(SearchType, SearchString) -> string()
-%% @equiv search(Repos, both, SearchType, SearchString) 
-search(SearchType, SearchString) -> 
+%% @spec search(TargetErtsVsn, Side, SearchType, SearchString) -> string()
+%% @equiv search(Repos, TargetErtsVsn, both, SearchType, SearchString) 
+search(TargetErtsVsns, Side, SearchType, SearchString) -> 
     {ok, Repos} = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
-    search(Repos, both, SearchType, SearchString).
+    search(Repos, TargetErtsVsns, Side, SearchType, SearchString).
+
+%% @spec search(SearchType, SearchString) -> string()
+%% @equiv search(Repos, ConfigTargetErtsVsns, both, SearchType, SearchString) 
+search(SearchType, SearchString) -> 
+    search(target_erts_vsns_from_config(), both, SearchType, SearchString).
 
 %% @spec search(SearchString) -> string()
 %% @equiv search(Repos, both, normal, SearchString) 
 search(SearchString) -> 
-    {ok, Repos} = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
-    search(Repos, both, normal, SearchString).
+    search(target_erts_vsns_from_config(), both, normal, SearchString).
     
 %% @spec search() -> string()
 %% @equiv search(Repos, both, regexp, ".*") 
 search() -> 
-    {ok, Repos} = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
-    search(Repos, both, normal, "").
+    search(target_erts_vsns_from_config(), both, normal, "").
 
 %% @private
 search_help() ->
     ["\nHelp for search\n",
-     "Usage: search [[space separated repos] [both|lib|releases] [normal|regexp] search_string]: lists the contents of a repository in various ways.\n",
+     "Usage: search [[space separated repos] [TargetErtsOrErlangVsn] [both|lib|releases] [normal|regexp] search_string]: lists the contents of a repository in various ways.\n",
+     "Example: search R12B-3 lib regexp std.* - this example will list all libraries (lib) that match the regexp std.*" ,
+     "                                          and are from R12B-3 verison of Erlang.",
      "Example: search lib regexp std.* - this example will list all libraries (lib) that match the regexp std.*" ,
      "Example: search regexp std.* - this example will list all libraries and releases that match the regexp std.*" ,
      "Example: search yaw - this example will list all libraries and releases that contain the string 'yaw'" ,
@@ -1355,3 +1362,8 @@ proceed_only_on_valid_repos(Repos) when is_list(Repos) ->
     lists:foreach(fun(Repo) -> proceed_only_on_valid_repos(Repo) end, Repos).
 
 	    
+target_erts_vsns_from_config() ->
+    {ok, LowErtsVsn}       = gas:get_env(epkg, low_erts_vsn, ewr_util:erts_version()),
+    {ok, HighErtsVsn}      = gas:get_env(epkg, high_erts_vsn, ewr_util:erts_version()),
+    {ok, PreferredErtsVsn} = gas:get_env(epkg, preferred_erts_vsn, HighErtsVsn),
+    epkg_util:all_erts_vsns(LowErtsVsn, HighErtsVsn, PreferredErtsVsn).
