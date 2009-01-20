@@ -427,10 +427,10 @@ def get_application_dirs(erlang_dir):
     return app_dirs
 
 
-def get_published_apps():
-    """Return the current published apps."""
+def get_published_apps(version):
+    """Return the current published apps for the given erlang version."""
 
-    cmd = ['faxien', 'search']
+    cmd = ['faxien', 'search', format_version(version), 'both', 'normal', '""']
 
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 
@@ -657,7 +657,7 @@ def main():
 
     publish_dirs.insert(0, erts_dir)
 
-    published_apps = get_published_apps()
+    published_apps = get_published_apps(version)
 
     for pub_dir in publish_dirs:
         appname = os.path.basename(pub_dir).split('-')[0]
