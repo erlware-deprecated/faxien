@@ -49,6 +49,7 @@
 %% @end
 %%--------------------------------------------------------------------
 validate_type(PackageDir) ->
+    ?INFO_MSG("is it erts, binary, or generic ~p~n", [PackageDir]),
     case is_package_erts(PackageDir) of
 	true ->
 	    {ok, erts};
@@ -68,6 +69,7 @@ validate_type(PackageDir) ->
     end.
 
 is_package_erts(PackageDir) ->
+    ?INFO_MSG("~p~n", [PackageDir]),
     lists:all(fun(F) -> F(PackageDir) end, [
 	
 	%% Run all the following lambda's and if all of them return true then we have a well formed application.
@@ -92,6 +94,7 @@ is_package_erts(PackageDir) ->
     ]).
 
 is_package_an_app(PackageDir) ->
+    ?INFO_MSG("~p~n", [PackageDir]),
     lists:all(fun(F) -> F(PackageDir) end, [
 	
 	%% Run all the following lambda's and if all of them return true then we have a well formed application.
@@ -125,6 +128,7 @@ is_package_an_app(PackageDir) ->
     ]).
 
 is_package_a_binary_app(PackageDir) ->
+    ?INFO_MSG("~p~n", [PackageDir]),
     lists:any(fun(F) -> F(PackageDir) end, [
 	
 	%% Run all the following lambda's and if any of them return true the package dir is a binary app and the function
@@ -191,6 +195,7 @@ is_valid_signature_file(SignatureFilePath) ->
 	{ok, [Signature]} ->
 	    is_valid_signature_term(Signature);
 	_Error ->
+	    ?ERROR_MSG("bad signature file~n", []),
 	    false
     end.
 
