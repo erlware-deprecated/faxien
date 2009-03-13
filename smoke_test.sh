@@ -9,7 +9,7 @@ echo "====================================="
 echo ""
 
 faxien search cos 
-faxien installed #| head -n 5
+faxien installed 
 
 echo "describe the sinan application at its latest version"
 faxien describe_app sinan #| head -n 5
