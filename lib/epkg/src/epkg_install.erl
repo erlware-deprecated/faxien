@@ -347,6 +347,7 @@ install_non_release_package(PackagePath, InstalledPackageDir, PackageInstallatio
     ewl_file:mkdir_p(PackageInstallationPath),
     ?INFO_MSG("copying ~s over to ~s~n", [PackagePath, InstalledPackageDir]),
     ewl_file:delete_dir(InstalledPackageDir),
+    ?INFO_MSG("deleted previous installed version at ~p~n", [InstalledPackageDir]),
     ewl_file:copy_dir(PackagePath, InstalledPackageDir),
     build_if_build_file(InstalledPackageDir).
 

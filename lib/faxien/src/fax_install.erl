@@ -99,9 +99,9 @@ install_latest_remote_application(Repos, TargetErtsVsns, AppName, Options, Timeo
 install_remote_application(Repos, [_H|_] = TargetErtsVsn, AppName, AppVsn, Force, Timeout) when is_integer(_H) ->
     install_remote_application(Repos, [TargetErtsVsn], AppName, AppVsn, Force, Timeout);
 install_remote_application(Repos, [TargetErtsVsn|_] = TargetErtsVsns, AppName, AppVsn, Force, Timeout) ->
-    ?INFO_MSG("install_remote_application(~p, ~p, ~p, ~p)~n", [Repos, TargetErtsVsns, AppName, AppVsn]),
+    ?INFO_MSG("(~p, ~p, ~p, ~p)~n", [Repos, TargetErtsVsns, AppName, AppVsn]),
     % @TODO perhaps put more logic around determing if the app is already installed
-    AppDir = epkg_installed_paths:installed_app_dir_path(hd(TargetErtsVsns), AppName, AppVsn),
+    AppDir = epkg_installed_paths:installed_app_dir_path(TargetErtsVsn, AppName, AppVsn),
     case epkg_validation:is_package_an_app(AppDir) of
 	false -> 
 	    io:format("Pulling down ~s-~s ", [AppName, AppVsn]),
@@ -120,6 +120,7 @@ install_remote_application(Repos, [TargetErtsVsn|_] = TargetErtsVsns, AppName, A
 		    Error
 	    end;
 	true -> 
+	    ?INFO_MSG("~p is already installed force overwrite: ~p~n", [AppDir, Force]),
 	    epkg_util:overwrite_yes_no(
 	      fun() -> install_remote_application(Repos, TargetErtsVsns, AppName, AppVsn, Force, Timeout) end,  
 	      fun() -> ok end, 
@@ -366,7 +367,7 @@ fetch_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Options, Tim
     lists:foreach(fun({AppName, AppVsn}) ->
 			  io:format("Pulling down ~s-~s -> ", [AppName, AppVsn]),
 			  Res_ = fetch_remote_application(Repos, ReleaseErtsVsns, AppName, AppVsn,
-							 RelLibDirPath, Options, Timeout),
+							  RelLibDirPath, Options, Timeout),
 			  io:format("~p~n", [Res_])
 		  end, AppAndVsns),
     io:format("Fetch on ~s-~s resulted in ~p~n Note* You may install the fetched package with 'faxien install ~s/~s-~s'~n", 
@@ -454,9 +455,7 @@ fetch_app_to_tmp(Repos, TargetErtsVsns, AppName, AppVsn, Timeout) ->
 	ok ->
 	    AppPackageDirPath = ewl_package_paths:package_dir_path(TmpPackageDir, AppName, AppVsn),
 	    case epkg_validation:verify_app_erts_vsn(AppPackageDirPath) of
-		{ok, ErtsVsn} ->
-		    AppDir = epkg_installed_paths:installed_app_dir_path(ErtsVsn, AppName, AppVsn),
-		    ok     = ewl_file:delete_dir(AppDir),
+		{ok, _ErtsVsn} ->
 		    {ok, AppPackageDirPath};
 		Error ->
 		    ?ERROR_MSG("bad app ~p beams compiled with an unsuppored erts vsn. Error ~p~n", [AppName, Error]),
