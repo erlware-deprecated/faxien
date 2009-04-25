@@ -403,7 +403,8 @@ def publish(dir, log_dir):
 
     name = 'publish-%s' % os.path.basename(dir).split('-')[0]
 
-    run_command(['faxien', 'publish', dir], log_dir, log_dir, name, False)
+    run_command(['faxien', 'publish', dir, 'infinity'],
+                log_dir, log_dir, name, False)
 
 
 def get_application_dirs(erlang_dir):
