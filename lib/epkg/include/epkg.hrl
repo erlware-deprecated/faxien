@@ -7,6 +7,7 @@
 %% A static list of compiler versions associate with the erts vsns they are packaged with.  This list should be in descending
 %% order of erts version. 
 -define(COMPILER_VSN_TO_ERTS_VSN_TO_ERLANG_VSN, [
+				   {"4.6.1", "5.7.1", "R13B"},
 				   {"4.6",   "5.7",   "R13A"},
 				   {"4.5.5", "5.6.5", "R12B-5"},
 				   {"4.5.4", "5.6.4", "R12B-4"},
