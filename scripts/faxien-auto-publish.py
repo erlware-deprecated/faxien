@@ -18,7 +18,7 @@ WORKING_DIR = os.path.join(tempfile.gettempdir(), 'faxien-auto-publish')
 IS_64_BIT = sys.maxint > 2**31 - 1
 
 # re to find the source versions available for download
-scraper = re.compile(r'otp_src_(R)(\d+)(\w+)-(\d+)\.tar.gz')
+scraper = re.compile(r'otp_src_(R)(\d+)(\w+)(?:-(\d+))?\.tar.gz')
 
 # re to split erlang version numbers
 erlang_verpat = re.compile(r'(R)(\d+)(\w+)-(\d+)')
@@ -92,7 +92,7 @@ def get_versions():
 
     for v in versions:
         v[1] = int(v[1])
-        v[3] = int(v[3])
+        v[3] = v[3] and int(v[3]) or 0
 
     versions = map(tuple, versions)
     versions.sort()
@@ -103,6 +103,8 @@ def get_versions():
 
 def format_version(version):
     """Format a version tuple (see get_versions) as a string."""
+    if version[-1] == 0:
+        return '%s%d%s' % version[:-1]
     return '%s%d%s-%d' % version
 
 
