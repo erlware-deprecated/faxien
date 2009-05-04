@@ -167,7 +167,7 @@ list_app_vsns(ErtsVsn, AppName) ->
 %% @end
 %%--------------------------------------------------------------------
 list_erts_vsns(InstallationPath) ->
-    lists:map(fun(Path) -> filename:basename(Path) end, filelib:wildcard(InstallationPath ++ "/packages/*")).
+    lists:map(fun(Path) -> filename:basename(Path) end, filelib:wildcard(InstallationPath ++ "/erts-*")).
 
 %%--------------------------------------------------------------------
 %% @doc return a list of erts versions currently installed that are lower than the supplied version. 

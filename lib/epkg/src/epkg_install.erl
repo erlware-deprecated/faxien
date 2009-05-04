@@ -259,7 +259,7 @@ install_release_package(PackagePath, InstallationPath) ->
 
     ewl_file:delete_dir(InstalledRelPath),
     ok = ewl_file:copy_dir(PackagePath, InstalledRelPath),
-    ok = ewl_file:copy_dir(InstalledRelPath ++ "/releases/" ++ RelVsn, InstalledRelPath ++ "/release"),
+    ok = ewl_file:copy_dir(InstalledRelPath ++ "/releases/" ++ RelVsn, InstalledRelPath),
     build_if_build_file(InstalledRelPath),
     ok = ewl_file:delete_dir(InstalledRelPath ++ "/lib"),
     ok = ewl_file:delete_dir(InstalledRelPath ++ "/releases").
