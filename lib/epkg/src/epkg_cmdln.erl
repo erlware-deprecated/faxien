@@ -69,10 +69,7 @@ cmdln_apply([Mod, Func|Args]) ->
 translate_dash_to_underscore(Func) when is_atom(Func) ->
     list_to_atom(translate_dash_to_underscore(atom_to_list(Func)));
 translate_dash_to_underscore(Func) ->
-    case regexp:gsub(Func, "-", "_") of
-	{ok, NewFunc, _} -> NewFunc;
-	_                -> Func
-    end.
+    re:replace(Func, "_", "-", [{return, list}, global]).
 
 %%--------------------------------------------------------------------
 %% @doc translate one string to another if there is a translation in the alias list.
@@ -315,8 +312,8 @@ no_space([A1, A2|T], Acc) ->
 %%----------------------------------------------------------------------------
 convert_string_to_terms(ArgString) ->
     ?INFO_MSG("arg string ~p~n", [ArgString]),
-    case regexp:match(ArgString, "^[0-9]+\.[0-9]+$") of
-	{match, _, _} -> 
+    case re:run(ArgString, "^[0-9]+\.[0-9]+$") of
+	{match, _} -> 
 	    ArgString;
 	_  ->
 	    ScanableArg = ArgString ++ ". ", 

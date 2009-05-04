@@ -379,17 +379,17 @@ flattening(Float) when is_float(Float) ->
     [float_to_list(Float)];
 flattening(Integer) when is_integer(Integer) ->
     [integer_to_list(Integer)];
-flattening(Binary) when binary(Binary) ->
+flattening(Binary) when is_binary(Binary) ->
     [binary_to_list(Binary)];
-flattening(Pid) when pid(Pid) ->
+flattening(Pid) when is_pid(Pid) ->
     [pid_to_list(Pid)];
 flattening(Ref) when is_reference(Ref) ->
     ["<<reference>>"];
-flattening(Tuple) when tuple(Tuple) ->
+flattening(Tuple) when is_tuple(Tuple) ->
     Terms = tuple_to_list(Tuple),
     Fun   = fun(Term, Acc) -> acc_check(Term, Acc) end,
     ["{"] ++ lists:foldl(Fun, [], Terms) ++ ["}"];
-flattening(Terms) when list(Terms) ->
+flattening(Terms) when is_list(Terms) ->
     case epkg_util:is_string(Terms) of
         true  -> 
             ["\"" ++ Terms ++ "\""];

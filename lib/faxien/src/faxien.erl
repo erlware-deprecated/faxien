@@ -1354,9 +1354,12 @@ print_help_list(HelpList) ->
 proceed_only_on_valid_repos(Repo) when is_atom(Repo) ->
     proceed_only_on_valid_repos(atom_to_list(Repo));
 proceed_only_on_valid_repos([H|_] = Repo) when is_integer(H) ->
-    case regexp:match(Repo, ":\/\/") of
-	{match, _, 3} -> true;
-	_             -> throw({error, "A valid repo string is required containing of the form <type>://<body>. The string '" ++ Repo ++ "' is invalid"})
+    case re:run(Repo, ":\/\/") of
+	{match, [{_, 3}]} ->
+	    true;
+	_ ->
+	    throw({error, "A valid repo string is required containing of the form"
+		   " <type>://<body>. The string '" ++ Repo ++ "' is invalid"})
     end;
 proceed_only_on_valid_repos(Repos) when is_list(Repos) ->
     lists:foreach(fun(Repo) -> proceed_only_on_valid_repos(Repo) end, Repos).

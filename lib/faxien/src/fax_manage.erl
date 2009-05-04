@@ -472,9 +472,9 @@ search(Repos, Side, SearchType, SearchString, [H|_] = TargetErtsVsn) when is_int
 search(Repos, Side, SearchType, SearchString, TargetErtsVsns) -> 
     FilterFun = case SearchType of
 		    regexp ->
-			fun(E) -> case regexp:match(E, SearchString) of {match, _, _} -> true; _ -> false end end;
+			fun(E) -> case re:run(E, SearchString) of {match, _} -> true; _ -> false end end;
 		    normal ->
-			fun(E) -> case regexp:match(E, ".*" ++ SearchString ++ ".*") of {match, _, _} -> true; _ -> false end end;
+			fun(E) -> case re:run(E, ".*" ++ SearchString ++ ".*") of {match, _} -> true; _ -> false end end;
 		    Invalid ->
 			exit({"Not a valid search type, try normal or regexp", Invalid})
 		end,

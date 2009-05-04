@@ -306,7 +306,7 @@ is_string([])                          -> true;
 is_string(Term) when not is_list(Term) -> false;
 is_string(Term)                        -> not lists:any(fun(Element) -> not_string_p1(Element) end, Term).
                                                                                    
-not_string_p1(H) when integer(H), H >= $\s, H < 255 -> false;
+not_string_p1(H) when is_integer(H), H >= $\s, H < 255 -> false;
 not_string_p1($\n)                                  -> false;
 not_string_p1($\r)                                  -> false;
 not_string_p1($\t)                                  -> false;
