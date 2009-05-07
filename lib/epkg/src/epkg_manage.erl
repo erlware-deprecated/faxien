@@ -130,7 +130,10 @@ list_releases_for_erts_vsn(InstallationPath, ErtsVsn) ->
 			 catch
 			     _C:_E ->
 				 false
-			 end
+			 end;
+		    (NoNameVersionPattern) ->
+			 ?ERROR_MSG("non standard erlware release naming ~p~n", [NoNameVersionPattern]),
+			 false
 		 end,
 		 name_and_vsn(Paths)).
 

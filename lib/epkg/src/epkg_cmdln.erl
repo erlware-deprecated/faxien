@@ -69,7 +69,7 @@ cmdln_apply([Mod, Func|Args]) ->
 translate_dash_to_underscore(Func) when is_atom(Func) ->
     list_to_atom(translate_dash_to_underscore(atom_to_list(Func)));
 translate_dash_to_underscore(Func) ->
-    re:replace(Func, "_", "-", [{return, list}, global]).
+    re:replace(Func, "-", "_", [{return, list}, global]).
 
 %%--------------------------------------------------------------------
 %% @doc translate one string to another if there is a translation in the alias list.

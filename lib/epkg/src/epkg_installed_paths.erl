@@ -167,7 +167,10 @@ list_app_vsns(ErtsVsn, AppName) ->
 %% @end
 %%--------------------------------------------------------------------
 list_erts_vsns(InstallationPath) ->
-    lists:map(fun(Path) -> filename:basename(Path) end, filelib:wildcard(InstallationPath ++ "/erts-*")).
+    lists:map(fun(Path) ->
+		      Erts = filename:basename(Path),
+		      string:substr(Erts, 6, length(Erts))
+	      end, filelib:wildcard(InstallationPath ++ "/erts-*")).
 
 %%--------------------------------------------------------------------
 %% @doc return a list of erts versions currently installed that are lower than the supplied version. 
@@ -224,8 +227,8 @@ list_release_vsns(RelName) ->
 %%-------------------------------------------------------------------
 package_dir_to_name_and_vsn(RawPackageDir) ->
     PackageDir = filename:basename(filename:absname(RawPackageDir)),
-    case regexp:match(PackageDir, ?PACKAGE_NAME_AND_VSN_REGEXP) of
-	{match, 1, _} ->
+    case re:run(PackageDir, ?PACKAGE_NAME_AND_VSN_REGEXP) of
+	{match, [{0, _}|_]} ->
 	    {ok, {[PackageName], PackageVsn}} = ewl_string_manip:n_tokens(PackageDir, 1, "-"),
 	    {ok, {PackageName, lop_off_end(PackageVsn)}};
 	_Error -> 
