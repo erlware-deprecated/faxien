@@ -136,9 +136,9 @@ is_package_a_binary_app(PackageDir) ->
 	
 	fun(PackageDir_) ->  
 	    lists:any(fun(Dir) -> 
-		case regexp:match(Dir, ".*_src") of
-			{match, _, _} -> true;
-			_             -> false
+		case re:run(Dir, ".*_src") of
+			{match, _} -> true;
+			_          -> false
 		end
 	    end, filelib:wildcard(PackageDir_ ++ "/*"))
 	end, 
@@ -360,9 +360,9 @@ fetch_vsn(AppDirPath, Module) ->
 is_binary_file(Filename) ->
     FileType = os:cmd(io_lib:format("file -b ~s", [Filename])),
     lists:any(fun(Regex) ->
-                      case regexp:match(FileType, Regex) of
-                          nomatch -> false;
-                          {match, _, _} -> true
+                      case re:run(FileType, Regex) of
+                          {match, _} -> true;
+                          _NoMatch   -> false
                       end
               end, ?BINARY_FILE_REGEX).
                               

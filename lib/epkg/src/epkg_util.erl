@@ -452,8 +452,8 @@ unpack_to_tmp(ArtifactFilePath) ->
 %% @end
 %%--------------------------------------------------------------------
 unpack_to_tmp_if_archive(ArchiveFilePath) ->
-    case regexp:match(ArchiveFilePath, ".*" ++ ?REPO_FILE_EXT_REGEXP ++ "$") of
-	{match, _, _} ->
+    case re:run(ArchiveFilePath, ".*" ++ ?REPO_FILE_EXT_REGEXP ++ "$") of
+	{match, _} ->
 	    epkg_util:unpack_to_tmp(ArchiveFilePath);
 	_NoMatch ->
 	    ArchiveFilePath
@@ -543,7 +543,7 @@ extract_rel_value(_, _Junk) ->
 %%-------------------------------------------------------------------
 md5(List) -> hex(binary_to_list(erlang:md5(List))).
 
-hex(L) when list (L) -> lists:flatten([hex(I) || I <- L]);
+hex(L) when is_list (L) -> lists:flatten([hex(I) || I <- L]);
 hex(I) when I > 16#f -> [hex0((I band 16#f0) bsr 4), hex0((I band 16#0f))];
 hex(I)               -> [$0, hex0(I)].
 

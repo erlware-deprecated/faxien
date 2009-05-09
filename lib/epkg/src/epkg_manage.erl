@@ -83,7 +83,7 @@ list_lib_for_erts_vsn(InstallationPath, ErtsVsn) ->
 %%--------------------------------------------------------------------
 list_all_releases(InstallationPath) ->
     Series = epkg_installed_paths:list_erts_vsns(InstallationPath),
-    ?INFO_MSG("listing lib dirs for erts vsns ~p~n", [Series]),
+    ?INFO_MSG("listing dirs for erts vsns ~p~n", [Series]),
     lists:sort(fun({N, _}, {N1, _}) -> N > N1 end,
 	       lists:flatten([lists:map(fun(ErtsVsn) -> list_releases_for_erts_vsn(InstallationPath, ErtsVsn) end, Series)])).
 
