@@ -165,9 +165,10 @@ find_em_in_order(PackageName, Repo, [Suffixes|Rest], Acc) ->
 find_em(PackageName, Repo, Suffixes, Acc) ->
     ?INFO_MSG("searching the following block of suffixes: ~p~n", [Suffixes]),
     lists:foldl(fun(Suf, Acc2) -> 
-			?INFO_MSG("Checking for highest version of ~p in ~s/~s~n", 
-				  [PackageName, Repo, Suf]),
-			case repo_list(Repo ++ "/" ++ Suf) of
+            ValidUrl = make_valid_url(Repo, Suf),
+			?INFO_MSG("Checking for highest version of ~p in ~s~n", 
+				  [PackageName, ValidUrl]),
+			case repo_list(ValidUrl) of
 			    {ok, Vsns} -> 
 				?INFO_MSG("found vsns ~p~n", [Vsns]),
 				Elements = ewr_repo_paths:decompose_suffix(Suf),
@@ -177,6 +178,20 @@ find_em(PackageName, Repo, Suffixes, Acc) ->
 				Acc2
 			end
 		end, Acc, Suffixes).
+
+%% Ensure we don't get things like http://example.com//5.7, but rather http://example.com/5.7
+make_valid_url(Repo, Suf) ->
+    case {lists:reverse(Repo), Suf} of
+        {[$/|_], [$/|SufT]} -> % double slash - eliminate the one from Suf
+            Repo ++ SufT;
+        {[$/|_], _} -> % Suf does not have a slash, but Repo does
+            Repo ++ Suf;
+        {_, [$/|_]} -> % Repo has no slash but Suf does
+            Repo ++ Suf;
+        _ -> % No slashes
+            Repo ++ "/" ++ Suf
+    end.
+
 
 all_suffixes(ErtsVsns, PackageName, ["Generic", One, Two|Areas] = AllAreas, Side) ->
     {CoreVsns, RestVsns} = 
@@ -293,11 +308,18 @@ repo_list([$f,$i,$l,$e,$:,$/,$/|Path] = FullPath) ->
 	    {error,{repo_list, FullPath}}
     end;
 repo_list([$h,$t,$t,$p,$:,$/,$/|_] = Url) ->
+    AuthOpts = [],
+    repo_list(Url, AuthOpts);
+repo_list([$h,$t,$t,$p,$s,$:,$/,$/|_] = Url) ->
+    AuthOpts = ewr_util:get_auth_options(Url),
+    repo_list(Url, AuthOpts).
+
+repo_list(Url, AuthOpts) ->
     Opts = [{"Connection", "TE"},
 	    {"TE", "trailers"},
 	    {"Depth", "1"},
 	    {"Content-Type", "application/xml"}],
-    case catch ibrowse:send_req(Url, Opts, propfind, "") of
+    case catch ibrowse:send_req(Url, Opts, propfind, "", AuthOpts) of
         {ok, "207", _, Body} -> 
 	    ?ERROR_MSG("repo_list(~p) -> ~p~n", [Url, "success:207"]),
 	    {ok, parse_out_package_versions(Body)};
