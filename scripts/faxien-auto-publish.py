@@ -515,7 +515,7 @@ def remove_shell_scripts(erts_dir):
 def clone_bootstrap(working_dir, log_dir):
     """Clone the bootstrap repo into the working directory."""
 
-    run_command(['git', 'clone', 'http://git.erlware.org/bootstrap.git'],
+    run_command(['git', 'clone', 'git://github.com/erlware/bootstrap.git'],
                 working_dir, log_dir, 'clone-bootstrap')
 
     bootstrap_dir = os.path.join(working_dir, 'bootstrap')
