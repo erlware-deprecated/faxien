@@ -11,6 +11,7 @@
 	 put_erts_package/4,
 	 put_binary_app_package/6,
 	 put_generic_app_package/6,
+	 put_unbuilt_app_package/6,
 	 put_release_package/6,
 	 put_dot_app_file/6,
 	 put_release_control_file/6,
@@ -60,6 +61,17 @@ put_binary_app_package(Repos, ErtsVsn, AppName, AppVsn, Payload, Timeout) when i
 %%--------------------------------------------------------------------
 put_generic_app_package(Repos, ErtsVsn, AppName, AppVsn, Payload, Timeout) when is_binary(Payload) -> 
     Suffix = ewr_repo_paths:package_suffix(ErtsVsn, "Generic", "lib", AppName, AppVsn),
+    repos_put(Repos, Suffix, Payload, Timeout).
+
+%%--------------------------------------------------------------------
+%% @doc put an unbuilt application src package onto a remote repository.
+%% @spec put_unbuilt_app_package(Repos, ErtsVsn, AppName, AppVsn, Payload, Timeout) -> {ok, Urls} | {error, Reason}
+%% where
+%%  Timeout = Milliseonds::integer()
+%% @end 
+%%--------------------------------------------------------------------
+put_unbuilt_app_package(Repos, ErtsVsn, AppName, AppVsn, Payload, Timeout) when is_binary(Payload) -> 
+    Suffix = ewr_repo_paths:package_suffix(ErtsVsn, "Unbuilt", "lib", AppName, AppVsn),
     repos_put(Repos, Suffix, Payload, Timeout).
 
 %%--------------------------------------------------------------------

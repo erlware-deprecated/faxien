@@ -14,6 +14,7 @@
 	 is_package_erts/1,
 	 is_package_an_app/1,
 	 is_package_a_binary_app/1,
+	 is_package_an_unbuilt_app/1,
 	 is_package_a_release/1,
 	 is_valid_control_file/1,
 	 is_valid_signature_file/1
@@ -56,9 +57,14 @@ validate_type(PackageDir) ->
 	false -> 
 	    case is_package_an_app(PackageDir) of
 		true ->
-		    case is_package_a_binary_app(PackageDir) of
-			true  -> {ok, binary};
-			false -> {ok, generic}
+		    case is_package_an_unbuilt_app(PackageDir) of
+			true ->
+			    {ok, unbuilt};
+			false ->
+			    case is_package_a_binary_app(PackageDir) of
+				true  -> {ok, binary};
+				false -> {ok, generic}
+			    end
 		    end;
 		false ->
 		    case is_package_a_release(PackageDir) of
@@ -109,15 +115,6 @@ is_package_an_app(PackageDir) ->
 	end, 
 	
 	fun(PackageDir_) ->
-            case filelib:wildcard(PackageDir_ ++ "/ebin/*.beam") of
-		[_|_] -> 
-                    true;
-		[] -> 
-                    false
-	    end
-	end, 
-
-	fun(PackageDir_) ->
             case verify_presence_of_erl_files(PackageDir_) of
 		ok -> 
                     true;
@@ -125,6 +122,24 @@ is_package_an_app(PackageDir) ->
                     false
 	    end
 	end
+    ]).
+
+is_package_an_unbuilt_app(PackageDir) ->
+    ?INFO_MSG("~p~n", [PackageDir]),
+    lists:all(fun(F) -> F(PackageDir) end, [
+	
+	%% Run all the following lambda's and if all of them return true the package dir is an unbuilt app and the function
+	%% will return true.
+	
+	fun(PackageDir_) ->  
+		0 == length(filelib:wildcard(PackageDir_ ++ "/ebin/*beam"))
+	end, 
+	
+        fun(PackageDir_) ->
+                Files = [filename:basename(F) || F <- ewl_file:find(PackageDir_, ".*")],
+		% For now only a build.sh file constitutes unbuilt. Perhaps configure and make files in the future.
+                lists:any(fun(File) -> lists:member(File, Files) end, ["build.sh"])
+        end
     ]).
 
 is_package_a_binary_app(PackageDir) ->
@@ -261,14 +276,20 @@ verify_presence_of_erl_files(AppDirPath) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc Verify that all beams within an application were compiled with for the same erts vsn. 
+%% @doc Verify that all beams within an application were compiled with
+%%      for the same erts vsn and return that version. 
 %% @spec verify_app_erts_vsn(AppDirPath) -> {ok, ErtsVsn} | {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
 verify_app_erts_vsn(AppDirPath) ->
-    case get_compiler_vsn(AppDirPath) of
-	{ok, CompilerVsn} -> search_static_vsns(CompilerVsn);
-	Error             -> Error
+    case length(filelib:wildcard(AppDirPath ++ "/ebin/*beam")) of
+	0 ->
+	    {error, no_beam_files};
+	_NumBeams ->
+	    case get_compiler_vsn(AppDirPath) of
+		{ok, CompilerVsn} -> search_static_vsns(CompilerVsn);
+		Error             -> Error
+	    end
     end.
 
 search_static_vsns(CompilerVsn) ->

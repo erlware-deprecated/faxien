@@ -106,7 +106,8 @@ publish(Repos, RawPackageDirPaths, Timeout) ->
 %%     PackageDirPath = string()
 %% @end
 %%--------------------------------------------------------------------
-publish(Type, Repos, RawPackageDirPath, Timeout) when Type == generic; Type == binary; Type == release; Type == erts -> 
+publish(Type, Repos, RawPackageDirPath, Timeout)
+  when Type == unbuilt; Type == generic; Type == binary; Type == release; Type == erts -> 
     PackageDirPath = epkg_util:unpack_to_tmp_if_archive(RawPackageDirPath),
     case catch publish2(Type, Repos, PackageDirPath, Timeout) of
 	{error, _Reason} = Res ->
@@ -133,10 +134,17 @@ publish2(erts, Repos, ErtsDirPath, Timeout) ->
     Res = fax_put:put_erts_package(Repos, ErtsVsn, Binary, Timeout), 
     fax_put:put_erts_checksum_file(Repos, ErtsVsn, Binary, Timeout),
     Res;
-publish2(Type, Repos, AppDirPath, Timeout) when Type == binary; Type == generic -> 
+publish2(Type, Repos, RawAppDirPath, Timeout) when Type == unbuilt; Type == binary; Type == generic -> 
+    AppDirPath = move_to_proper_dir_if_no_name_and_vsn(RawAppDirPath),
     {ok, {AppName, AppVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(AppDirPath),
     {ok, AppFileBinary}     = file:read_file(ewl_file:join_paths(AppDirPath, "ebin/" ++ AppName ++ ".app")),
-    case epkg_validation:verify_app_erts_vsn(AppDirPath) of
+
+    F = fun({ok, ErtsVsn}, _)                -> {ok, ErtsVsn};
+	   ({error, no_beam_files}, unbuilt) -> {ok, "0.0"};
+	   (Error, _)                        -> Error
+	end,
+
+    case F(epkg_validation:verify_app_erts_vsn(AppDirPath), Type) of
 	{ok, ErtsVsn} ->
 	    %% @todo make this transactional - if .app file put fails run a delete.
 	    fax_put:put_dot_app_file(Repos, ErtsVsn, AppName, AppVsn, AppFileBinary, Timeout), 
@@ -144,6 +152,7 @@ publish2(Type, Repos, AppDirPath, Timeout) when Type == binary; Type == generic 
 	    Binary = pack(AppDirPath),
 	    Result = 
 		case Type of
+		    unbuilt -> fax_put:put_unbuilt_app_package(Repos, ErtsVsn, AppName, AppVsn, Binary, Timeout); 
 		    generic -> fax_put:put_generic_app_package(Repos, ErtsVsn, AppName, AppVsn, Binary, Timeout); 
 		    binary  -> fax_put:put_binary_app_package(Repos, ErtsVsn, AppName, AppVsn, Binary, Timeout)
 		end,
@@ -301,3 +310,27 @@ publish_dist_tarball_from_sinan(Repos, ProjectRootDir, BuildFlavor, Timeout) ->
 	    publish(Repos, AlteredRelPaths, Timeout)
     end.
 
+
+move_to_proper_dir_if_no_name_and_vsn(AppDirPath) ->
+    try
+	{ok, {_AppName, _AppVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(AppDirPath),
+	AppDirPath
+    catch
+	_C:_E ->
+	    AppBaseName = filename:basename(AppDirPath),
+	    case re:run(AppBaseName, "[a-z][a-z0-9]*", []) of
+		{match,[{0, Length}]} when Length == length(AppBaseName) ->
+		    DotAppFilePath = AppDirPath ++ "/ebin/" ++ AppBaseName ++ ".app",
+		    {ok, [{_, _, List}]} = file:consult(DotAppFilePath),
+		    {value,{vsn,VsnString}} = lists:keysearch(vsn, 1, List),
+		    ProperAppDirName = AppBaseName ++ "-" ++ VsnString,
+		    {ok, TmpDirPath}   = epkg_util:create_unique_tmp_dir(),
+		    TmpArtifactFilePath = ewl_file:join_paths(TmpDirPath, ProperAppDirName),
+		    ?INFO_MSG("Moving dir with no version ~p to ~p~n", [AppDirPath, TmpArtifactFilePath]),
+		    ok = ewl_file:copy_dir(AppDirPath, TmpArtifactFilePath),
+		    TmpArtifactFilePath
+	    end
+    end.
+		    
+		    
+		    

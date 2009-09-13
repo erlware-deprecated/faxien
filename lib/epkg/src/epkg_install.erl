@@ -353,20 +353,35 @@ install_non_release_package(PackagePath, InstalledPackageDir, PackageInstallatio
 
 %%-------------------------------------------------------------------
 %% @private
-%% @doc if the package contains a executable build script run it. 
+%% @doc if the package contains a executable build or build.sh script run it. 
 %% Note: for now the build file must exist right beneith the package dir. 
 %% @spec build_if_build_file(InstalledAppPath) -> ok | exit()
 %% @end
 %%-------------------------------------------------------------------
 build_if_build_file(InstalledPackagePath) ->
-    BuildFile = InstalledPackagePath ++ "/" ++ "build",
+    lists:foreach(fun(BuildFile) when BuildFile == "build"; BuildFile == "build.sh" ->
+			  ?INFO_MSG("running build file ~p~n", [BuildFile]),
+			  case filelib:wildcard(InstalledPackagePath ++ "/ebin/*.beam") of
+			      [] -> 
+				  build_if_build_file2(InstalledPackagePath, BuildFile);
+			      _HasBeams ->
+				  ?INFO_MSG("beam files present - skipping build script ~p~n", [BuildFile])
+			  end;
+		     (_) ->
+			  ok
+		  end,
+		  filelib:wildcard(InstalledPackagePath ++ "/" ++ "build*")).
+		  
+build_if_build_file2(InstalledPackagePath, BuildFile) ->
     case filelib:is_file(BuildFile) of
 	true ->
 	    {ok, CWD} = file:get_cwd(),
 	    ok        = file:set_cwd(InstalledPackagePath),
 	    ?INFO_MSG("setting perms on the build script ~p with result ~p~n", 
-				  [BuildFile, epkg_util:set_executable_perms(BuildFile)]),
-	    ?INFO_MSG("running build file ~p with result ~p~n", [BuildFile, os:cmd(BuildFile)]),
+		      [BuildFile, epkg_util:set_executable_perms(BuildFile)]),
+	    BuildFileOutput = os:cmd(BuildFile),
+	    io:format("~p", [BuildFileOutput]),
+	    ?INFO_MSG("running build file ~p with result ~p~n", [BuildFile, BuildFileOutput]),
 	    ok = file:set_cwd(CWD);
 	false ->
 	    ?INFO_MSG("no build script ~p present - skipping ~n", [BuildFile]),
