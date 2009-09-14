@@ -82,24 +82,28 @@ install_application(AppPackageDirOrArchive, ErtsVsn, InstallationPath) ->
     {ok, {AppName, AppVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(AppPackageDirPath),
     ?INFO_MSG("Installing Application ~s-~s to ~p~n", [AppName, AppVsn, AppPackageDirPath]),
 
-    {_, ActualErtsVsn} = epkg_validation:verify_app_erts_vsn(AppPackageDirPath),
-    print_erts_warning(AppName, ActualErtsVsn, ErtsVsn),
-	    
     Res = 
 	case epkg_validation:is_package_an_app(AppPackageDirPath) of
 	    false -> 
 		{error, badly_formatted_or_missing_app_package};
 	    true  -> 
+		case epkg_validation:is_package_an_unbuilt_app(AppPackageDirPath) of
+		    true  -> build_if_build_file(AppPackageDirPath);
+		    false -> ok
+		end,
 		AppInstallationPath = ewl_installed_paths:application_container_path(InstallationPath, ErtsVsn),
 		InstalledPackageDir = ewl_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn),
 		install_non_release_package(AppPackageDirPath, InstalledPackageDir, AppInstallationPath)
 	end,
 
     case Res of
-	ok    -> {ok, ActualErtsVsn};
-	Error -> Error
+	ok    ->
+	    {ok, ActualErtsVsn} = epkg_validation:verify_app_erts_vsn(AppPackageDirPath),
+	    print_erts_warning(AppName, ActualErtsVsn, ErtsVsn),
+	    {ok, ActualErtsVsn};
+	Error ->
+	    Error
     end.
-	    
 
 print_erts_warning(_AppName, ErtsVsn, ErtsVsn) ->
     ok;
@@ -348,8 +352,7 @@ install_non_release_package(PackagePath, InstalledPackageDir, PackageInstallatio
     ?INFO_MSG("copying ~s over to ~s~n", [PackagePath, InstalledPackageDir]),
     ewl_file:delete_dir(InstalledPackageDir),
     ?INFO_MSG("deleted previous installed version at ~p~n", [InstalledPackageDir]),
-    ewl_file:copy_dir(PackagePath, InstalledPackageDir),
-    build_if_build_file(InstalledPackageDir).
+    ewl_file:copy_dir(PackagePath, InstalledPackageDir).
 
 %%-------------------------------------------------------------------
 %% @private
@@ -359,16 +362,10 @@ install_non_release_package(PackagePath, InstalledPackageDir, PackageInstallatio
 %% @end
 %%-------------------------------------------------------------------
 build_if_build_file(InstalledPackagePath) ->
-    lists:foreach(fun(BuildFile) when BuildFile == "build"; BuildFile == "build.sh" ->
+    io:format("building here ~p~n", [InstalledPackagePath]),
+    lists:foreach(fun(BuildFile) ->
 			  ?INFO_MSG("running build file ~p~n", [BuildFile]),
-			  case filelib:wildcard(InstalledPackagePath ++ "/ebin/*.beam") of
-			      [] -> 
-				  build_if_build_file2(InstalledPackagePath, BuildFile);
-			      _HasBeams ->
-				  ?INFO_MSG("beam files present - skipping build script ~p~n", [BuildFile])
-			  end;
-		     (_) ->
-			  ok
+			  build_if_build_file2(InstalledPackagePath, BuildFile)
 		  end,
 		  filelib:wildcard(InstalledPackagePath ++ "/" ++ "build*")).
 		  

@@ -454,14 +454,25 @@ fetch_app_to_tmp(Repos, TargetErtsVsns, AppName, AppVsn, Timeout) ->
     case Resp of
 	ok ->
 	    AppPackageDirPath = ewl_package_paths:package_dir_path(TmpPackageDir, AppName, AppVsn),
-	    case epkg_validation:verify_app_erts_vsn(AppPackageDirPath) of
-		{ok, _ErtsVsn} ->
+	    validate_app(AppPackageDirPath, AppName);
+	Error ->
+	    Error
+    end.
+
+validate_app(AppPackageDirPath, AppName) ->
+    case epkg_validation:verify_app_erts_vsn(AppPackageDirPath) of
+	{ok, _ErtsVsn} ->
+	    {ok, AppPackageDirPath};
+	{error, no_beam_files} ->
+	    case epkg_validation:is_package_an_unbuilt_app(AppPackageDirPath) of
+		true ->
 		    {ok, AppPackageDirPath};
-		Error ->
-		    ?ERROR_MSG("bad app ~p beams compiled with an unsuppored erts vsn. Error ~p~n", [AppName, Error]),
-		    Error
+		false ->
+		    ?ERROR_MSG("bad app ~p no beams and no build script.~n", [AppName]),
+		    {error, no_beam_files}
 	    end;
 	Error ->
+	    ?ERROR_MSG("bad app ~p beams compiled with an unsuppored erts vsn. Error ~p~n", [AppName, Error]),
 	    Error
     end.
 

@@ -954,8 +954,12 @@ translate_version(compiler, erts, CompilerVsn, [{CompilerVsn, ErtsVsn, _ErlangVs
     {ok, ErtsVsn};
 translate_version(compiler, erlang, CompilerVsn, [{CompilerVsn, _ErtsVsn, ErlangVsn}|_]) ->
     {ok, ErlangVsn};
+translate_version(erts, compiler, "0.0", _) ->
+    {ok, "Unbuilt"};
 translate_version(erts, compiler, ErtsVsn, [{CompilerVsn, ErtsVsn, _ErlangVsn}|_]) ->
     {ok, CompilerVsn};
+translate_version(erts, erlang, "0.0", _) ->
+    {ok, "Unbuilt"};
 translate_version(erts, erlang, ErtsVsn, [{_CompilerVsn, ErtsVsn, ErlangVsn}|_]) ->
     {ok, ErlangVsn};
 translate_version(erlang, compiler, ErlangVsn, [{CompilerVsn, _ErtsVsn, ErlangVsn}|_]) ->

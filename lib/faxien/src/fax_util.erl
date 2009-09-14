@@ -134,22 +134,22 @@ find_highest_vsn2(Repos, TargetErtsVsns, PackageName, Side, VsnThreshold) ->
 	  lists:foldl(
 	    fun(Repo, Acc) -> 
 		    SysInfo  = ewr_util:system_info(),
-		    {GenericSuffixes, ArchSuffixes, BackupSuffixes} = 
+		    {GenericSuffixes, UnbuiltSuffixes, ArchSuffixes, BackupSuffixes} = 
 			all_suffixes(TargetErtsVsns,
 				     PackageName,
-				     ["Generic"|ewr_util:create_system_info_series(SysInfo)],
+				     ["Generic", "Unbuilt"|ewr_util:create_system_info_series(SysInfo)],
 				     Side),
-		    find_em_in_order(PackageName, Repo, GenericSuffixes, ArchSuffixes, BackupSuffixes, Acc)
+		    find_em_in_order(PackageName, Repo, GenericSuffixes, UnbuiltSuffixes, ArchSuffixes, BackupSuffixes, Acc)
 	    end,
 	    [],
 	    Repos)),
     ?INFO_MSG("vsns from ~p are ~p~n", [Repos, VsnList]),
     find_highest_remote_vsn_under_threshold(VsnThreshold, VsnList).
 
-find_em_in_order(PackageName, Repo, GenericSuffixes, ArchSuffixes, BackupSuffixes, Acc) ->
-    ?INFO_MSG("suffixes to check are first ~p~n if nothing found then ~p~n and if nothing then finally ~p~n",
-	      [GenericSuffixes, ArchSuffixes, BackupSuffixes]),
-    find_em_in_order(PackageName, Repo, [GenericSuffixes, ArchSuffixes, BackupSuffixes], Acc).
+find_em_in_order(PackageName, Repo, GenericSuffixes, UnbuiltSuffixes, ArchSuffixes, BackupSuffixes, Acc) ->
+    ?INFO_MSG("suffixes to check are first ~p~n if nothing found then ~p~n then ~p~n and if nothing then finally ~p~n",
+	      [GenericSuffixes, ArchSuffixes, UnbuiltSuffixes, BackupSuffixes]),
+    find_em_in_order(PackageName, Repo, [GenericSuffixes, ArchSuffixes, UnbuiltSuffixes, BackupSuffixes], Acc).
 
 find_em_in_order(_PackageName, _Repo, [], Acc) ->
     Acc;
@@ -193,16 +193,17 @@ make_valid_url(Repo, Suf) ->
     end.
 
 
-all_suffixes(ErtsVsns, PackageName, ["Generic", One, Two|Areas] = AllAreas, Side) ->
+all_suffixes(ErtsVsns, PackageName, ["Generic", "Unbuilt", One, Two|Areas] = AllAreas, Side) ->
     {CoreVsns, RestVsns} = 
 	case ErtsVsns of
 	    [T,N,L|Rest] -> {[T,N,L], Rest};
 	    ErtsVsns     -> {ErtsVsns, []}
 	end,
     GenericSuffixes = suffixes(CoreVsns, PackageName, ["Generic"], Side),
+    UnbuiltSuffixes = suffixes(CoreVsns, PackageName, ["Unbuilt"], Side),
     ArchSuffixes    = suffixes(CoreVsns, PackageName, [One, Two], Side),
     BackupSuffixes  = suffixes(CoreVsns, PackageName, Areas, Side) ++ suffixes(RestVsns, PackageName, AllAreas, Side),
-    {GenericSuffixes, ArchSuffixes, BackupSuffixes};
+    {GenericSuffixes, UnbuiltSuffixes, ArchSuffixes, BackupSuffixes};
 all_suffixes(ErtsVsns, PackageName, Areas, Side) ->
     {suffixes(ErtsVsns, PackageName, Areas, Side), [], []}.
     
