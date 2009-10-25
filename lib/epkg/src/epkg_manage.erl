@@ -282,10 +282,11 @@ find_highest_local_app_vsn(AppName, TargetErtsVsn) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc Diff all the config files shared by two releases. 
+%% @doc Diff all the config files shared by two releases.
 %% @spec diff_config(RelName, RelVsn1, RelVsn2) -> Diffs
 %% where
 %%  Diffs = [{ConfigFilePath1, ConfigFilePath2, DiffTerms}]
+%%   DiffTerms = [term()|_]
 %% @end
 %%--------------------------------------------------------------------
 diff_config(RelName, RelVsn1, RelVsn2) -> 
@@ -297,7 +298,10 @@ diff_config(RelName, RelVsn1, RelVsn2) ->
 				false ->
 				    Acc;
 				Rel2Path ->
-				    [{Rel1Path, Rel2Path, ewl_config_diff:config_files(Rel1Path, Rel2Path)}|Acc]
+				    case ewl_config_diff:config_files(Rel1Path, Rel2Path) of
+					[]   -> Acc;
+					Diff -> [{Rel1Path, Rel2Path, Diff}|Acc]
+				    end
 			    end
 		    end,
 		    [],
