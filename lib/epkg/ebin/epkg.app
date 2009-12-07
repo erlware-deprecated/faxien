@@ -5,7 +5,7 @@
   {description, "Manages local erlang/OTP packages. Faxien depends on this for local operations."},
 
   % The version of the applicaton
-  {vsn, "0.14.0.5"},
+  {vsn, "0.14.0.6"},
 
   % All modules used by the application.
   {modules,
