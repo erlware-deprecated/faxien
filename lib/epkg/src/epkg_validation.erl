@@ -38,6 +38,7 @@
 %%--------------------------------------------------------------------
 -include("epkg.hrl").
 -include("macros.hrl").
+-include("eunit.hrl").
 
 %%====================================================================
 %% External functions
@@ -276,100 +277,16 @@ verify_presence_of_erl_files(AppDirPath) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @doc Verify that all beams within an application were compiled with
+%% @doc Verify that all beams within an application were compiled 
 %%      for the same erts vsn and return that version. 
-%% @spec verify_app_erts_vsn(AppDirPath) -> {ok, ErtsVsn} | {error, Reason}
+%% @spec verify_app_erts_vsn(AppDirPath) -> bool()
 %% @end
 %%--------------------------------------------------------------------
 verify_app_erts_vsn(AppDirPath) ->
-    case length(filelib:wildcard(AppDirPath ++ "/ebin/*beam")) of
-	0 ->
-	    {error, no_beam_files};
-	_NumBeams ->
-	    case get_compiler_vsn(AppDirPath) of
-		{ok, CompilerVsn} -> search_static_vsns(CompilerVsn);
-		Error             -> Error
-	    end
-    end.
-
-search_static_vsns(CompilerVsn) ->
-    search_static_vsns(CompilerVsn, ?COMPILER_VSN_TO_ERTS_VSN_TO_ERLANG_VSN).
-
-search_static_vsns(CompilerVsn, [{CompilerVsn, ErtsVsn, _ErlangVsn}|_]) ->
-    {ok, ErtsVsn};
-search_static_vsns(CompilerVsn, [_|T]) ->
-    search_static_vsns(CompilerVsn, T);
-search_static_vsns(CompilerVsn, []) ->
-    search_dynamic_vsns(CompilerVsn).
-
-
-search_dynamic_vsns(CompilerVsn) ->
-    %% @todo this function will find the version being looked for in a repo and then return the erts vsn it is found for.
-    {error, {no_erts_vsn_found, {compiler_vsn, CompilerVsn}}}.
-				 
-%%--------------------------------------------------------------------
-%% @doc Fetch the compiler version that all modules in the application were compiled with.
-%% @spec get_compiler_vsn(AppDirPath) -> {ok, CompilerVsn} | {error, Reason}
-%% @end
-%%--------------------------------------------------------------------
-get_compiler_vsn(AppDirPath) ->
-    {ok, [{modules, Modules}]} = ewr_util:fetch_local_appfile_key_values(AppDirPath, [modules]),
-    try
-	case Modules of
-	    [] ->
-		{error, {empty_module_list_for_app, AppDirPath}};
-	    Modules ->
-		{ok, _CompilerVsn} = Resp = get_compiler_vsn(AppDirPath, Modules, undefined),
-		Resp
-	end
-    catch
-	_C:Error ->
-	    ?ERROR_MSG("error ~p ~n", [Error]),
-	    {error, {bad_module, "found a module compiled with unsuppored version", Error, Modules}}
-    end.
-
-get_compiler_vsn(AppDirPath, [Module|Modules], undefined) ->
-    case fetch_vsn(AppDirPath, Module) of
-        missing_module ->
-            get_compiler_vsn(AppDirPath, Modules, undefined);
-        CompilerVsn ->
-            get_compiler_vsn(AppDirPath, Modules, CompilerVsn)
-    end;
-get_compiler_vsn(AppDirPath, [Module|Modules], CompilerVsn) ->
-    case catch fetch_vsn(AppDirPath, Module) of
-        missing_module ->
-            %% Module was missing, no compiler info available, but since the file doesn't
-            %% exist, the compiler info is irrelevant; log a warning but continue on
-            ?INFO_MSG("WARNING: ~p beam file listed in .app, but doesn't actually exist!",
-                       [Module]),
-            get_compiler_vsn(AppDirPath, Modules, CompilerVsn);
-	CompilerVsn ->
-	    get_compiler_vsn(AppDirPath, Modules, CompilerVsn);
-	Error ->
-	    throw(Error)
-    end;
-get_compiler_vsn(_AppDirPath, [], CompilerVsn) ->
-    {ok, CompilerVsn}.
-	
-fetch_vsn(AppDirPath, Module) ->
-    BeamPath  = AppDirPath ++ "/ebin/" ++ atom_to_list(Module),
-    case beam_lib:chunks(BeamPath, [compile_info]) of
-        {ok, {Module, [{compile_info, CompileInfo}]}} ->
-            case fs_lists:get_val(version, CompileInfo) of
-                undefined ->
-                    {error, {no_compiler_vsn_found, BeamPath}};
-                Vsn ->
-                    Vsn
-            end;
-        {error, beam_lib, {file_error, _, enoent}} ->
-            %% Arguably, if a .beam is listed in a .app, it shouldn't cause the 
-            %% entire publish to fail. We know of at least one case in the core Erlang
-            %% distribution (hipe) where modules are listed that actually live within
-            %% the VM. Therefore, notify the caller that the module doesn't exist
-            %% but don't make everything blow up.
-            missing_module;
-        Error ->
-            Error
+    case epkg_util:discover_app_erts_vsns(AppDirPath) of
+	{ok, [_ErtsVsns]} -> true;
+	{ok, _ErtsVsns}   -> false;
+	Error             -> throw(Error)
     end.
 
 %%====================================================================
@@ -403,5 +320,3 @@ has_binary_override_entry(PackageDir) ->
             false
     end.
                         
-
-                           

@@ -64,8 +64,11 @@ install_sinan_release(CWD, InstallationPath, IsLocalBoot) ->
 install_application(AppPackageDirOrArchive, InstallationPath) ->
     AppPackageDirPath        = epkg_util:unpack_to_tmp_if_archive(AppPackageDirOrArchive), 
     {ok, {AppName, _AppVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(AppPackageDirPath),
-    case epkg_validation:verify_app_erts_vsn(AppPackageDirPath) of
-	{ok, ErtsVsn} ->
+    case epkg_util:discover_app_erts_vsns(AppPackageDirPath) of
+	{ok, [ErtsVsn]} ->
+	    install_application(AppPackageDirOrArchive, ErtsVsn, InstallationPath);
+	{ok, [ErtsVsn|_] = ErtsVsns} ->
+	    io:format("Warning: this application is compiled with more than one erts vsn ~p~n", [ErtsVsns]),
 	    install_application(AppPackageDirOrArchive, ErtsVsn, InstallationPath);
 	Error ->
 	    ?ERROR_MSG("bad app ~p beams compiled with an unsuppored erts vsn. Error ~p~n", [AppName, Error]),
@@ -97,8 +100,8 @@ install_application(AppPackageDirOrArchive, ErtsVsn, InstallationPath) ->
 	end,
 
     case Res of
-	ok    ->
-	    {ok, ActualErtsVsn} = epkg_validation:verify_app_erts_vsn(AppPackageDirPath),
+	ok ->
+	    {ok, [ActualErtsVsn|_]} = epkg_util:discover_app_erts_vsns(AppPackageDirPath),
 	    print_erts_warning(AppName, ActualErtsVsn, ErtsVsn),
 	    {ok, ActualErtsVsn};
 	Error ->

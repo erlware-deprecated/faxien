@@ -139,13 +139,13 @@ publish2(Type, Repos, RawAppDirPath, Timeout) when Type == unbuilt; Type == bina
     {ok, {AppName, AppVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(AppDirPath),
     {ok, AppFileBinary}     = file:read_file(ewl_file:join_paths(AppDirPath, "ebin/" ++ AppName ++ ".app")),
 
-    F = fun({ok, ErtsVsn}, _)                -> {ok, ErtsVsn};
+    F = fun({ok, ErtsVsn}, _) -> {ok, ErtsVsn};
 	   ({error, no_beam_files}, unbuilt) -> {ok, "0.0"};
 	   (Error, _)                        -> Error
 	end,
 
-    case F(epkg_validation:verify_app_erts_vsn(AppDirPath), Type) of
-	{ok, ErtsVsn} ->
+    case F(epkg_util:discover_app_erts_vsns(AppDirPath), Type) of
+	{ok, [ErtsVsn|_]} ->
 	    %% @todo make this transactional - if .app file put fails run a delete.
 	    fax_put:put_dot_app_file(Repos, ErtsVsn, AppName, AppVsn, AppFileBinary, Timeout), 
 	    fax_put:put_signature_file(Repos, ErtsVsn, "lib", AppName, AppVsn, create_signature(AppVsn), Timeout),

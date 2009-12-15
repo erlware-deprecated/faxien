@@ -40,6 +40,7 @@
 	 consult_control_file/2,
 	 get_sinan_build_flavor/1,
 	 ask_about_string_in_list/2,
+	 discover_app_erts_vsns/1,
 	 collect_name_and_high_vsn_pairs/1
 	]).
 
@@ -556,10 +557,103 @@ hex0(15) -> $f;
 hex0(I) ->  $0 + I.
 
 
+%%--------------------------------------------------------------------
+%% @doc Discover what erts versions all beams in an app were compiled with.
+%% @spec discovery_app_erts_vsns(AppDirPath) -> {ok, [ErtsVsn]} | {error, Reason}
+%% @end
+%%--------------------------------------------------------------------
+discover_app_erts_vsns(AppDirPath) ->
+    case length(filelib:wildcard(AppDirPath ++ "/ebin/*beam")) of
+	0 ->
+	    {error, no_beam_files};
+	_NumBeams ->
+	    case get_compiler_vsn(AppDirPath) of
+		{ok, CompilerVsns}  -> {ok, lists:map(fun(CV) -> search_static_vsns(CV) end, CompilerVsns)};
+		Error               -> Error
+	    end
+    end.
+
 %%====================================================================
 %% Internal functions
 %%====================================================================
+search_static_vsns(CompilerVsn) ->
+    search_static_vsns(CompilerVsn, ?COMPILER_VSN_TO_ERTS_VSN_TO_ERLANG_VSN).
 
+search_static_vsns(CompilerVsn, [{CompilerVsn, ErtsVsn, _ErlangVsn}|_]) ->
+    ErtsVsn;
+search_static_vsns(CompilerVsn, [_|T]) ->
+    search_static_vsns(CompilerVsn, T);
+search_static_vsns(CompilerVsn, []) ->
+    search_dynamic_vsns(CompilerVsn).
+
+
+search_dynamic_vsns(CompilerVsn) ->
+    %% @todo this function will find the version being looked for in a repo and then return the erts vsn it is found for.
+    {error, {no_erts_vsn_found, {compiler_vsn, CompilerVsn}}}.
+				 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Fetch the compiler version that all modules in the application were compiled with.
+%% @spec get_compiler_vsn(AppDirPath) -> {ok, [CompilerVersion]} | {error, Reason}
+%% @end
+%%--------------------------------------------------------------------
+get_compiler_vsn(AppDirPath) ->
+    {ok, [{modules, Modules}]} = ewr_util:fetch_local_appfile_key_values(AppDirPath, [modules]),
+    try
+	case Modules of
+	    [] ->
+		{error, {empty_module_list_for_app, AppDirPath}};
+	    Modules ->
+		{ok, CompilerVsns} = get_compiler_vsn(AppDirPath, Modules, []),
+		{ok, sort_vsn_list(CompilerVsns)}
+	end
+    catch
+	_C:Error ->
+	    {error, {bad_module, "application compiled improperly or with unsupported version", Error, Modules}}
+    end.
+
+get_compiler_vsn(AppDirPath, [Module|Modules], CompilerVsns) ->
+    case catch fetch_vsn(AppDirPath, Module) of
+        missing_module ->
+	    % Module was missing, no compiler info available, but since the file doesn't
+	    % exist, the compiler info is irrelevant; log a warning but continue on
+            ?INFO_MSG("WARNING: ~p beam file listed in .app, but doesn't actually exist!",
+		      [Module]),
+            get_compiler_vsn(AppDirPath, Modules, CompilerVsns);
+	CompilerVsn ->
+	    case lists:member(CompilerVsn, CompilerVsns) of
+		true ->
+		    get_compiler_vsn(AppDirPath, Modules, CompilerVsns);
+		false ->
+		    get_compiler_vsn(AppDirPath, Modules, [CompilerVsn|CompilerVsns])
+	    end
+    end;
+get_compiler_vsn(_AppDirPath, [], CompilerVsns) ->
+    {ok, CompilerVsns}.
+	
+fetch_vsn(AppDirPath, Module) ->
+    BeamPath  = AppDirPath ++ "/ebin/" ++ atom_to_list(Module),
+    case beam_lib:chunks(BeamPath, [compile_info]) of
+        {ok, {Module, [{compile_info, CompileInfo}]}} ->
+            case fs_lists:get_val(version, CompileInfo) of
+                undefined ->
+                    {error, {no_compiler_vsn_found, BeamPath}};
+                Vsn ->
+                    Vsn
+            end;
+        {error, beam_lib, {file_error, _, enoent}} ->
+            %% Arguably, if a .beam is listed in a .app, it shouldn't cause the 
+            %% entire publish to fail. We know of at least one case in the core Erlang
+            %% distribution (hipe) where modules are listed that actually live within
+            %% the VM. Therefore, notify the caller that the module doesn't exist
+            %% but don't make everything blow up.
+            missing_module;
+        Error ->
+            Error
+    end.
+
+sort_vsn_list(VsnList) ->
+    lists:sort(fun(V1, V2) -> ewr_util:is_version_greater(V1, V2) end, VsnList).
 
 %%%===================================================================
 %%% Testing Functions

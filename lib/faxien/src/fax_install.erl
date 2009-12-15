@@ -461,7 +461,7 @@ fetch_app_to_tmp(Repos, TargetErtsVsns, AppName, AppVsn, Timeout) ->
 
 validate_app(AppPackageDirPath, AppName) ->
     case epkg_validation:verify_app_erts_vsn(AppPackageDirPath) of
-	{ok, _ErtsVsn} ->
+	BOOL when BOOL == true; BOOL == false ->
 	    {ok, AppPackageDirPath};
 	{error, no_beam_files} ->
 	    case epkg_validation:is_package_an_unbuilt_app(AppPackageDirPath) of
