@@ -5,7 +5,7 @@
   {description, "The erlang package management tool."},
 
   % The version of the applicaton
-  {vsn, "0.42.2.11"},
+  {vsn, "0.43.0.0"},
 
   % All modules used by the application. 
   {modules,

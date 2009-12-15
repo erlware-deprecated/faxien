@@ -90,10 +90,6 @@ install_application(AppPackageDirOrArchive, ErtsVsn, InstallationPath) ->
 	    false -> 
 		{error, badly_formatted_or_missing_app_package};
 	    true  -> 
-		case epkg_validation:is_package_an_unbuilt_app(AppPackageDirPath) of
-		    true  -> build_if_build_file(AppPackageDirPath);
-		    false -> ok
-		end,
 		AppInstallationPath = ewl_installed_paths:application_container_path(InstallationPath, ErtsVsn),
 		InstalledPackageDir = ewl_installed_paths:installed_app_dir_path(InstallationPath, ErtsVsn, AppName, AppVsn),
 		install_non_release_package(AppPackageDirPath, InstalledPackageDir, AppInstallationPath)
@@ -267,7 +263,7 @@ install_release_package(PackagePath, InstallationPath) ->
     ewl_file:delete_dir(InstalledRelPath),
     ok = ewl_file:copy_dir(PackagePath, InstalledRelPath),
     ok = ewl_file:copy_dir(InstalledRelPath ++ "/releases/" ++ RelVsn, InstalledRelPath),
-    build_if_build_file(InstalledRelPath),
+    run_post_install_hook(InstalledRelPath),
     ok = ewl_file:delete_dir(InstalledRelPath ++ "/lib"),
     ok = ewl_file:delete_dir(InstalledRelPath ++ "/releases").
     
@@ -355,36 +351,31 @@ install_non_release_package(PackagePath, InstalledPackageDir, PackageInstallatio
     ?INFO_MSG("copying ~s over to ~s~n", [PackagePath, InstalledPackageDir]),
     ewl_file:delete_dir(InstalledPackageDir),
     ?INFO_MSG("deleted previous installed version at ~p~n", [InstalledPackageDir]),
-    ewl_file:copy_dir(PackagePath, InstalledPackageDir).
+    ewl_file:copy_dir(PackagePath, InstalledPackageDir),
+    run_post_install_hook(InstalledPackageDir).
 
 %%-------------------------------------------------------------------
 %% @private
 %% @doc if the package contains a executable build or build.sh script run it. 
 %% Note: for now the build file must exist right beneith the package dir. 
-%% @spec build_if_build_file(InstalledAppPath) -> ok | exit()
+%% @spec run_post_install_hook(InstalledAppPath) -> ok | exit()
 %% @end
 %%-------------------------------------------------------------------
-build_if_build_file(InstalledPackagePath) ->
-    io:format("building here ~p~n", [InstalledPackagePath]),
-    lists:foreach(fun(BuildFile) ->
-			  ?INFO_MSG("running build file ~p~n", [BuildFile]),
-			  build_if_build_file2(InstalledPackagePath, BuildFile)
-		  end,
-		  filelib:wildcard(InstalledPackagePath ++ "/" ++ "build*")).
-		  
-build_if_build_file2(InstalledPackagePath, BuildFile) ->
-    case filelib:is_file(BuildFile) of
+run_post_install_hook(InstalledPackagePath) ->
+    PostInstallFilePath = filename:join(InstalledPackagePath, "hooks/fax_post_install"),
+    case filelib:is_file(PostInstallFilePath) of
 	true ->
+	    io:format("running the post install hook file hooks/fax_post_install from ~p~n", [InstalledPackagePath]),
+	    ?INFO_MSG("running the post install hook file hooks/fax_post_install from ~p~n", [InstalledPackagePath]),
 	    {ok, CWD} = file:get_cwd(),
 	    ok        = file:set_cwd(InstalledPackagePath),
 	    ?INFO_MSG("setting perms on the build script ~p with result ~p~n", 
-		      [BuildFile, epkg_util:set_executable_perms(BuildFile)]),
-	    BuildFileOutput = os:cmd(BuildFile),
-	    io:format("~p", [BuildFileOutput]),
-	    ?INFO_MSG("running build file ~p with result ~p~n", [BuildFile, BuildFileOutput]),
+		      [PostInstallFilePath, epkg_util:set_executable_perms(PostInstallFilePath)]),
+	    FileOutput = os:cmd(PostInstallFilePath),
+	    ?INFO_MSG("fax_post_install resulted in ~p~n", [FileOutput]),
 	    ok = file:set_cwd(CWD);
 	false ->
-	    ?INFO_MSG("no build script ~p present - skipping ~n", [BuildFile]),
+	    ?INFO_MSG("no fax_post_install script ~p present - skipping ~n", [PostInstallFilePath]),
 	    ok
     end.
 
