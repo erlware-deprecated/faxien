@@ -60,11 +60,13 @@ execute_on_latest_package_version([], _TargetErtsVsns, _PackageName, _Fun, _Side
     {error, package_not_found};
 execute_on_latest_package_version(Repos, TargetErtsVsns, PackageName, Fun, Side, VsnThreshold, ErtsPrompt) 
   when Side == lib; Side == releases ->
+    %% XXX think about refactoring out this find highest version pattern. Does not work with release installation.
     case find_highest_vsn(Repos, TargetErtsVsns, PackageName, Side, VsnThreshold) of
 	{ok, {Repo, HighVsn, RemoteErtsVsn}} -> 
 	    ShortenedRepos = lists:delete(Repo, Repos),
 	    case Fun(Repo, HighVsn, RemoteErtsVsn) of
 		ok ->
+		    io:format("fun returned ok~n"),
 		    ok;
 		Error -> 
 		    ?ERROR_MSG("failed with ~p for vsn ~p in repo ~p moving on to next repo and setting vsn threshold to ~p~n", 
@@ -73,7 +75,7 @@ execute_on_latest_package_version(Repos, TargetErtsVsns, PackageName, Fun, Side,
 		    execute_on_latest_package_version(ShortenedRepos, TargetErtsVsns, PackageName, Fun, Side, HighVsn, ErtsPrompt)
 	    end;
 	{error, Reason} ->
-	    ?ERROR_MSG("failed to find package: ~p~n", [Reason]),
+	    ?ERROR_MSG("failed to find package: ~p in repos ~p~n", [Reason, Repos]),
 	    exit("Did not succeed in finding any version of the package")
     end.
     

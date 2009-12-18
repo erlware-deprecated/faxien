@@ -216,8 +216,8 @@ install_latest_remote_release(Repos, [_H|_] = TargetErtsVsn, RelName, IsLocalBoo
 install_latest_remote_release(Repos, TargetErtsVsns, RelName, IsLocalBoot, Options, Timeout) ->
     ErtsPrompt = fs_lists:get_val(erts_prompt, Options),
 
-    Fun = fun(Repo, RelVsn, ErtsVsn) ->
-		  install_remote_release([Repo], ErtsVsn, RelName, RelVsn, IsLocalBoot, Options, Timeout)
+    Fun = fun(_Repo, RelVsn, ErtsVsn) ->
+		  install_remote_release(Repos, ErtsVsn, RelName, RelVsn, IsLocalBoot, Options, Timeout)
 	  end,
     fax_util:execute_on_latest_package_version(Repos, TargetErtsVsns, RelName, Fun, releases, ErtsPrompt). 
 
