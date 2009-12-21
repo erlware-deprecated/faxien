@@ -261,6 +261,7 @@ install_release_package(PackagePath, InstallationPath) ->
     ok = ewl_file:mkdir_p(ewl_installed_paths:release_container_path(InstallationPath)),
 
     ewl_file:delete_dir(InstalledRelPath),
+    run_pre_install_hook(PackagePath),
     ok = ewl_file:copy_dir(PackagePath, InstalledRelPath),
     ok = ewl_file:copy_dir(InstalledRelPath ++ "/releases/" ++ RelVsn, InstalledRelPath),
     run_post_install_hook(InstalledRelPath),
@@ -350,32 +351,38 @@ install_non_release_package(PackagePath, InstalledPackageDir, PackageInstallatio
     ewl_file:mkdir_p(PackageInstallationPath),
     ?INFO_MSG("copying ~s over to ~s~n", [PackagePath, InstalledPackageDir]),
     ewl_file:delete_dir(InstalledPackageDir),
-    ?INFO_MSG("deleted previous installed version at ~p~n", [InstalledPackageDir]),
+    ?INFO_MSG("deleted previous installed version, if present, at ~p~n", [InstalledPackageDir]),
+    run_pre_install_hook(PackagePath),
     ewl_file:copy_dir(PackagePath, InstalledPackageDir),
     run_post_install_hook(InstalledPackageDir).
 
 %%-------------------------------------------------------------------
 %% @private
-%% @doc if the package contains a executable build or build.sh script run it. 
-%% Note: for now the build file must exist right beneith the package dir. 
-%% @spec run_post_install_hook(InstalledAppPath) -> ok | exit()
+%% @doc if the package contains a hook script then run it. 
 %% @end
 %%-------------------------------------------------------------------
-run_post_install_hook(InstalledPackagePath) ->
-    PostInstallFilePath = filename:join(InstalledPackagePath, "hooks/fax_post_install"),
-    case filelib:is_file(PostInstallFilePath) of
+run_pre_install_hook(PackagePath) ->
+    run_hook(PackagePath, "fax_pre_install").
+
+run_post_install_hook(PackagePath) ->
+    run_hook(PackagePath, "fax_post_install").
+
+run_hook(PackagePath, FileName) ->
+    HooksDir     = filename:join(PackagePath, "_hooks"),
+    HookFilePath = filename:join(HooksDir, FileName),
+    case filelib:is_file(HookFilePath) of
 	true ->
-	    io:format("running the post install hook file hooks/fax_post_install from ~p~n", [InstalledPackagePath]),
-	    ?INFO_MSG("running the post install hook file hooks/fax_post_install from ~p~n", [InstalledPackagePath]),
+	    io:format("running hook file: ~s~n", [FileName]),
+	    ?INFO_MSG("running hook file: ~s~n", [FileName]),
 	    {ok, CWD} = file:get_cwd(),
-	    ok        = file:set_cwd(InstalledPackagePath),
+	    ok        = file:set_cwd(HooksDir), % run script from _hooks dir
 	    ?INFO_MSG("setting perms on the build script ~p with result ~p~n", 
-		      [PostInstallFilePath, epkg_util:set_executable_perms(PostInstallFilePath)]),
-	    FileOutput = os:cmd(PostInstallFilePath),
-	    ?INFO_MSG("fax_post_install resulted in ~p~n", [FileOutput]),
+		      [HookFilePath, epkg_util:set_executable_perms("./" ++ FileName)]),
+	    FileOutput = os:cmd("./" ++ FileName),
+	    ?INFO_MSG("~s resulted in ~p~n", [FileName, FileOutput]),
 	    ok = file:set_cwd(CWD);
 	false ->
-	    ?INFO_MSG("no fax_post_install script ~p present - skipping ~n", [PostInstallFilePath]),
+	    ?INFO_MSG("no fax_post_install script ~p present - skipping ~n", [HookFilePath]),
 	    ok
     end.
 
