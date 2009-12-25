@@ -726,7 +726,7 @@ publish(PackageDir, Timeout) when is_integer(Timeout); Timeout == infinity ->
 publish(Repo, PackageDir) -> 
     A = epkg_util:if_atom_or_integer_to_string(Repo),
     {ok, Timeout} = gas:get_env(faxien, request_timeout, ?REQUEST_TIMEOUT),
-    publish([A], PackageDir, Timeout).
+    publish(A, PackageDir, Timeout).
 
 %% @spec publish(AppDir) -> ok | {error, Reason}
 %% @equiv publish(DefaultRepos, AppDir)
