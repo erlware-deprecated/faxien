@@ -352,7 +352,7 @@ fetch_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Options, Tim
     io:format("~nFetching for Remote Release Package ~s-~s~n", [RelName, RelVsn]),
     Res             = fetch_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Options, Timeout),
     RelDirPath      = ewl_package_paths:package_dir_path(ToDir, RelName, RelVsn),
-    RelFilePath     = ewl_package_paths:release_package_rel_file_path(RelDirPath, RelName, RelVsn),
+    RelFilePath     = rel_file_path(RelDirPath, RelName, RelVsn),
     RelLibDirPath   = ewl_package_paths:release_package_library_path(RelDirPath),
     ReleaseErtsVsn  = epkg_util:consult_rel_file(erts_vsn, RelFilePath),
     ReleaseErtsVsns = get_erts_vsns_to_search_in_release(ReleaseErtsVsn, ErtsPolicy),
@@ -362,7 +362,6 @@ fetch_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Options, Tim
 	ok     -> io:format("ok~n");
 	_Error -> io:format("can't pull down erts - skipping~n")
     end,
-    RelFilePath   = ewl_package_paths:release_package_rel_file_path(RelDirPath, RelName, RelVsn),
     AppAndVsns    = get_app_and_vsns(RelFilePath),
     lists:foreach(fun({AppName, AppVsn}) ->
 			  io:format("Pulling down ~s-~s -> ", [AppName, AppVsn]),
@@ -395,7 +394,7 @@ install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLoca
 	    {error, bad_package};
 	true ->
 	    {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ReleasePackageDirPath),
-	    RelFilePath             = ewl_package_paths:release_package_rel_file_path(ReleasePackageDirPath, RelName, RelVsn),
+	    RelFilePath = rel_file_path(ReleasePackageDirPath, RelName, RelVsn),
 	    [ReleaseErtsVsn|_] = ReleaseErtsVsns =
 		get_erts_vsns_to_search_in_release(
 		  epkg_util:consult_rel_file(erts_vsn, RelFilePath),
@@ -549,3 +548,16 @@ fetch_package_interactively(PackageName, PackageVsn, [TargetErtsVsn|_] = TargetE
       end,
       ok,
       TargetErtsVsns).
+
+rel_file_path(ReleasePackageDirPath, RelName, RelVsn) ->
+    StandardRelFilePath     = ewl_package_paths:release_package_rel_file_path(ReleasePackageDirPath, RelName, RelVsn),
+    ExtendedRelFilePath     = ewl_package_paths:release_package_extended_rel_file_path(ReleasePackageDirPath, RelName, RelVsn),
+    case filelib:is_file(StandardRelFilePath) of
+	true  -> 
+	    ?INFO_MSG("The release is of the standard format with rel file in ~p~n", [StandardRelFilePath]),
+	    StandardRelFilePath;
+	false ->
+	    ?INFO_MSG("The release is of the extended format with rel file in ~p~n", [ExtendedRelFilePath]),
+	    ExtendedRelFilePath
+    end.
+    

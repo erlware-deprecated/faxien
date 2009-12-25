@@ -164,7 +164,17 @@ publish2(Type, Repos, RawAppDirPath, Timeout) when Type == unbuilt; Type == bina
     end;
 publish2(release, Repos, RelDirPath, Timeout) -> 
     {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(RelDirPath),
-    RelFilePath             = ewl_package_paths:release_package_rel_file_path(RelDirPath, RelName, RelVsn),
+    StandardRelFilePath     = ewl_package_paths:release_package_rel_file_path(RelDirPath, RelName, RelVsn),
+    ExtendedRelFilePath     = ewl_package_paths:release_package_extended_rel_file_path(RelDirPath, RelName, RelVsn),
+    RelFilePath = 
+	case filelib:is_file(StandardRelFilePath) of
+	    true  -> 
+		?INFO_MSG("The release is of the standard format with rel file in ~p~n", [StandardRelFilePath]),
+		StandardRelFilePath;
+	    false ->
+		?INFO_MSG("The release is of the extended format with rel file in ~p~n", [ExtendedRelFilePath]),
+		ExtendedRelFilePath
+	end,
     ErtsVsn                 = epkg_util:consult_rel_file(erts_vsn, RelFilePath),
     ok                      = handle_control(RelDirPath),
     {ok, ControlFileBinary} = file:read_file(ewl_package_paths:release_package_control_file_path(RelDirPath)),
