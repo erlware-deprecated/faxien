@@ -249,10 +249,12 @@ execute_release_installation_steps(ReleasePackageDirPath, InstallationPath, IsLo
 %% @end
 %%--------------------------------------------------------------------
 install_release_package(PackagePath, InstallationPath) ->
+    % XXX need fully stage a release package before moving it into the releases directory
     ?INFO_MSG("with args ~p and ~p~n", [PackagePath, InstallationPath]),
     {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(PackagePath),
     InstalledRelPath        = ewl_installed_paths:installed_release_dir_path(InstallationPath, RelName, RelVsn),
     ok                      = ewl_file:delete_dir(InstalledRelPath), 
+    PackageRelFilePath      = rel_file_path(PackagePath, RelName, RelVsn),
 
     
     ok = ewl_file:mkdir_p(InstalledRelPath),
@@ -262,7 +264,7 @@ install_release_package(PackagePath, InstallationPath) ->
     ewl_file:delete_dir(InstalledRelPath),
     run_pre_install_hook(PackagePath),
     ok = ewl_file:copy_dir(PackagePath, InstalledRelPath),
-    ok = ewl_file:copy_dir(InstalledRelPath ++ "/releases/" ++ RelVsn, InstalledRelPath),
+    ok = ewl_file:copy_dir(filename:dirname(PackageRelFilePath), InstalledRelPath),
     run_post_install_hook(InstalledRelPath),
     ok = ewl_file:delete_dir(InstalledRelPath ++ "/lib"),
     ok = ewl_file:delete_dir(InstalledRelPath ++ "/releases").
