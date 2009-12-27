@@ -3,7 +3,7 @@
 SINAN=`which sinan`
 if [ -e $SINAN ];then
 	rm _build.cfg
-	echo "project : {\nname : faxien\nvsn  : \"0.43.1.2\"\n},\n" > _build.cfg
+	echo "project : {\nname : faxien\nvsn  : \"0.43.1.3\"\n},\n" > _build.cfg
 	sinan
 	cp _build/development/apps/faxien*/ebin/*beam ./ebin
 	rm -rf _build.cfg _build
