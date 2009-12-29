@@ -225,7 +225,7 @@ execute_release_installation_steps(ReleasePackageDirPath, InstallationPath, IsLo
 	    Error;
 	ok ->
 	    {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ReleasePackageDirPath),
-	    PackageRelFilePath      = rel_file_path(ReleasePackageDirPath, RelName, RelVsn),
+	    PackageRelFilePath      = epkg_util:rel_file_path(ReleasePackageDirPath, RelName, RelVsn),
 	    ErtsVsn                 = epkg_util:consult_rel_file(erts_vsn, PackageRelFilePath),
 	    PackageErtsPackagePath  = ewl_package_paths:release_package_erts_package_path(ReleasePackageDirPath, ErtsVsn),
 	    try 
@@ -254,7 +254,7 @@ install_release_package(PackagePath, InstallationPath) ->
     {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(PackagePath),
     InstalledRelPath        = ewl_installed_paths:installed_release_dir_path(InstallationPath, RelName, RelVsn),
     ok                      = ewl_file:delete_dir(InstalledRelPath), 
-    PackageRelFilePath      = rel_file_path(PackagePath, RelName, RelVsn),
+    PackageRelFilePath      = epkg_util:rel_file_path(PackagePath, RelName, RelVsn),
 
     
     ok = ewl_file:mkdir_p(InstalledRelPath),
@@ -280,7 +280,7 @@ install_release_package(PackagePath, InstallationPath) ->
 %%--------------------------------------------------------------------
 install_apps_for_release(ReleasePackagePath, InstallationPath) ->
     {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ReleasePackagePath),
-    PackageRelFilePath      = rel_file_path(ReleasePackagePath, RelName, RelVsn),
+    PackageRelFilePath      = epkg_util:rel_file_path(ReleasePackagePath, RelName, RelVsn),
     ErtsVsn                 = epkg_util:consult_rel_file(erts_vsn, PackageRelFilePath),
 
     ok = ewl_file:mkdir_p(ewl_installed_paths:application_container_path(InstallationPath, ErtsVsn)),
@@ -433,14 +433,3 @@ remove_existing_executable_script(ExecutableFile) ->
 	    ok
     end.
 
-rel_file_path(ReleasePackageDirPath, RelName, RelVsn) ->
-    StandardRelFilePath     = ewl_package_paths:release_package_rel_file_path(ReleasePackageDirPath, RelName, RelVsn),
-    ExtendedRelFilePath     = ewl_package_paths:release_package_extended_rel_file_path(ReleasePackageDirPath, RelName, RelVsn),
-    case filelib:is_file(StandardRelFilePath) of
-	true  -> 
-	    ?INFO_MSG("The release is of the standard format with rel file in ~p~n", [StandardRelFilePath]),
-	    StandardRelFilePath;
-	false ->
-	    ?INFO_MSG("The release is of the extended format with rel file in ~p~n", [ExtendedRelFilePath]),
-	    ExtendedRelFilePath
-    end.

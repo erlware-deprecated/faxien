@@ -37,10 +37,12 @@
 	 find_bad_control_categories/1,
 	 if_atom_or_integer_to_string/1,
 	 consult_rel_file/2,
+	 consult_app_file/2,
 	 consult_control_file/2,
 	 get_sinan_build_flavor/1,
 	 ask_about_string_in_list/2,
 	 discover_app_erts_vsns/1,
+	 rel_file_path/3,
 	 collect_name_and_high_vsn_pairs/1
 	]).
 
@@ -494,19 +496,59 @@ consult_control_file(Keys, ControlFilePath) ->
     ?INFO_MSG("consulting ~s~n", [ControlFilePath]),
     case file:consult(ControlFilePath) of
 	{ok, [{control, _PackageName, ControlList}]} ->
-	    lists:foldr(fun(Key, Acc) -> 
-				case fs_lists:get_val(Key, ControlList) of
-				    undefined -> Acc;
-				    Value     -> [Value|Acc]
-				end
-			end, [], Keys);
+	    consult_key_values(Keys, ControlList);
 	Error = {error, _} ->
 	    Error;
 	{ok, _BadTerm} ->
 	    {error, badly_formatted_control_file}
     end.
 
+%%--------------------------------------------------------------------
+%% @doc Returns an element or list of elements from a .app file. 
+%% @spec (Keys, AppFilePath) -> [Value] | Value | {error, Reason}
+%% where
+%%  Keys = Key | [Key]
+%%  Reason = badly_formatted_app_file | enoent 
+%% @end
+%%--------------------------------------------------------------------
+consult_app_file(Key, AppFilePath) when is_atom(Key) ->
+    case consult_app_file([Key], AppFilePath) of
+	[Value] -> Value;
+	Error   -> Error
+    end;
 
+consult_app_file(Keys, AppFilePath) ->
+    ?INFO_MSG("consulting ~s~n", [AppFilePath]),
+    case file:consult(AppFilePath) of
+	{ok, [{application, _PackageName, AppList}]} ->
+	    consult_key_values(Keys, AppList); 
+	Error = {error, _} ->
+	    Error;
+	{ok, _BadTerm} ->
+	    {error, badly_formatted_app_file}
+    end.
+
+consult_key_values(Keys, KeyValues) ->
+    lists:foldr(fun(Key, Acc) -> 
+			case fs_lists:get_val(Key, KeyValues) of
+			    undefined -> Acc;
+			    Value     -> [Value|Acc]
+			end
+		end, [], Keys).
+
+%%--------------------------------------------------------------------
+%% @doc Returns the path to the .rel file in a release package whether it is a new style
+%%      or an old style path.
+%%--------------------------------------------------------------------
+rel_file_path(ReleasePackageDirPath, RelName, RelVsn) ->
+    StandardRelFilePath     = ewl_package_paths:release_package_rel_file_path(ReleasePackageDirPath, RelName, RelVsn),
+    ExtendedRelFilePath     = ewl_package_paths:release_package_extended_rel_file_path(ReleasePackageDirPath, RelName, RelVsn),
+    case filelib:is_file(StandardRelFilePath) of
+	true  -> 
+	    StandardRelFilePath;
+	false ->
+	    ExtendedRelFilePath
+    end.
 %%--------------------------------------------------------------------
 %% @doc Returns a list of the elements that correspond to the keys that were supplied.
 %% @spec consult_rel_file(Keys, RelFilePath) -> [Value] | Value | {error, Reason}
