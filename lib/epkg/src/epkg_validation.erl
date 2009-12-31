@@ -76,7 +76,6 @@ validate_type(PackageDir) ->
     end.
 
 is_package_erts(PackageDir) ->
-    ?INFO_MSG("~p~n", [PackageDir]),
     lists:all(fun(F) -> F(PackageDir) end, [
 	
 	%% Run all the following lambda's and if all of them return true then we have a well formed application.
@@ -101,7 +100,6 @@ is_package_erts(PackageDir) ->
     ]).
 
 is_package_an_app(PackageDir) ->
-    ?INFO_MSG("~p~n", [PackageDir]),
     lists:all(fun(F) -> F(PackageDir) end, [
 	
 	%% Run all the following lambda's and if all of them return true then we have a well formed application.
@@ -111,6 +109,7 @@ is_package_an_app(PackageDir) ->
 		[_|_] -> 
 		    true;
 		[] -> 
+		    ?INFO_MSG("can't find the .app file at ~p~n", [PackageDir_]),
 		    false
 	    end
 	end, 
@@ -126,7 +125,6 @@ is_package_an_app(PackageDir) ->
     ]).
 
 is_package_an_unbuilt_app(PackageDir) ->
-    ?INFO_MSG("~p~n", [PackageDir]),
     lists:all(fun(F) -> F(PackageDir) end, [
 	
 	%% Run all the following lambda's and if all of them return true the package dir is an unbuilt app and the function
@@ -134,17 +132,16 @@ is_package_an_unbuilt_app(PackageDir) ->
 	
 	fun(PackageDir_) ->  
 		0 == length(filelib:wildcard(PackageDir_ ++ "/ebin/*beam"))
-	end, 
+	end 
 	
-        fun(PackageDir_) ->
-                Files = [filename:basename(F) || F <- ewl_file:find(PackageDir_, ".*")],
-		% For now only a build.sh file constitutes unbuilt. Perhaps configure and make files in the future.
-                lists:any(fun(File) -> lists:member(File, Files) end, ["build.sh"])
-        end
+        %fun(PackageDir_) ->
+                %Files = [filename:basename(F) || F <- ewl_file:find(PackageDir_, ".*")],
+		%% For now only a build.sh file constitutes unbuilt. Perhaps configure and make files in the future.
+                %lists:any(fun(File) -> lists:member(File, Files) end, ["build.sh"])
+        %end
     ]).
 
 is_package_a_binary_app(PackageDir) ->
-    ?INFO_MSG("~p~n", [PackageDir]),
     lists:any(fun(F) -> F(PackageDir) end, [
 	
 	%% Run all the following lambda's and if any of them return true the package dir is a binary app and the function

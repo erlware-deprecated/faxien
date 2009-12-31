@@ -396,7 +396,9 @@ run_hook(PackagePath, FileName) ->
 %%--------------------------------------------------------------------
 create_executable_script(InstallationPath, RelName, RelVsn, ErtsVsn) ->
     BinDirPath   = ewl_installed_paths:installed_release_bin_dir_path(InstallationPath, RelName, RelVsn),
-    BinFilePaths = filelib:wildcard(BinDirPath ++ "/*"),
+    BinFilePaths = lists:filter(fun(BinFilePath_) ->
+					not filelib:is_dir(BinFilePath_) end,
+				filelib:wildcard(BinDirPath ++ "/*")),
     ?INFO_MSG("bindir path ~p~nbin file paths ~p~n", [BinDirPath, BinFilePaths]),
     lists:foreach(fun(BinFilePath) -> 
 			  BinFileName                      = filename:basename(BinFilePath),
