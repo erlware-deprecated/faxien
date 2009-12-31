@@ -406,7 +406,7 @@ install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLoca
 		ok ->
 		    ok;
 		{error, {failed_to_install, AppAndVsns}} ->
-		    %% The release does not contain all the applications required.  Pull them down, install them, and try again.
+		    % The release does not contain all the applications required.  Pull them down, install them, and try again.
 		    lists:foreach(fun({AppName, AppVsn}) ->
 					  install_remote_application(Repos, ReleaseErtsVsns, AppName, AppVsn, Force, Timeout)
 				  end, AppAndVsns),
