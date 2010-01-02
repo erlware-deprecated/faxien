@@ -66,7 +66,6 @@ execute_on_latest_package_version(Repos, TargetErtsVsns, PackageName, Fun, Side,
 	    ShortenedRepos = lists:delete(Repo, Repos),
 	    case Fun(Repo, HighVsn, RemoteErtsVsn) of
 		ok ->
-		    io:format("fun returned ok~n"),
 		    ok;
 		Error -> 
 		    ?ERROR_MSG("failed with ~p for vsn ~p in repo ~p moving on to next repo and setting vsn threshold to ~p~n", 
