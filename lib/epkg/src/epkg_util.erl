@@ -601,7 +601,7 @@ hex0(I) ->  $0 + I.
 
 %%--------------------------------------------------------------------
 %% @doc Discover what erts versions all beams in an app were compiled with.
-%% @spec discovery_app_erts_vsns(AppDirPath) -> {ok, [ErtsVsn]} | {error, Reason}
+%% @spec (AppDirPath) -> {ok, [ErtsVsn]} | {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
 discover_app_erts_vsns(AppDirPath) ->

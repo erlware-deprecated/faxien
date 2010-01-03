@@ -3,23 +3,13 @@
 PROG=$0
 PROG_DIR=$(cd `dirname $0`; pwd)
 test -h $0 && PROG=$(readlink $0)
-PREFIX=$(dirname $PROG_DIR)
+export ROOTDIR=$(dirname $PROG_DIR)
 
 #### Fill in values for these variables ####
 REL_NAME=faxien
-REL_VSN=0.43.1.8
+REL_VSN=0.43.1.9
 ERTS_VSN=5.7.4
-INVOCATION_SUFFIX="-s epkg cmdln_apply epkg $@ -noshell -prefix $PREFIX"
+INVOCATION_SUFFIX="-s epkg cmdln_apply epkg $@ -noshell -prefix $ROOTDIR"
 ###########################################
 
-
-export ROOTDIR=$PREFIX/
-ERTS_DIR=$ROOTDIR/erts-$ERTS_VSN
-export BINDIR=$ERTS_DIR/bin
-export EMU=beam
-export PROGNAME=erl
-export LD_LIBRARY_PATH=$ERTS_DIR/lib
-
-REL_DIR=$PREFIX/releases/$REL_NAME-$REL_VSN
-
-$BINDIR/erlexec -config $REL_DIR/sys.config -boot $REL_DIR/$REL_NAME $INVOCATION_SUFFIX
+$ROOTDIR/bin/erlware_release_start_helper.sh $REL_NAME $REL_VSN $ERTS_VSN sys.config $INVOCATION_SUFFIX

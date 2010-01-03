@@ -286,7 +286,7 @@ find_highest_local_app_vsn(AppName, TargetErtsVsn) ->
 %% @spec diff_config(RelName, RelVsn1, RelVsn2) -> Diffs
 %% where
 %%  Diffs = [{ConfigFilePath1, ConfigFilePath2, DiffTerms}]
-%%   DiffTerms = [term()|_]
+%%   DiffTerms = [term()]
 %% @end
 %%--------------------------------------------------------------------
 diff_config(RelName, RelVsn1, RelVsn2) -> 
