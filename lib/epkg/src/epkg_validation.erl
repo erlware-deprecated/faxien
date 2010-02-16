@@ -52,28 +52,41 @@
 %%--------------------------------------------------------------------
 validate_type(PackageDir) ->
     ?INFO_MSG("is it erts, binary, or generic ~p~n", [PackageDir]),
-    case is_package_erts(PackageDir) of
+    case is_package_edoc(PackageDir) of
 	true ->
-	    {ok, erts};
-	false -> 
-	    case is_package_an_app(PackageDir) of
+	    {ok, edoc};
+	false ->
+	    case is_package_erts(PackageDir) of
 		true ->
-		    case is_package_an_unbuilt_app(PackageDir) of
+		    {ok, erts};
+		false -> 
+		    case is_package_an_app(PackageDir) of
 			true ->
-			    {ok, unbuilt};
+			    case is_package_an_unbuilt_app(PackageDir) of
+				true ->
+				    {ok, unbuilt};
+				false ->
+				    case is_package_a_binary_app(PackageDir) of
+					true  -> {ok, binary};
+					false -> {ok, generic}
+				    end
+			    end;
 			false ->
-			    case is_package_a_binary_app(PackageDir) of
-				true  -> {ok, binary};
-				false -> {ok, generic}
+			    case is_package_a_release(PackageDir) of
+				true  -> {ok, release};
+				false -> {error, badly_formatted_or_missing_package}
 			    end
-		    end;
-		false ->
-		    case is_package_a_release(PackageDir) of
-			true  -> {ok, release};
-			false -> {error, badly_formatted_or_missing_package}
 		    end
 	    end
     end.
+
+is_package_edoc(PackageDir) ->
+    lists:all(fun(F) -> F(PackageDir) end,
+	      [
+	       fun(PackageDir_) ->  
+		       filelib:is_file(PackageDir_ ++ "/edoc-info")
+	       end 
+	      ]).
 
 is_package_erts(PackageDir) ->
     lists:all(fun(F) -> F(PackageDir) end, [

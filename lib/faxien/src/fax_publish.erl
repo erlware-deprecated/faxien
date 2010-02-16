@@ -106,8 +106,7 @@ publish(Repos, RawPackageDirPaths, Timeout) ->
 %%     PackageDirPath = string()
 %% @end
 %%--------------------------------------------------------------------
-publish(Type, Repos, RawPackageDirPath, Timeout)
-  when Type == unbuilt; Type == generic; Type == binary; Type == release; Type == erts -> 
+publish(Type, Repos, RawPackageDirPath, Timeout) ->
     PackageDirPath = epkg_util:unpack_to_tmp_if_archive(RawPackageDirPath),
     case catch publish2(Type, Repos, PackageDirPath, Timeout) of
 	{error, _Reason} = Res ->
@@ -127,6 +126,12 @@ publish(Type, Repos, RawPackageDirPath, Timeout)
 %% Internal functions
 %%====================================================================
 
+publish2(edoc, Repos, PackageDirPath, Timeout) -> 
+    {ok, {AppName, AppVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(PackageDirPath),
+    fax_doc_put:put_signature_file(Repos, "lib", AppName, AppVsn, create_signature(AppVsn), Timeout),
+    Binary = pack(PackageDirPath),
+    fax_doc_put:put_package(Repos, AppName, AppVsn, Binary, Timeout), 
+    fax_doc_put:put_checksum_file(Repos, "lib", AppName, AppVsn, Binary, Timeout);
 publish2(erts, Repos, ErtsDirPath, Timeout) -> 
     {ok, {"erts", ErtsVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ErtsDirPath),
     fax_put:put_erts_signature_file(Repos, ErtsVsn, create_signature(ErtsVsn), Timeout),
@@ -139,28 +144,26 @@ publish2(Type, Repos, RawAppDirPath, Timeout) when Type == unbuilt; Type == bina
     {ok, {AppName, AppVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(AppDirPath),
     {ok, AppFileBinary}     = file:read_file(ewl_file:join_paths(AppDirPath, "ebin/" ++ AppName ++ ".app")),
 
-    F = fun({ok, ErtsVsn}, _) -> {ok, ErtsVsn};
-	   ({error, no_beam_files}, unbuilt) -> {ok, "0.0"};
-	   (Error, _)                        -> Error
-	end,
-
-    case F(epkg_util:discover_app_erts_vsns(AppDirPath), Type) of
-	{ok, [ErtsVsn|_]} ->
-	    %% @todo make this transactional - if .app file put fails run a delete.
+    % @todo make this transactional - if .app file put fails run a delete.
+    Binary = pack(AppDirPath),
+    case Type of
+	unbuilt ->
+	    fax_source_put:put_dot_app_file(Repos, AppName, AppVsn, AppFileBinary, Timeout), 
+	    fax_source_put:put_signature_file(Repos, "lib", AppName, AppVsn, create_signature(AppVsn), Timeout),
+	    fax_source_put:put_app_package(Repos, AppName, AppVsn, Binary, Timeout), 
+	    fax_source_put:put_checksum_file(Repos, "lib", AppName, AppVsn, Binary, Timeout);
+	generic ->
+	    ErtsVsn = discover_erts_vsn(AppDirPath),
 	    fax_put:put_dot_app_file(Repos, ErtsVsn, AppName, AppVsn, AppFileBinary, Timeout), 
 	    fax_put:put_signature_file(Repos, ErtsVsn, "lib", AppName, AppVsn, create_signature(AppVsn), Timeout),
-	    Binary = pack(AppDirPath),
-	    Result = 
-		case Type of
-		    unbuilt -> fax_put:put_unbuilt_app_package(Repos, ErtsVsn, AppName, AppVsn, Binary, Timeout); 
-		    generic -> fax_put:put_generic_app_package(Repos, ErtsVsn, AppName, AppVsn, Binary, Timeout); 
-		    binary  -> fax_put:put_binary_app_package(Repos, ErtsVsn, AppName, AppVsn, Binary, Timeout)
-		end,
-	    fax_put:put_checksum_file(Repos, ErtsVsn, "lib", AppName, AppVsn, Binary, Timeout),
-	    Result;
-	Error ->
-	    ?ERROR_MSG("beams compiled with an unsuppored erts vsn. Error ~p~n", [Error]),
-	    Error
+	    fax_put:put_generic_app_package(Repos, ErtsVsn, AppName, AppVsn, Binary, Timeout), 
+	    fax_put:put_checksum_file(Repos, ErtsVsn, "lib", AppName, AppVsn, Binary, Timeout);
+	binary  ->
+	    ErtsVsn = discover_erts_vsn(AppDirPath),
+	    fax_put:put_dot_app_file(Repos, ErtsVsn, AppName, AppVsn, AppFileBinary, Timeout), 
+	    fax_put:put_signature_file(Repos, ErtsVsn, "lib", AppName, AppVsn, create_signature(AppVsn), Timeout),
+	    fax_put:put_binary_app_package(Repos, ErtsVsn, AppName, AppVsn, Binary, Timeout),
+	    fax_put:put_checksum_file(Repos, ErtsVsn, "lib", AppName, AppVsn, Binary, Timeout)
     end;
 publish2(release, Repos, RelDirPath, Timeout) -> 
     {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(RelDirPath),
@@ -342,5 +345,12 @@ move_to_proper_dir_if_no_name_and_vsn(AppDirPath) ->
 	    end
     end.
 		    
-		    
-		    
+discover_erts_vsn(AppDirPath) ->
+    case epkg_util:discover_app_erts_vsns(AppDirPath) of
+	{ok, [ErtsVsn|_]} ->
+	    ErtsVsn;
+	Error ->
+	    ?ERROR_MSG("beams compiled with an unsuppored erts vsn. Error ~p~n", [Error]),
+	    throw(Error)
+    end.
+	

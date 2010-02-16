@@ -694,7 +694,6 @@ fetch_app_help() ->
     ["\nHelp for fetch-app\n",
      "Usage: fetch-app <app-name> [app-vsn] <to-dir> [app version]: will fetch an OTP app remotely and place it into the to dir."]. 
 
-
 %%--------------------------------------------------------------------
 %% @doc 
 %%  Publishes a pre-built generic application or a release to a remote unguarded repository. A generic application 
@@ -715,11 +714,25 @@ publish(Repo, PackageDir, Timeout) ->
 
 %% @spec publish(PackageDir, Timeout) -> ok | {error, Reason}
 %% @equiv publish(Repos, PackageDir, Timeout)
-publish(PackageDir, Timeout) when is_integer(Timeout); Timeout == infinity -> 
-    {ok, Repos} = gas:get_env(faxien, repos_to_publish_to, ?ERLWARE_URL),
-    [A]         = epkg_util:if_atom_or_integer_to_string([PackageDir]),
-    io:format("Faxien is currently set to publish to: ~p~n", [Repos]),
-    fax_publish:publish(Repos, A, Timeout);
+publish(RawPackageDirPath, Timeout) when is_integer(Timeout); Timeout == infinity -> 
+    [A] = epkg_util:if_atom_or_integer_to_string([RawPackageDirPath]),
+    PackageDirPath = epkg_util:unpack_to_tmp_if_archive(A),
+    case epkg_validation:validate_type(PackageDirPath) of
+	{ok, edoc} ->
+	    {ok, Repos} = gas:get_env(faxien, doc_repos_to_publish_to, [?ERLWARE_URL]),
+	    io:format("Faxien is currently set to publish edoc docs to: ~p~n", [Repos]),
+	    fax_publish:publish(Repos, PackageDirPath, Timeout);
+	{ok, unbuilt} ->
+	    {ok, Repos} = gas:get_env(faxien, source_repos_to_publish_to, [?ERLWARE_URL]),
+	    io:format("Faxien is currently set to publish source to: ~p~n", [Repos]),
+	    fax_publish:publish(Repos, PackageDirPath, Timeout);
+	{ok, _Type} ->
+	    {ok, Repos} = gas:get_env(faxien, repos_to_publish_to, [?ERLWARE_URL]),
+	    io:format("Faxien is currently set to publish to: ~p~n", [Repos]),
+	    fax_publish:publish(Repos, PackageDirPath, Timeout);
+	{error, Reason} ->
+	    {error, Reason}
+    end;
 
 %% @spec publish(Repos PackageDir) -> ok | {error, Reason}
 %% @equiv publish(Repos AppDir, Timeout)

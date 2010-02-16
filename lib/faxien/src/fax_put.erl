@@ -11,7 +11,8 @@
 	 put_erts_package/4,
 	 put_binary_app_package/6,
 	 put_generic_app_package/6,
-	 put_unbuilt_app_package/6,
+	 put_unbuilt_app_package/5,
+	 put_doc_package/7,
 	 put_release_package/6,
 	 put_dot_app_file/6,
 	 put_release_control_file/6,
@@ -19,7 +20,8 @@
 	 put_signature_file/7,
 	 put_erts_signature_file/4,
 	 put_checksum_file/7,
-	 put_erts_checksum_file/4
+	 put_erts_checksum_file/4,
+	 repos_put/4
 	]).
 
 -macros("macros.hrl").
@@ -65,13 +67,24 @@ put_generic_app_package(Repos, ErtsVsn, AppName, AppVsn, Payload, Timeout) when 
 
 %%--------------------------------------------------------------------
 %% @doc put an unbuilt application src package onto a remote repository.
-%% @spec put_unbuilt_app_package(Repos, ErtsVsn, AppName, AppVsn, Payload, Timeout) -> {ok, Urls} | {error, Reason}
+%% @spec (Repos, AppName, AppVsn, Payload, Timeout) -> {ok, Urls} | {error, Reason}
 %% where
 %%  Timeout = Milliseonds::integer()
 %% @end 
 %%--------------------------------------------------------------------
-put_unbuilt_app_package(Repos, ErtsVsn, AppName, AppVsn, Payload, Timeout) when is_binary(Payload) -> 
-    Suffix = ewr_repo_paths:package_suffix(ErtsVsn, "Unbuilt", "lib", AppName, AppVsn),
+put_unbuilt_app_package(Repos, AppName, AppVsn, Payload, Timeout) when is_binary(Payload) -> 
+    Suffix = ewr_source_repo_paths:package_suffix("lib", AppName, AppVsn),
+    repos_put(Repos, Suffix, Payload, Timeout).
+
+%%--------------------------------------------------------------------
+%% @doc put an doc package onto a remote repository.
+%% @spec (Repos, Side, DocType, Name, Vsn, Payload, Timeout) -> {ok, Urls} | {error, Reason}
+%% where
+%%  Timeout = Milliseonds::integer()
+%% @end 
+%%--------------------------------------------------------------------
+put_doc_package(Repos, Side, DocType, Name, Vsn, Payload, Timeout) when is_binary(Payload) -> 
+    Suffix = ewr_source_repo_paths:package_suffix(Side, Name, Vsn, DocType),
     repos_put(Repos, Suffix, Payload, Timeout).
 
 %%--------------------------------------------------------------------
@@ -168,12 +181,7 @@ put_erts_checksum_file(Repos, ErtsVsn, Payload, Timeout) when is_binary(Payload)
     Checksum = list_to_binary(io_lib:fwrite("~s", [MD5])),
     repos_put(Repos, Suffix, Checksum, Timeout).
 
-%%====================================================================
-%% Internal functions
-%%====================================================================
-
 %%-------------------------------------------------------------------
-%% @private
 %% @doc
 %%  Put bits onto multiple filesystems.  This function creates the directory strcuture speficied if it does not exist.
 %% <pre>
@@ -191,6 +199,10 @@ put_erts_checksum_file(Repos, ErtsVsn, Payload, Timeout) when is_binary(Payload)
 %%-------------------------------------------------------------------
 repos_put(Repos, Suffix, Payload, Timeout) ->
     payloads_put(Repos, fun(Repo) -> ewr_repo_dav:repo_put(Repo, Suffix, Payload, Timeout) end).
+
+%%====================================================================
+%% Internal functions
+%%====================================================================
 
 %%-------------------------------------------------------------------
 %% @private
