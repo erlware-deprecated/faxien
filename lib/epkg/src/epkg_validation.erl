@@ -51,33 +51,45 @@
 %% @end
 %%--------------------------------------------------------------------
 validate_type(PackageDir) ->
-    ?INFO_MSG("is it erts, binary, or generic ~p~n", [PackageDir]),
+    ?INFO_MSG("is it erts, binary, generic, unbuilt, or edoc ~p~n", [PackageDir]),
+    val_edoc(PackageDir).
+
+val_edoc(PackageDir) ->
     case is_package_edoc(PackageDir) of
 	true ->
 	    {ok, edoc};
 	false ->
-	    case is_package_erts(PackageDir) of
+	    val_erts(PackageDir)
+    end.
+
+val_erts(PackageDir) ->
+    case is_package_erts(PackageDir) of
+	true ->
+	    {ok, erts};
+	false -> 
+	    val_app(PackageDir)
+    end.
+
+val_app(PackageDir) ->
+    case is_package_an_app(PackageDir) of
+	true ->
+	    case is_package_an_unbuilt_app(PackageDir) of
 		true ->
-		    {ok, erts};
-		false -> 
-		    case is_package_an_app(PackageDir) of
-			true ->
-			    case is_package_an_unbuilt_app(PackageDir) of
-				true ->
-				    {ok, unbuilt};
-				false ->
-				    case is_package_a_binary_app(PackageDir) of
-					true  -> {ok, binary};
-					false -> {ok, generic}
-				    end
-			    end;
-			false ->
-			    case is_package_a_release(PackageDir) of
-				true  -> {ok, release};
-				false -> {error, badly_formatted_or_missing_package}
-			    end
+		    {ok, unbuilt};
+		false ->
+		    case is_package_a_binary_app(PackageDir) of
+			true  -> {ok, binary};
+			false -> {ok, generic}
 		    end
-	    end
+	    end;
+	false ->
+	    val_release(PackageDir)
+    end.
+
+val_release(PackageDir) ->
+    case is_package_a_release(PackageDir) of
+	true  -> {ok, release};
+	false -> {error, badly_formatted_or_missing_package}
     end.
 
 is_package_edoc(PackageDir) ->

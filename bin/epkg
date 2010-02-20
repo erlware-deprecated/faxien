@@ -7,7 +7,7 @@ export ROOTDIR=$(dirname $PROG_DIR)
 
 #### Fill in values for these variables ####
 REL_NAME=faxien
-REL_VSN=0.43.1.11
+REL_VSN=0.43.1.12
 ERTS_VSN=5.7.4
 INVOCATION_SUFFIX="-s epkg cmdln_apply epkg $@ -noshell -prefix $ROOTDIR"
 ###########################################
