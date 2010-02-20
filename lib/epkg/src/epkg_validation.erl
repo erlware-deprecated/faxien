@@ -10,6 +10,7 @@
 -export([
 	 validate_type/1,
 	 verify_presence_of_erl_files/1,
+	 analyze_app/1,
 	 verify_app_erts_vsn/1,
 	 is_package_erts/1,
 	 is_package_an_app/1,
@@ -54,44 +55,14 @@ validate_type(PackageDir) ->
     ?INFO_MSG("is it erts, binary, generic, unbuilt, or edoc ~p~n", [PackageDir]),
     val_edoc(PackageDir).
 
-val_edoc(PackageDir) ->
-    case is_package_edoc(PackageDir) of
-	true ->
-	    {ok, edoc};
-	false ->
-	    val_erts(PackageDir)
-    end.
-
-val_erts(PackageDir) ->
-    case is_package_erts(PackageDir) of
-	true ->
-	    {ok, erts};
-	false -> 
-	    val_app(PackageDir)
-    end.
-
-val_app(PackageDir) ->
-    case is_package_an_app(PackageDir) of
-	true ->
-	    case is_package_an_unbuilt_app(PackageDir) of
-		true ->
-		    {ok, unbuilt};
-		false ->
-		    case is_package_a_binary_app(PackageDir) of
-			true  -> {ok, binary};
-			false -> {ok, generic}
-		    end
-	    end;
-	false ->
-	    val_release(PackageDir)
-    end.
-
-val_release(PackageDir) ->
-    case is_package_a_release(PackageDir) of
-	true  -> {ok, release};
-	false -> {error, badly_formatted_or_missing_package}
-    end.
-
+%%--------------------------------------------------------------------
+%% @doc boolean function to indicate if the package is of the type 
+%%      in question.
+%% @spec (PackageDir) -> {ok, Type} | {error, Reason}
+%% where
+%%  Type = binary | generic | unbuilt | release | erts | docs
+%% @end
+%%--------------------------------------------------------------------
 is_package_edoc(PackageDir) ->
     lists:all(fun(F) -> F(PackageDir) end,
 	      [
@@ -100,6 +71,14 @@ is_package_edoc(PackageDir) ->
 	       end 
 	      ]).
 
+%%--------------------------------------------------------------------
+%% @doc boolean function to indicate if the package is of the type 
+%%      in question.
+%% @spec (PackageDir) -> {ok, Type} | {error, Reason}
+%% where
+%%  Type = binary | generic | unbuilt | release | erts | docs
+%% @end
+%%--------------------------------------------------------------------
 is_package_erts(PackageDir) ->
     lists:all(fun(F) -> F(PackageDir) end, [
 	
@@ -124,48 +103,25 @@ is_package_erts(PackageDir) ->
 	end 
     ]).
 
-is_package_an_app(PackageDir) ->
-    lists:all(fun(F) -> F(PackageDir) end, [
-	
-	%% Run all the following lambda's and if all of them return true then we have a well formed application.
-	
-	fun(PackageDir_) ->  
-            case filelib:wildcard(PackageDir_ ++ "/ebin/*.app") of
-		[_|_] -> 
-		    true;
-		[] -> 
-		    ?INFO_MSG("can't find the .app file at ~p~n", [PackageDir_]),
-		    false
-	    end
-	end, 
-	
-	fun(PackageDir_) ->
-            case verify_presence_of_erl_files(PackageDir_) of
-		ok -> 
-                    true;
-		{error, _} -> 
-                    false
-	    end
-	end
-    ]).
+%%--------------------------------------------------------------------
+%% @doc boolean function to indicate if the package is of the type 
+%%      in question.
+%% @spec (AppDir) -> {ok, Type} | {error, Reason}
+%% where
+%%  Type = binary | generic | unbuilt | release | erts | docs
+%% @end
+%%--------------------------------------------------------------------
+is_package_an_unbuilt_app(AppDir) ->
+    0 == length(filelib:wildcard(AppDir ++ "/ebin/*beam")).
 
-is_package_an_unbuilt_app(PackageDir) ->
-    lists:all(fun(F) -> F(PackageDir) end, [
-	
-	%% Run all the following lambda's and if all of them return true the package dir is an unbuilt app and the function
-	%% will return true.
-	
-	fun(PackageDir_) ->  
-		0 == length(filelib:wildcard(PackageDir_ ++ "/ebin/*beam"))
-	end 
-	
-        %fun(PackageDir_) ->
-                %Files = [filename:basename(F) || F <- ewl_file:find(PackageDir_, ".*")],
-		%% For now only a build.sh file constitutes unbuilt. Perhaps configure and make files in the future.
-                %lists:any(fun(File) -> lists:member(File, Files) end, ["build.sh"])
-        %end
-    ]).
-
+%%--------------------------------------------------------------------
+%% @doc boolean function to indicate if the package is of the type 
+%%      in question.
+%% @spec (PackageDir) -> {ok, Type} | {error, Reason}
+%% where
+%%  Type = binary | generic | unbuilt | release | erts | docs
+%% @end
+%%--------------------------------------------------------------------
 is_package_a_binary_app(PackageDir) ->
     lists:any(fun(F) -> F(PackageDir) end, [
 	
@@ -200,27 +156,16 @@ is_package_a_binary_app(PackageDir) ->
         end
     ]).
 		
+%%--------------------------------------------------------------------
+%% @doc boolean function to indicate if the package is of the type 
+%%      in question.
+%% @spec (PackageDir) -> {ok, Type} | {error, Reason}
+%% where
+%%  Type = binary | generic | unbuilt | release | erts | docs
+%% @end
+%%--------------------------------------------------------------------
 is_package_a_release(PackageDir) ->
-    ?INFO_MSG("~p~n", [PackageDir]),
-    lists:any(fun(F) -> F(PackageDir) end, 
-	      [
-	       
-	       %% Run all the following lambda's and if all of them return true then we have a well formed release.
-	       
-	       fun(PackageDir_) ->
-		       case filelib:wildcard(PackageDir_ ++ "/releases/*/*.rel") of
-			   []  -> false;
-			   [_] -> true
-		       end
-	       end,
-	       
-	       fun(PackageDir_) ->
-		       case filelib:wildcard(PackageDir_ ++ "/release/*.rel") of
-			   []  -> false;
-			   [_] -> true
-		       end
-	       end
-	      ]).
+    {well_formed_release_structure, true} == well_formed_release_structure(PackageDir).
 
 %%--------------------------------------------------------------------
 %% @doc determine if a signature file supplied is a valid one.
@@ -275,6 +220,27 @@ has_bad_control_categories(ControlFilePath) ->
 	    {error, no_categories}
     end.
 	    
+%%--------------------------------------------------------------------
+%% @doc boolean function to indicate if the package is of the type 
+%%      in question.
+%% @spec (PackageDir) -> {ok, Type} | {error, Reason}
+%% where
+%%  Type = binary | generic | unbuilt | release | erts | docs
+%% @end
+%%--------------------------------------------------------------------
+is_package_an_app(AppDir) ->
+    {contains_dot_app_file, true} == contains_dot_app_file(AppDir).
+
+%%--------------------------------------------------------------------
+%% @doc Analyse an application package and indicate if there are any
+%%      defects.
+%% @spec (AppDir) -> [{Property, bool()}
+%% where
+%%  Type = binary | generic | unbuilt | release | erts | docs
+%% @end
+%%--------------------------------------------------------------------
+analyze_app(AppDir) ->
+    [contains_dot_app_file(AppDir), contains_all_erl_files(AppDir)].
 
 %%--------------------------------------------------------------------
 %% @doc Make sure an application contains all the source files that the .app files suggests it does.
@@ -342,3 +308,66 @@ has_binary_override_entry(PackageDir) ->
             false
     end.
                         
+
+
+val_edoc(PackageDir) ->
+    case is_package_edoc(PackageDir) of
+	true ->
+	    {ok, edoc};
+	false ->
+	    val_erts(PackageDir)
+    end.
+
+val_erts(PackageDir) ->
+    case is_package_erts(PackageDir) of
+	true ->
+	    {ok, erts};
+	false -> 
+	    val_app(PackageDir)
+    end.
+
+val_app(PackageDir) ->
+    case is_package_an_app(PackageDir) of
+	true ->
+	    case is_package_an_unbuilt_app(PackageDir) of
+		true ->
+		    {ok, unbuilt};
+		false ->
+		    case is_package_a_binary_app(PackageDir) of
+			true  -> {ok, binary};
+			false -> {ok, generic}
+		    end
+	    end;
+	false ->
+	    val_release(PackageDir)
+    end.
+
+val_release(PackageDir) ->
+    case is_package_a_release(PackageDir) of
+	true  -> {ok, release};
+	false -> {error, badly_formatted_or_missing_package}
+    end.
+
+contains_dot_app_file(AppDir) ->
+    case filelib:wildcard(AppDir ++ "/ebin/*.app") of
+	[_|_] -> 
+	    {contains_dot_app_file, true};
+	[] -> 
+	    {contains_dot_app_file, false}
+    end.
+	
+
+contains_all_erl_files(AppDir) ->
+  case verify_presence_of_erl_files(AppDir) of
+      ok -> 
+	  {contains_all_erl_files, true};
+      {error, _} -> 
+	  {contains_all_erl_files, false}
+  end.
+
+well_formed_release_structure(ReleaseDir) ->
+    case filelib:wildcard(ReleaseDir ++ "/releases/*/*.rel") of
+	[]  -> {well_formed_release_structure, false};
+	[_] -> {well_formed_release_structure, true}
+    end.
+
