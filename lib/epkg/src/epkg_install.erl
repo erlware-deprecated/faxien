@@ -229,7 +229,7 @@ execute_release_installation_steps(ReleasePackageDirPath, InstallationPath, IsLo
 	    ErtsVsn                 = epkg_util:consult_rel_file(erts_vsn, PackageRelFilePath),
 	    PackageErtsPackagePath  = ewl_package_paths:release_package_erts_package_path(ReleasePackageDirPath, ErtsVsn),
 	    try 
-	    lists:foreach(fun(Fun) -> Fun() end, 
+		lists:foreach(fun(Fun) -> Fun() end, 
 			  [
 			   fun() -> ok = install_erts(PackageErtsPackagePath, InstallationPath) end,
 			   fun() -> ok = install_release_package(ReleasePackageDirPath, InstallationPath) end,
