@@ -331,18 +331,17 @@ move_to_proper_dir_if_no_name_and_vsn(AppDirPath) ->
     catch
 	_C:_E ->
 	    AppBaseName = filename:basename(AppDirPath),
-	    case re:run(AppBaseName, "[a-z][a-z0-9]*", []) of
-		{match,[{0, Length}]} when Length == length(AppBaseName) ->
-		    DotAppFilePath = AppDirPath ++ "/ebin/" ++ AppBaseName ++ ".app",
-		    {ok, [{_, _, List}]} = file:consult(DotAppFilePath),
-		    {value,{vsn,VsnString}} = lists:keysearch(vsn, 1, List),
-		    ProperAppDirName = AppBaseName ++ "-" ++ VsnString,
-		    {ok, TmpDirPath}   = epkg_util:create_unique_tmp_dir(),
-		    TmpArtifactFilePath = ewl_file:join_paths(TmpDirPath, ProperAppDirName),
-		    ?INFO_MSG("Moving dir with no version ~p to ~p~n", [AppDirPath, TmpArtifactFilePath]),
-		    ok = ewl_file:copy_dir(AppDirPath, TmpArtifactFilePath),
-		    TmpArtifactFilePath
-	    end
+	    Length = length(AppBaseName),
+	    {match,[{0, Length}]} = re:run(AppBaseName, "[a-z][a-z0-9_]*", []), 
+	    DotAppFilePath = AppDirPath ++ "/ebin/" ++ AppBaseName ++ ".app",
+	    {ok, [{_, _, List}]} = file:consult(DotAppFilePath),
+	    {value,{vsn,VsnString}} = lists:keysearch(vsn, 1, List),
+	    ProperAppDirName = AppBaseName ++ "-" ++ VsnString,
+	    {ok, TmpDirPath}   = epkg_util:create_unique_tmp_dir(),
+	    TmpArtifactFilePath = ewl_file:join_paths(TmpDirPath, ProperAppDirName),
+	    ?INFO_MSG("Moving dir with no version ~p to ~p~n", [AppDirPath, TmpArtifactFilePath]),
+	    ok = ewl_file:copy_dir(AppDirPath, TmpArtifactFilePath),
+	    TmpArtifactFilePath
     end.
 		    
 discover_erts_vsn(AppDirPath) ->
