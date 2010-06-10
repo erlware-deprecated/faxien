@@ -340,7 +340,11 @@ upgrade_release(Repos, [TargetErtsVsn|_] = TargetErtsVsns, ReleaseName, IsLocalB
 handle_upgrade_release(Repos, TargetErtsVsns, ReleaseName, HighestLocalVsn, HighestRemoteVsn, IsLocalBoot, Options, Timeout) ->
     io:format("Upgrading from version ~s of ~s to version ~s~n", [HighestLocalVsn, ReleaseName, HighestRemoteVsn]),
     fax_install:install_remote_release(Repos,TargetErtsVsns,ReleaseName,HighestRemoteVsn,IsLocalBoot,Options,Timeout), 
-    handle_config_on_upgrade(ReleaseName, HighestRemoteVsn, HighestLocalVsn).
+    Force = fs_lists:get_val(force, Options),
+    case Force of
+	true -> ok;
+	_    -> handle_config_on_upgrade(ReleaseName, HighestRemoteVsn, HighestLocalVsn)
+    end.
     
 
 handle_config_on_upgrade(ReleaseName, HighestRemoteVsn, HighestLocalVsn) ->

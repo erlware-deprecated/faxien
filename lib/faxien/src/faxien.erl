@@ -214,7 +214,8 @@ upgrade_app(Repos, AppName) ->
     TargetErtsVsns      = epkg_util:all_erts_vsns(LowErtsVsn, HighErtsVsn, PreferredErtsVsn),
     {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
     {ok, ErtsPolicy}    = gas:get_env(faxien, erts_policy, loose),
-    Options             = [{force, false}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
+    {ok, Force}         = gas:get_env(faxien, force, false),
+    Options             = [{force, Force}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
     fax_manage:upgrade_application(Repos, TargetErtsVsns, A, Options, RequestTimeout).
 
 %% @spec upgrade_app(AppName) -> ok | {error, Reason}
@@ -254,7 +255,8 @@ upgrade_all_apps(Repos) ->
     TargetErtsVsns      = epkg_util:all_erts_vsns(LowErtsVsn, HighErtsVsn, PreferredErtsVsn),
     {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
     {ok, ErtsPolicy}    = gas:get_env(faxien, erts_policy, loose),
-    Options             = [{force, false}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
+    {ok, Force}         = gas:get_env(faxien, force, false),
+    Options             = [{force, Force}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
     fax_manage:upgrade_applications(Repos, TargetErtsVsns, Options, RequestTimeout).
 
 upgrade_all_apps() -> 
@@ -356,7 +358,8 @@ upgrade_release(Repos, RelName) ->
     {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
     {ok, ErtsPolicy}    = gas:get_env(faxien, erts_policy, loose),
     {ok, RequestTimeout}   = gas:get_env(faxien, request_timeout, ?REQUEST_TIMEOUT),
-    Options             = [{force, false}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
+    {ok, Force}         = gas:get_env(faxien, force, false),
+    Options             = [{force, Force}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
     fax_manage:upgrade_release(Repos, TargetErtsVsns, A, IsLocalBoot, Options, RequestTimeout).
 
 %% @spec upgrade_release(RelName) -> ok | {error, Reason}
@@ -395,7 +398,8 @@ upgrade_all_releases(Repos) ->
     TargetErtsVsns      = epkg_util:all_erts_vsns(LowErtsVsn, HighErtsVsn, PreferredErtsVsn),
     {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
     {ok, ErtsPolicy}    = gas:get_env(faxien, erts_policy, loose),
-    Options             = [{force, false}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
+    {ok, Force}         = gas:get_env(faxien, force, false),
+    Options             = [{force, Force}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
     fax_manage:upgrade_releases(Repos, TargetErtsVsns, IsLocalBoot, Options, RequestTimeout).
 
 %% @spec upgrade_all_releases() -> ok | {error, Reason}
@@ -438,7 +442,8 @@ install_release(Repos, ReleaseName, ReleaseVsn)  ->
     TargetErtsVsns      = epkg_util:all_erts_vsns(LowErtsVsn, HighErtsVsn, PreferredErtsVsn),
     {ok, ErtsPolicy}    = gas:get_env(faxien, erts_policy, loose),
     {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, true),
-    Options             = [{force, false}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
+    {ok, Force}         = gas:get_env(faxien, force, false),
+    Options             = [{force, Force}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
     fax_install:install_remote_release(Repos, TargetErtsVsns, A, B, IsLocalBoot, Options, RequestTimeout).
 
 %% @spec install_release(ReleaseName, ReleaseVsn) -> ok | {error, Reason}
@@ -470,7 +475,8 @@ install_release(ReleaseNameOrPath) ->
     TargetErtsVsns      = epkg_util:all_erts_vsns(LowErtsVsn, HighErtsVsn, PreferredErtsVsn),
     {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
     {ok, ErtsPolicy}    = gas:get_env(faxien, erts_policy, loose),
-    Options             = [{force, false}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
+    {ok, Force}         = gas:get_env(faxien, force, false),
+    Options             = [{force, Force}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
     fax_install:install_release(Repos, TargetErtsVsns, ReleaseNameOrPath, IsLocalBoot, Options, RequestTimeout).
 	
 %%--------------------------------------------------------------------
@@ -516,7 +522,8 @@ fetch_release(Repos, ReleaseName, ReleaseVsn, ToDir)  ->
     TargetErtsVsns      = epkg_util:all_erts_vsns(LowErtsVsn, HighErtsVsn, PreferredErtsVsn),
     {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
     {ok, ErtsPolicy}    = gas:get_env(faxien, erts_policy, loose),
-    Options             = [{force, false}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
+    {ok, Force}         = gas:get_env(faxien, force, false),
+    Options             = [{force, Force}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
     fax_install:fetch_remote_release(Repos, TargetErtsVsns, A, B, C, Options, RequestTimeout).
 
 %% @spec fetch_release(ReleaseName, ReleaseVsn, ToDir) -> ok | {error, Reason}
@@ -544,7 +551,8 @@ fetch_release(ReleaseName, ToDir) ->
     [A,B]               = epkg_util:if_atom_or_integer_to_string([ReleaseName, ToDir]),
     {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
     {ok, ErtsPolicy}    = gas:get_env(faxien, erts_policy, loose),
-    Options             = [{force, false}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
+    {ok, Force}         = gas:get_env(faxien, force, false),
+    Options             = [{force, Force}, {erts_prompt, ErtsPrompt}, {erts_policy, ErtsPolicy}], 
     fax_install:fetch_latest_remote_release(Repos, TargetErtsVsns, A, B, Options, RequestTimeout).
 	
     
@@ -618,7 +626,8 @@ install_app(AppNameOrPath) ->
 	    {ok, PreferredErtsVsn} = gas:get_env(epkg, preferred_erts_vsn, HighErtsVsn),
 	    TargetErtsVsns      = epkg_util:all_erts_vsns(LowErtsVsn, HighErtsVsn, PreferredErtsVsn),
 	    {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
-	    Options             = [{force, false}, {erts_prompt, ErtsPrompt}], 
+            {ok, Force}         = gas:get_env(faxien, force, false),
+	    Options             = [{force, Force}, {erts_prompt, ErtsPrompt}], 
 	    fax_install:install_latest_remote_application(Repos, TargetErtsVsns, AppNameOrPath, Options, RequestTimeout)
     end.
 
@@ -655,7 +664,8 @@ fetch_app(Repos, AppName, AppVsn, ToDir)  ->
     {ok, PreferredErtsVsn} = gas:get_env(epkg, preferred_erts_vsn, HighErtsVsn),
     TargetErtsVsns      = epkg_util:all_erts_vsns(LowErtsVsn, HighErtsVsn, PreferredErtsVsn),
     {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
-    Options             = [{force, false}, {erts_prompt, ErtsPrompt}], 
+    {ok, Force}         = gas:get_env(faxien, force, false),
+    Options             = [{force, Force}, {erts_prompt, ErtsPrompt}], 
     fax_install:fetch_remote_application(Repos, TargetErtsVsns, A, B, C, Options, RequestTimeout).
 
 %% @spec fetch_app(AppName, AppVsn, ToDir) -> ok | {error, Reason}
@@ -686,7 +696,8 @@ fetch_app(AppName, ToDir) ->
     {ok, Repos}         = gas:get_env(faxien, repos_to_fetch_from, [?ERLWARE_URL]),
     [A,B]               = epkg_util:if_atom_or_integer_to_string([AppName, ToDir]),
     {ok, ErtsPrompt}    = gas:get_env(faxien, erts_prompt, false),
-    Options             = [{force, false}, {erts_prompt, ErtsPrompt}], 
+    {ok, Force}         = gas:get_env(faxien, force, false),
+    Options             = [{force, Force}, {erts_prompt, ErtsPrompt}], 
     fax_install:fetch_latest_remote_application(Repos, TargetErtsVsns, A, B, Options, RequestTimeout).
 
 %% @private
