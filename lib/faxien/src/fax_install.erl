@@ -190,10 +190,11 @@ install_remote_erts(Repos, ErtsVsn, Timeout) ->
 %%--------------------------------------------------------------------
 install_release(Repos, [_H|_]= TargetErtsVsn, ReleasePackageArchiveOrDirPath, IsLocalBoot, Options, Timeout) when is_integer(_H) ->
     install_release(Repos, [TargetErtsVsn], ReleasePackageArchiveOrDirPath, IsLocalBoot, Options, Timeout);
-install_release(Repos, TargetErtsVsn, ReleasePackageArchiveOrDirPath, IsLocalBoot, Options, Timeout) ->
+install_release(Repos, TargetErtsVsns, ReleasePackageArchiveOrDirPath, IsLocalBoot, Options, Timeout) ->
     case filelib:is_file(ReleasePackageArchiveOrDirPath) of
-	true  -> install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLocalBoot, Options, Timeout);
-	false -> install_latest_remote_release(Repos, TargetErtsVsn, ReleasePackageArchiveOrDirPath, IsLocalBoot, Options, Timeout)
+	true  -> install_from_local_release_package(Repos, TargetErtsVsns, ReleasePackageArchiveOrDirPath,
+						    IsLocalBoot, Options, Timeout);
+	false -> install_latest_remote_release(Repos, TargetErtsVsns, ReleasePackageArchiveOrDirPath, IsLocalBoot, Options, Timeout)
     end.
 				  
 %%--------------------------------------------------------------------
@@ -244,7 +245,8 @@ install_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, IsLocalBoot, Opti
 	false -> 
 	    io:format("~nInitiating Install for Remote Release ~s-~s~n", [RelName, RelVsn]),
 	    {ok, ReleasePackageDirPath} = fetch_release(Repos, TargetErtsVsns, RelName, RelVsn, Options, Timeout),
-	    Res = install_from_local_release_package(Repos, ReleasePackageDirPath, IsLocalBoot, Options, Timeout),
+	    Res = install_from_local_release_package(Repos, TargetErtsVsns, ReleasePackageDirPath,
+						     IsLocalBoot, Options, Timeout),
 	    io:format("Installation of ~s-~s resulted in ~p~n", [RelName, RelVsn, Res]),
 	    Res;
 	true -> 
@@ -385,7 +387,7 @@ get_app_and_vsns(RelFilePath) ->
 %%      try again.
 %% @end
 %%--------------------------------------------------------------------
-install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLocalBoot, Options, Timeout) ->
+install_from_local_release_package(Repos, TargetErtsVsns, ReleasePackageArchiveOrDirPath, IsLocalBoot, Options, Timeout) ->
     Force      = fs_lists:get_val(force, Options),
     ErtsPolicy = fs_lists:get_val(erts_policy, Options),
     ReleasePackageDirPath   = epkg_util:unpack_to_tmp_if_archive(ReleasePackageArchiveOrDirPath),
@@ -395,9 +397,10 @@ install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLoca
 	true ->
 	    {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ReleasePackageDirPath),
 	    RelFilePath = rel_file_path(ReleasePackageDirPath, RelName, RelVsn),
+	    RelErtsVsn = epkg_util:consult_rel_file(erts_vsn, RelFilePath),
 	    [ReleaseErtsVsn|_] = ReleaseErtsVsns =
 		get_erts_vsns_to_search_in_release(
-		  epkg_util:consult_rel_file(erts_vsn, RelFilePath),
+		  [RelErtsVsn|lists:delete(RelErtsVsn, TargetErtsVsns)],
 		  ErtsPolicy),
 	    {ok, ErlangVersion} = faxien:translate_version(erts, erlang, ReleaseErtsVsn),
 	    io:format("Release compiled for ~s~n", [ErlangVersion]),
@@ -410,13 +413,15 @@ install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLoca
 		    lists:foreach(fun({AppName, AppVsn}) ->
 					  install_remote_application(Repos, ReleaseErtsVsns, AppName, AppVsn, Force, Timeout)
 				  end, AppAndVsns),
-		    install_from_local_release_package(Repos, ReleasePackageDirPath, IsLocalBoot, Options, Timeout);
+		    install_from_local_release_package(Repos, TargetErtsVsns, ReleasePackageDirPath,
+						       IsLocalBoot, Options, Timeout);
 		
 		{error, badly_formatted_or_missing_erts_package} ->
 		    %% The release package does not contain the appropriate erts package, and it is 
 		    %% not already installed, pull it down install it and try again.
 		    ok = install_remote_erts(Repos, ReleaseErtsVsn, Timeout),
-		    install_from_local_release_package(Repos, ReleasePackageDirPath, IsLocalBoot, Options, Timeout)
+		    install_from_local_release_package(Repos, TargetErtsVsns, ReleasePackageDirPath,
+						       IsLocalBoot, Options, Timeout)
 	    catch
 		_C:Ex ->
 		    ?INFO_MSG("exited release install on a local package with ~p~n", [Ex]),
@@ -424,10 +429,10 @@ install_from_local_release_package(Repos, ReleasePackageArchiveOrDirPath, IsLoca
 	    end
     end.
 
-get_erts_vsns_to_search_in_release(TargetErtsVsn, strict) ->
+get_erts_vsns_to_search_in_release([TargetErtsVsn|_], strict) ->
     [TargetErtsVsn];
-get_erts_vsns_to_search_in_release(TargetErtsVsn, loose) ->
-    epkg_util:erts_series(TargetErtsVsn).
+get_erts_vsns_to_search_in_release(TargetErtsVsns, loose) ->
+    TargetErtsVsns.
 
 %%====================================================================
 %% Internal functions

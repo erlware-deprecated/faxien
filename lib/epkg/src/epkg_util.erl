@@ -222,14 +222,20 @@ foreach_erts_vsn(TargetErtsVsn, Fun) ->
 %%-------------------------------------------------------------------
 erts_series(TargetErtsVsn, ErtsLowerBound) ->
     ?INFO_MSG("erts versions from ~s to ~s~n", [TargetErtsVsn, ErtsLowerBound]),
-    [MajorErtsVsn, MinorErtsVsn, HighPatchErtsVsn] = string:tokens(TargetErtsVsn, "."),
-    case catch string:tokens(ErtsLowerBound, ".") of
-	[MajorErtsVsn, MinorErtsVsn, LowPatchErtsVsn] ->
-	    create_series(MajorErtsVsn, MinorErtsVsn, HighPatchErtsVsn, LowPatchErtsVsn);
-	[MajorErtsVsn, MinorErtsVsn] ->
-	    create_series(MajorErtsVsn, MinorErtsVsn, HighPatchErtsVsn, "0"); 
-	_Error ->
-	    {error, {bad_erts_lower_bound, ErtsLowerBound}}
+    case string:tokens(TargetErtsVsn, ".") of
+	[MajorErtsVsn, MinorErtsVsn, HighPatchErtsVsn] ->
+	    case catch string:tokens(ErtsLowerBound, ".") of
+		[MajorErtsVsn, MinorErtsVsn, LowPatchErtsVsn] ->
+		    create_series(MajorErtsVsn, MinorErtsVsn, HighPatchErtsVsn, LowPatchErtsVsn);
+		[MajorErtsVsn, MinorErtsVsn] ->
+		    create_series(MajorErtsVsn, MinorErtsVsn, HighPatchErtsVsn, "0"); 
+		_Error ->
+		    {error, {bad_erts_lower_bound, ErtsLowerBound}}
+	    end;
+	[_MajorErtsVsn, _MinorErtsVsn] ->
+	    [TargetErtsVsn];
+	_ ->
+	    {error, {bad_erts_version, TargetErtsVsn}}
     end.
 
 create_series(MajorErtsVsn, MinorErtsVsn, HighPatchErtsVsn, LowPatchErtsVsn) ->
