@@ -217,8 +217,8 @@ install_latest_remote_release(Repos, [_H|_] = TargetErtsVsn, RelName, IsLocalBoo
 install_latest_remote_release(Repos, TargetErtsVsns, RelName, IsLocalBoot, Options, Timeout) ->
     ErtsPrompt = fs_lists:get_val(erts_prompt, Options),
 
-    Fun = fun(_Repo, RelVsn, ErtsVsn) ->
-		  install_remote_release(Repos, ErtsVsn, RelName, RelVsn, IsLocalBoot, Options, Timeout)
+    Fun = fun(_Repo, RelVsn, _ErtsVsn) ->
+		  install_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, IsLocalBoot, Options, Timeout)
 	  end,
     fax_util:execute_on_latest_package_version(Repos, TargetErtsVsns, RelName, Fun, releases, ErtsPrompt). 
 
@@ -402,6 +402,7 @@ install_from_local_release_package(Repos, TargetErtsVsns, ReleasePackageArchiveO
 		get_erts_vsns_to_search_in_release(
 		  [RelErtsVsn|lists:delete(RelErtsVsn, TargetErtsVsns)],
 		  ErtsPolicy),
+	    ?INFO_MSG("Release erts vsns are ~p and target are ~p~n", [ReleaseErtsVsns, TargetErtsVsns]),
 	    {ok, ErlangVersion} = faxien:translate_version(erts, erlang, ReleaseErtsVsn),
 	    io:format("Release compiled for ~s~n", [ErlangVersion]),
     
