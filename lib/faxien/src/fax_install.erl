@@ -328,7 +328,8 @@ fetch_latest_remote_release(Repos, TargetErtsVsns, RelName, ToDir, Options, Time
     ErtsPrompt = fs_lists:get_val(erts_prompt, Options),
 
     Fun = fun(Repo, RelVsn, ErtsVsn) ->
-		  fetch_remote_release([Repo], ErtsVsn, RelName, RelVsn, ToDir, Options, Timeout)
+		  fetch_remote_release([Repo], [ErtsVsn|lists:delete(ErtsVsn, TargetErtsVsns)], RelName,
+						RelVsn, ToDir, Options, Timeout)
 	  end,
     fax_util:execute_on_latest_package_version(Repos, TargetErtsVsns, RelName, Fun, releases, ErtsPrompt). 
 
@@ -349,7 +350,6 @@ fetch_latest_remote_release(Repos, TargetErtsVsns, RelName, ToDir, Options, Time
 fetch_remote_release(Repos, [_H|_] = TargetErtsVsn, RelName, RelVsn, ToDir, Options, Timeout) when is_integer(_H) ->
     fetch_remote_release(Repos, [TargetErtsVsn], RelName, RelVsn, ToDir, Options, Timeout);
 fetch_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Options, Timeout) ->
-    ErtsPolicy = fs_lists:get_val(erts_policy, Options),
     ?INFO_MSG("(~p, ~p, ~p, ~p)~n", [Repos, TargetErtsVsns, RelName, RelVsn]),
     io:format("~nFetching for Remote Release Package ~s-~s~n", [RelName, RelVsn]),
     Res             = fetch_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Options, Timeout),
@@ -357,8 +357,7 @@ fetch_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Options, Tim
     RelFilePath     = rel_file_path(RelDirPath, RelName, RelVsn),
     RelLibDirPath   = ewl_package_paths:release_package_library_path(RelDirPath),
     ReleaseErtsVsn  = epkg_util:consult_rel_file(erts_vsn, RelFilePath),
-    ReleaseErtsVsns = get_erts_vsns_to_search_in_release(ReleaseErtsVsn, ErtsPolicy),
-    ?INFO_MSG("looking for apps in erts vsns ~p~n", [ReleaseErtsVsns]),
+    ?INFO_MSG("looking for apps in erts vsns ~p~n", [TargetErtsVsns]),
     io:format("Fetching remote erts package (this may take a while) -> "),
     case catch ewr_fetch:fetch_erts_package(Repos, ReleaseErtsVsn, RelDirPath, Timeout) of
 	ok     -> io:format("ok~n");
@@ -367,7 +366,7 @@ fetch_remote_release(Repos, TargetErtsVsns, RelName, RelVsn, ToDir, Options, Tim
     AppAndVsns    = get_app_and_vsns(RelFilePath),
     lists:foreach(fun({AppName, AppVsn}) ->
 			  io:format("Pulling down ~s-~s -> ", [AppName, AppVsn]),
-			  Res_ = fetch_remote_application(Repos, ReleaseErtsVsns, AppName, AppVsn,
+			  Res_ = fetch_remote_application(Repos, TargetErtsVsns, AppName, AppVsn,
 							  RelLibDirPath, Options, Timeout),
 			  io:format("~p~n", [Res_])
 		  end, AppAndVsns),
@@ -389,7 +388,6 @@ get_app_and_vsns(RelFilePath) ->
 %%--------------------------------------------------------------------
 install_from_local_release_package(Repos, TargetErtsVsns, ReleasePackageArchiveOrDirPath, IsLocalBoot, Options, Timeout) ->
     Force      = fs_lists:get_val(force, Options),
-    ErtsPolicy = fs_lists:get_val(erts_policy, Options),
     ReleasePackageDirPath   = epkg_util:unpack_to_tmp_if_archive(ReleasePackageArchiveOrDirPath),
     case epkg_validation:is_package_a_release(ReleasePackageDirPath) of
 	false ->
@@ -398,12 +396,8 @@ install_from_local_release_package(Repos, TargetErtsVsns, ReleasePackageArchiveO
 	    {ok, {RelName, RelVsn}} = epkg_installed_paths:package_dir_to_name_and_vsn(ReleasePackageDirPath),
 	    RelFilePath = rel_file_path(ReleasePackageDirPath, RelName, RelVsn),
 	    RelErtsVsn = epkg_util:consult_rel_file(erts_vsn, RelFilePath),
-	    [ReleaseErtsVsn|_] = ReleaseErtsVsns =
-		get_erts_vsns_to_search_in_release(
-		  [RelErtsVsn|lists:delete(RelErtsVsn, TargetErtsVsns)],
-		  ErtsPolicy),
-	    ?INFO_MSG("Release erts vsns are ~p and target are ~p~n", [ReleaseErtsVsns, TargetErtsVsns]),
-	    {ok, ErlangVersion} = faxien:translate_version(erts, erlang, ReleaseErtsVsn),
+	    ?INFO_MSG("Release erts vsns are ~p and target are ~p~n", [TargetErtsVsns, TargetErtsVsns]),
+	    {ok, ErlangVersion} = faxien:translate_version(erts, erlang, RelErtsVsn),
 	    io:format("Release compiled for ~s~n", [ErlangVersion]),
     
 	    try epkg:install_release(ReleasePackageDirPath) of
@@ -412,7 +406,7 @@ install_from_local_release_package(Repos, TargetErtsVsns, ReleasePackageArchiveO
 		{error, {failed_to_install, AppAndVsns}} ->
 		    % The release does not contain all the applications required.  Pull them down, install them, and try again.
 		    lists:foreach(fun({AppName, AppVsn}) ->
-					  install_remote_application(Repos, ReleaseErtsVsns, AppName, AppVsn, Force, Timeout)
+					  install_remote_application(Repos, TargetErtsVsns, AppName, AppVsn, Force, Timeout)
 				  end, AppAndVsns),
 		    install_from_local_release_package(Repos, TargetErtsVsns, ReleasePackageDirPath,
 						       IsLocalBoot, Options, Timeout);
@@ -420,7 +414,7 @@ install_from_local_release_package(Repos, TargetErtsVsns, ReleasePackageArchiveO
 		{error, badly_formatted_or_missing_erts_package} ->
 		    %% The release package does not contain the appropriate erts package, and it is 
 		    %% not already installed, pull it down install it and try again.
-		    ok = install_remote_erts(Repos, ReleaseErtsVsn, Timeout),
+		    ok = install_remote_erts(Repos, RelErtsVsn, Timeout),
 		    install_from_local_release_package(Repos, TargetErtsVsns, ReleasePackageDirPath,
 						       IsLocalBoot, Options, Timeout)
 	    catch
@@ -429,11 +423,6 @@ install_from_local_release_package(Repos, TargetErtsVsns, ReleasePackageArchiveO
 		    Ex
 	    end
     end.
-
-get_erts_vsns_to_search_in_release([TargetErtsVsn|_], strict) ->
-    [TargetErtsVsn];
-get_erts_vsns_to_search_in_release(TargetErtsVsns, loose) ->
-    TargetErtsVsns.
 
 %%====================================================================
 %% Internal functions
