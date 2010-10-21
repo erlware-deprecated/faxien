@@ -234,7 +234,7 @@ is_package_an_app(AppDir) ->
 %%--------------------------------------------------------------------
 %% @doc Analyse an application package and indicate if there are any
 %%      defects.
-%% @spec (AppDir) -> [{Property, bool()}
+%% @spec (AppDir) -> [{Property, bool()}]
 %% where
 %%  Type = binary | generic | unbuilt | release | erts | docs
 %% @end
