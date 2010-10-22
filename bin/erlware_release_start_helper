@@ -11,12 +11,17 @@ ERTS_VSN=$1; shift
 CONFIG_FILE_NAME=$1
 
 ERTS_DIR=$ROOTDIR/erts-$ERTS_VSN
-export BINDIR=$ERTS_DIR/bin
-export EMU=beam
-export PROGNAME=erl
-export LD_LIBRARY_PATH=$ERTS_DIR/lib
+BINDIR=$ERTS_DIR/bin
+EMU=beam
+PROGNAME=erl
+LD_LIBRARY_PATH=$ERTS_DIR/lib
+export BINDIR
+export EMU
+export PROGNAME
+export LD_LIBRARY_PATH
 
-export REL_DIR=$ROOTDIR/releases/$REL_NAME-$REL_VSN
+REL_DIR=$ROOTDIR/releases/$REL_NAME-$REL_VSN
+export REL_DIR
 
 if [ "$CONFIG_FILE_NAME" = "no_config" ];then
 	$BINDIR/erlexec -boot $REL_DIR/$REL_NAME $@
