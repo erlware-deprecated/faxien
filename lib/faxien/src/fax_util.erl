@@ -25,7 +25,6 @@
 	 copy_dir_to_tmp_dir/1,
 	 to_app_dirs/1,
 	 flatten_term/1,
-	 repo_list/1,
 	 add_pzs/1,
 	 ask_about_switching_target_erts_vsns/4,
 	 get_erts_vsns_gte_than/2
@@ -169,7 +168,7 @@ find_em(PackageName, Repo, Suffixes, Acc) ->
             ValidUrl = make_valid_url(Repo, Suf),
 			?INFO_MSG("Checking for highest version of ~p in ~s~n", 
 				  [PackageName, ValidUrl]),
-			case repo_list(ValidUrl) of
+			case ewr_repo_dav:repo_list(Repo, Suf, 60000) of
 			    {ok, Vsns} -> 
 				?INFO_MSG("found vsns ~p~n", [Vsns]),
 				Elements = ewr_repo_paths:decompose_suffix(Suf),
@@ -292,54 +291,6 @@ to_app_dirs(LibDirs) ->
 		end,
 		[], LibDirs).
     
-%%-------------------------------------------------------------------
-%% @doc
-%% Return a the contents of a directory.
-%% @todo add ability to specifiy a timeout instead of relying on the default. 
-%% @spec repo_list(Url) -> {ok, DirContents} | {error, Reason}
-%%  where
-%%   DirContents = list()
-%% @end
-%%-------------------------------------------------------------------
-repo_list([$f,$i,$l,$e,$:,$/,$/|Path] = FullPath) ->
-    try
-	{ok, [filename:basename(E) || E <- filelib:wildcard(Path ++ "/*")]}
-    catch
-	_C:_E ->
-	    {error,{repo_list, FullPath}}
-    end;
-repo_list([$h,$t,$t,$p,$:,$/,$/|_] = Url) ->
-    AuthOpts = [],
-    repo_list(Url, AuthOpts);
-repo_list([$h,$t,$t,$p,$s,$:,$/,$/|_] = Url) ->
-    AuthOpts = ewr_util:get_auth_options(Url),
-    repo_list(Url, AuthOpts).
-
-repo_list(Url, AuthOpts) ->
-    Opts = [{"Connection", "TE"},
-	    {"TE", "trailers"},
-	    {"Depth", "1"},
-	    {"Content-Type", "application/xml"}],
-    case catch ibrowse:send_req(Url, Opts, propfind, "", AuthOpts) of
-        {ok, "207", _, Body} -> 
-	    ?ERROR_MSG("repo_list(~p) -> ~p~n", [Url, "success:207"]),
-	    {ok, parse_out_package_versions(Body)};
-	{ok, Code, _, _} = Res -> 
-	    ?ERROR_MSG("repo_list(~p) -> ~p~n", [Url, Res]),
-	    {error, {"No list found. http code: ", Code}};
-        {error, _Reason} = Res -> 
-	    ?ERROR_MSG("repo_list(~p) -> ~p~n", [Url, Res]),
-	    Res;
-        {'EXIT', Reason} = Exit -> 
-	    ?ERROR_MSG("repo_list(~p) -> ~p~n", [Url, Exit]),
-            {error, Reason}
-    end.
-    
-parse_out_package_versions(Body) ->
-    {Elem, _} = xmerl_scan:string(Body),
-    [filename:basename(E) || E <- tl(lists:sort(xmerl_xs:value_of(xmerl_xs:select("//D:href", Elem))))].
-
-
 %%--------------------------------------------------------------------
 %% @doc Prompt the user when he is switching erts vsns due to an install. 
 %% @spec ask_about_switching_target_erts_vsns(PackageName, PackageVsn, TargetErtsVsn, RemoteErtsVsn) -> bool()

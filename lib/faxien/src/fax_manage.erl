@@ -543,7 +543,7 @@ raw_list(Repos, Side, TargetErtsVsns) ->
 			try
 			    lists:foldl(fun(Suf, Acc2) -> 
 						?INFO_MSG("pulling data for list from ~s~n", [Repo ++ "/" ++ Suf]),
-						case fax_util:repo_list(Repo ++ "/" ++ Suf ++ "/") of
+						case ewr_repo_dav:repo_list(Repo, Suf, 60000) of
 						    {ok, Vsns}           -> [{Repo, lists:reverse(Vsns)}|Acc2]; 
 						    {error, conn_failed} -> throw(conn_failed);
 						    {error, _Reason}     -> Acc2
